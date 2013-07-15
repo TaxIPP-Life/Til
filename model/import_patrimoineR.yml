@@ -1,0 +1,63 @@
+# this is an "import" file. To use it press F5 in liam2 environment, or run
+# the following command in a console: 
+# INSTALL PATH\liam2 import demo_import.yml
+output: simple2009.h5
+
+
+globals:
+    periodic:
+        path: param\globals.csv
+
+entities:
+    person:
+        path: C:\til\data\Patrimoine\to_import.Rdata
+        fields :
+            - age:    int
+            - agem:    int
+            - sexe:   int
+            - pere:   int
+            - mere:   int
+            - conj:   int
+ 
+            - men:    int 
+            - quimen:    int 
+            - foy:    int 
+            - quifoy:    int 
+            
+ 
+            - findet: int
+            - workstate: int
+            - sali:  float  
+            - rsti: float
+            - choi: float
+            - xpr: int
+            - anc: int
+            
+                #- data\person.csv 
+           
+        # if you want to invert the value of some boolean fields (True -> False
+        # and False -> True), add them to the "invert" list below.
+#        invert: [list, of, boolean, fields, to, invert]
+
+    register:
+        path: C:\til\data\Patrimoine\to_import.Rdata
+        files: person
+        fields :
+            - age:    int
+            - sexe:   int
+            - pere:   int
+            - mere:   int
+            - findet: int
+        
+    menage: 
+        path: C:\til\data\Patrimoine\to_import.Rdata
+        
+    declar: 
+        path: C:\til\data\Patrimoine\to_import.Rdata  
+
+    companies: 
+        path: C:\til\data\Patrimoine\to_import.Rdata  
+        files: menage
+        fields: 
+            - pond: float            
+            

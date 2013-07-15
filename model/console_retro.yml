@@ -1,0 +1,81 @@
+# second entity, links, link methods, init, procedures, local variables,
+# dump's suffix argument, choice
+
+
+import:
+    - person_init_retro.yml
+    - register.yml
+    - _house//menage.yml
+    - _fiscal//declar.yml
+    - _work//work_pensIPP.yml  # work0, work_pensIPP
+    - _work//income2.yml
+    - _demo//birth_death_retro.yml
+    - _demo//_union//union.yml
+    - _demo//_divorce//divorce.yml
+    - _educ//youth.yml
+    - _house//moving_retro.yml
+    - _consumption//conso.yml
+    - _wealth//save.yml
+    - _jobs//companies.yml
+
+globals:
+    periodic:
+        - WEMRA: int  
+        - LIMIT: float
+        
+simulation:
+    init: 
+        - menage: [init_weight_men, init_region_id,init_rent, init_value, init_wealth, init_owner, men_composition]
+        - person: [init_weight_ind, init_couple, init_education_level, init_productivity]
+        - companies: [init_size]
+        - declar: [cases,empty_declar]
+        - register: [init_reg]
+        - person: [qui_solve]
+        # - legislation: [2009]
+        - register: [sum_indiv]
+        - person: [stat_period_ini, stat_period]
+        
+    processes:
+    # apres chaque étape qui modifie les ménages, on fait tourner une moulinette sur declar et menage, pour s'assurer qu'on a les bons
+    # vous et pref, plus tard, quand le code le permettra, on changera ce vous directement dans l'étape au niveau person
+        # - person: [age, dump_info, show_demography , marriage]
+        - register: [rien]
+        - person: [ageing,independance, death, birth] 
+        - menage: [men_composition]
+        - declar: [cases,empty_declar]
+        - person: [[marriage,'bimonth']]
+        # - register: [sum_indiv]
+        - menage: [men_composition]
+        - declar: [cases,empty_declar]
+        - person: [divorce]
+        # - declar: [declar_composition,empty_declar]
+        - person: [ineducation, outwork, inwork, retire, chomage, retraite, salaire
+#            dump_all            
+        ]
+        - menage: [init_value,consumption,saving]
+        - companies: [rien]
+        - person: [qui_solve] 
+        # - legislation: [2009] #[annee leg]
+        # - register: [alive]
+        - register: [sum_indiv]
+        - person: [stat_period]
+    
+    # final_stat: True
+    
+    input:
+        # file: expanded2009.h5
+        # file: exp50_2009.h5
+        file: retro.h5
+    output:
+        path: C:\Til\output\
+        file: past.h5
+        
+    skip_shows: False
+    timings: False
+    time_scale: 'year' 
+    retro: True
+
+
+    # first simulated period
+    init_period: 200901
+    periods: 4

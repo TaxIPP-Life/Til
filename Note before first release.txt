@@ -1,0 +1,6 @@
+This is a list of what needed to run 
+L'enquete patrimoine somewhere, except if you already have a file .h5
+
+To run the past you need a tables_matchees.dta in a stata format and 
+coming from the matching process (To include here in Patrimoine).
+Sorry about that.

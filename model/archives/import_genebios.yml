@@ -1,0 +1,40 @@
+# this is an "import" file. To use it press F5 in liam2 environment, or run
+# the following command in a console: 
+# INSTALL PATH\liam2 import demo_import.yml
+output: simple2009.h5
+
+#globals:
+#    periodic:
+#        path: data\person_sta.csv
+
+globals:
+    periodic:
+        path: param\globals.csv
+        transposed: true
+
+entities:
+    person:
+        path: data\person2009.csv
+        fields:
+            - conjoint: int
+            - salaires: float
+            - statut: int
+            - age : int
+            - sexe : int
+            - men : int
+            - pere: int
+            - mere: int
+        files: 
+            - data\person2009.csv
+            #- data\person.csv 
+           
+        # if you want to invert the value of some boolean fields (True -> False
+        # and False -> True), add them to the "invert" list below.
+#        invert: [list, of, boolean, fields, to, invert]
+
+    menage: 
+        path: data\menage2009.csv
+        
+    declar: 
+        path: data\menage2009.csv   
+

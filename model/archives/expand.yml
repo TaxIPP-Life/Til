@@ -1,0 +1,154 @@
+globals:
+    periodic:
+        - WEMRA: int
+        
+entities:
+    menage:
+        fields:
+            # period and id are implicit
+            - pond:        float
+            - num_dup:        {type: int, initialdata: false}
+            - pondfin:     {type: float, initialdata: false}
+            - toclone:     {type: bool, initialdata: false}
+            - clone_id : {type: int, initialdata: false}
+
+            
+        links:
+            persons: {type: one2many, target: person, field: men}
+            descendant: {type: one2many, target: person, field: men}
+
+        processes:
+            rien: 
+                - show ('nb de ménage',grpsum(pond))
+            expand:
+                - minpond: max(grpmin(pond),100)
+                # - show('la plus petite ponderation est:' grpmin(minpond))
+                - last_non_clone_id: grpmax(id)
+                - toclone: pond > 2*minpond
+                - num_dup: trunc(pond/minpond)-1
+                # clone all menages with a weight > 1
+                - clone_id: clone(toclone,'num_dup','father')
+
+                
+                # modify the weight:
+                # for the original menages: (weight + 1) / 2
+                # for the new (cloned) menage: weight / 2
+                - is_clone: id > last_non_clone_id
+                - pond: if(toclone,
+                             pond/(num_dup+1),
+                             pond)
+                             
+                               
+    person:
+        fields:
+            - age:    int
+            - sexe:   int
+            - men:    int
+            - pere:   int
+            - mere:   int
+            - conjoint: int
+            - clone_id : {type: int, initialdata: false}
+            - num_dup:   {type: int, initialdata: false}
+            - men_clone:   {type: int, initialdata: false}
+            - num_clone : {type: int, initialdata: false}
+             
+        links:
+            menage:     {type: many2one, target: menage, field: men}
+            souche:     {type: many2one, target: menage, field: men_clone}
+            mater:      {type: many2one, target: person, field: mere}
+            pater:      {type: many2one, target: person, field: pere}
+            conj:       {type: many2one, target: person, field: conjoint}
+            children1:  {type: one2many, target: person, field: mere}
+            children2:  {type: one2many, target: person, field: pere}
+            duplic:     {type: many2one, target: person, field: clone_id}
+
+        processes:
+        
+            rien: 
+                - show('sum pond ind' , grpsum(menage.pond))           
+                # - show('total population:', grpsum(fweight)) 
+                # - show('min/max weight:', grpmin(fweight), grpmax(fweight))
+                # - show('menage weight problems:',
+                       # grpcount((hh_id != -1) and (menage.weight != fweight)))
+                # - show('menage weight -1 problems:',
+                       # grpcount((hh_id == -1)))
+                # - show('partner weight problems:',
+                       # grpcount((partner_id != -1) and (partner.fweight != fweight)))
+                # - show('mother weight problems:',
+                       # grpcount((m_id != -1) and (mother.fweight != fweight)))
+                     
+
+            # shrink:
+                # - agegroup: if(age < 15, 0, if(age >= 65, 13, trunc(age / 5))) * 5
+                # - show(groupby(agegroup, gender, expr=grpsum(weight)))
+                # - show(groupby(agegroup, gender, expr=grpsum(weight), percent=True))
+                # - show('min/max weight:', grpmin(weight), grpmax(weight))
+# #                - fweight_old: trunc(round(fweight / grpmin(fweight)))
+# #                - show('min/max shrinked weight (int source):', grpmin(fweight_old), grpmax(fweight_old))
+# #                - show(groupby(trunc(age / 10) * 10, gender, expr=grpsum(fweight_old)))
+# #                - show(groupby(trunc(age / 10) * 10, gender, expr=grpsum(fweight_old), percent=True))
+                # - fweight: trunc(round(weight / grpmin(weight)))
+                # - show('min/max shrinked weight:', grpmin(fweight), grpmax(fweight))
+                # - show(groupby(agegroup, gender, expr=grpsum(fweight)))
+                # - show(groupby(agegroup, gender, expr=grpsum(fweight), percent=True))
+
+            expand:      
+                - last_non_clone_id: grpmax(id)
+                - toclone: menage.toclone
+                - num_dup: menage.num_dup
+                - clone_id: expand(toclone,'num_dup','father', numerotation='num_clone')
+                - is_clone: id > last_non_clone_id
+                - men_clone: if(is_clone,duplic.men,men)
+                # work on personal link
+                - id_ini: souche.get(minlink(persons,id))
+                - id_now: menage.get(minlink(persons,id))
+                - conjoint: if((is_clone) and (conjoint>0),
+                                (conjoint-id_ini)*num_dup+id_now,
+                                conjoint)            
+                - mere: if((is_clone) and (mere>0),
+                                (mere-id_ini)*num_dup+id_now,
+                                mere)
+                - pere: if((is_clone) and (pere>0),
+                                (pere-id_ini)*num_dup+id_now,
+                                pere)  
+
+    declar:
+        fields:      
+            - loyer: int
+            - clone_id : {type: int, initialdata: false}
+        links:
+            menage: {type: many2one, target: menage, field: id}
+            
+        processes:
+            rien: 
+                - pouet: 0 
+            expand:
+                - toclone: menage.toclone
+                - num_dup: menage.num_dup
+                - clone_id: clone(toclone,'num_dup','father')
+                
+                                
+                                
+simulation:
+    init:
+        # - person: [shrink]
+        # checks
+        - menage: [rien,expand,rien]
+        - person: [expand,rien]
+        # - person: [person_link]
+
+        # # checks
+        # - menage: [weight, check]
+        # - person: [check]
+    processes:
+        - menage: [rien]
+        - person: [rien] 
+        - declar: [rien]
+    input:
+        file: simple2009.h5
+
+    output:
+        file: expand2009.h5
+
+    start_period: 2010   # first simulated period
+    periods: 0

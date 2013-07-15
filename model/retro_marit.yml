@@ -1,0 +1,40 @@
+### in that file we retropolate only for matrimonial status
+
+
+
+import:
+    -      person_init.yml
+    -      _house//menage.yml
+    -      _demo//life_death_retro.yml
+    -      _union//union_retro.yml
+    -      _fiscal//declar.yml  
+globals:
+    periodic:
+        - WEMRA: int
+
+simulation:
+    init: 
+        - person: [init_weight_ind, init_couple,init_education_level,init_productivity]
+        - declar: [cases,empty_declar] 
+        
+    processes:
+        #- person: [age, agegroup, dump_info, show_demography , marriage]
+        - menage: [men_composition,empty_house]
+        - person: [ageing, birth, death,marriage, independance]
+        - menage: [men_composition,empty_house]
+        - person: [divorce]
+        - menage: [men_composition,empty_house]
+        - declar: [empty_declar]
+        - menage: [init_value,consumption,saving]
+        - companies: [rien]
+        - declar: [cases,empty_declar]
+        - menage: [men_composition,empty_house]
+        
+    input:
+        file: simple2009.h5
+    output:
+        file: simulRetro.h5
+
+    # first simulated period
+    start_period: 2010
+    periods: 2
