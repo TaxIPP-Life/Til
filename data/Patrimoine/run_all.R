@@ -72,7 +72,7 @@ if (option_lien == "oui") {
   lien = rbind.fill.matrix(as.matrix(look_parent),as.matrix(look_child))
   taille.lien = nrow(lien)
   colnames(lien)[1] <- "id_origin"
-  id = seq(1:taille.lien); period = rep(2009, taille.lien); parent = is.na(lien[,1])
+  id = seq(1:taille.lien); period = rep(200901, taille.lien); parent = is.na(lien[,1])
   lien = cbind(id,period,parent,lien)
   lien = as.data.frame(apply(lien, 2,as.integer))
   lien = replace(lien, is.na(lien), as.integer(0))
@@ -90,26 +90,26 @@ if (option_lien == "oui") {
   # Remarque si on veut changer le yaml qu'on lance, ouvrir, le run_lien.py avec n'importe quel ?diteur et
   # modifier le chemin du fichier appeler.
   # Remarque : si on veut ajouter une variable.
-  # i) travailler dans le fichier lien_parent_enfant/lien_parenf.R (qui pourrait ?tre dans import d'ailleurs)
+  # i) travailler dans le fichier lien_parent_enfant/lien_parenf.R (qui pourrait être dans import d'ailleurs)
   # ii) ouvrir lien_parent_enfant/import.yml puis ajouter les variables avec le bon type
   # iii) ouvrir lien_parent_enfant/match_XXX.yml puis ajouter les variables avec le bon type dans la partie entities (
-  # un copier coller de l'Ã©tape ii fait l'affaire)
+  # un copier coller de l'étape ii fait l'affaire)
   source("lien_parent_enfant/merge.R")
   
   
   # ### optionnel : expand
   
   if(option_expand == "oui"){
-    save(person,menage,declar,retro,file='ici_l_exp.Rdata')
+    save(person,menage,declar,retro,file='final_exp.Rdata')
   }
   if(option_expand != "oui"){
-    save(person,menage,declar,retro,file='ici_l.Rdata')
+    save(person,menage,declar,retro,file='final.Rdata')
   }
 }
 
 
 if (option_lien != "oui") {
-  ifelse(option_expand == "oui", load('ici_l_exp.Rdata'), load("ici_l.rdata") )
+  ifelse(option_expand == "oui", load('final_exp.Rdata'), load("final.rdata") )
 }
 
 

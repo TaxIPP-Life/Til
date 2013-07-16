@@ -47,9 +47,9 @@ def main(simulation, period=None, output=".h5"):
 # useless since agem is in simu    
 #     table[ent]['agem'] = 12 * table[ent]['age'] 
     
-    table[ent]['ageq'] =  table[ent]['age']/5 - 4 
+    table[ent]['ageq'] = table[ent]['age']/5 - 4 
     table[ent]['ageq'] = table[ent]['ageq']*(table[ent]['ageq'] > 0) 
-    table[ent]['ageq'] = 12+ (table[ent]['ageq']-12)*(table[ent]['ageq'] < 12) 
+    table[ent]['ageq'] = 12 + (table[ent]['ageq']-12)*(table[ent]['ageq'] < 12) 
     #TODO: modifier pour les jeunes veufs 
     
     # create fam entity
