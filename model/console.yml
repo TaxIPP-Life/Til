@@ -32,7 +32,7 @@ simulation:
         - declar: [cases,empty_declar]
         - register: [init_reg]
         - person: [qui_solve]
-        - legislation: [2009]
+        # - legislation: [2009]
         - register: [sum_indiv]
         - person: [stat_period_ini, stat_period]
         
@@ -41,14 +41,18 @@ simulation:
     # vous et pref, plus tard, quand le code le permettra, on changera ce vous directement dans l'étape au niveau person
         # - person: [age, dump_info, show_demography , marriage]
         - register: [rien]
-        - person: [ageing,independance, death, birth] 
+        - person: [ageing]
+        - person: [[death,'year']]
+        - person: [[independance,'year']]
+        - person: [[birth,'year']]
         - menage: [men_composition]
         - declar: [cases,empty_declar]
         - person: [[marriage,'year']]
         # - register: [sum_indiv]
-        - menage: [men_composition]
-        - declar: [cases,empty_declar]
-        - person: [divorce]
+        - menage: [[men_composition,'year']]
+        - declar: [[cases,'year']]
+        - declar: [[empty_declar,'year']]        
+        - person: [[divorce,'year']]
         # - declar: [declar_composition,empty_declar]
         - person: [ineducation, outwork, inwork, retire, chomage, retraite, salaire
 #            dump_all            
@@ -73,10 +77,10 @@ simulation:
         
     skip_shows: True
     timings: False
-    time_scale: 'year' 
+    time_scale: 'semester' 
     # retro: True
 
 
     # first simulated period
     init_period: 200901
-    periods: 2
+    periods: 10
