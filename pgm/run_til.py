@@ -10,12 +10,13 @@ chemin = 'C:\\til\\'
 
 fichier = chemin + 'model\\import_retro.yml'
 fichier = chemin + 'model\\import_PatrimoineR.yml'
-file2h5(fichier)
+fichier= 'C:\\Til-Liam\\tests\\functional\\import.yml'
+#file2h5(fichier)
 
 
 fichier= chemin+'Model\\console.yml'
 #fichier= chemin+'Model\\console_retro.yml'
-# fichier= 'C:\\Myliam2\\tests\\functional\\simulation.yml'
+# fichier= 'C:\\Til-Liam\\tests\\functional\\simulation.yml'
 
 simulation= Simulation.from_yaml(
                                  fichier,
