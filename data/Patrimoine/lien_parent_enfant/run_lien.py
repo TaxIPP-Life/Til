@@ -7,22 +7,20 @@ Created on 2 Apr 2013
 '''
 import sys
 
-import src_liam
-import src_liam.main as main 
+from src_liam.simulation import Simulation
+from src_liam.importer import  file2h5
 #from src_liam.simulation import Simulation
 
 ########### LIEN ############
 chemin = 'C:\\til\\'
 fichier = chemin+'data\\Patrimoine\\lien_parent_enfant\\import.yml'
 
-sys.argv.append('import')
-sys.argv.append(fichier)
-main.main()
-sys.argv.remove(fichier)
+#file2h5(fichier)
+
 
 fichier = chemin+'data\\Patrimoine\\lien_parent_enfant\\match_score.yml'
 
-simulation= src_liam.simulation.Simulation.from_yaml(
+simulation= Simulation.from_yaml(
                                  fichier,
                      input_dir=None,
                     input_file=None,
