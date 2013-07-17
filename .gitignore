@@ -43,3 +43,5 @@ doc/
 output/*.h5
 output/*.csv
 output/check_simul/*.csv
+
+pgm/CONFIG.py

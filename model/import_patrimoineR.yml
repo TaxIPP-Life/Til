@@ -10,7 +10,7 @@ globals:
 
 entities:
     person:
-        path: C:\til\data\Patrimoine\to_import.Rdata
+        path: to_import.Rdata
         fields :
             - age:    int
             - agem:    int
@@ -40,7 +40,7 @@ entities:
 #        invert: [list, of, boolean, fields, to, invert]
 
     register:
-        path: C:\til\data\Patrimoine\to_import.Rdata
+        path: to_import.Rdata
         files: person
         fields :
             - age:    int
@@ -50,13 +50,13 @@ entities:
             - findet: int
         
     menage: 
-        path: C:\til\data\Patrimoine\to_import.Rdata
+        path: to_import.Rdata
         
     declar: 
-        path: C:\til\data\Patrimoine\to_import.Rdata  
+        path: to_import.Rdata  
 
     companies: 
-        path: C:\til\data\Patrimoine\to_import.Rdata  
+        path: to_import.Rdata  
         files: menage
         fields: 
             - pond: float            
