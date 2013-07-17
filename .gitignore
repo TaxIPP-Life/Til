@@ -26,11 +26,13 @@ data/Patrimoine/Archives/
 data/Patrimoine/*.xls
 data/Patrimoine/*.csv
 data/Patrimoine/*.h5
+!data/Patrimoine/subset.Rdata
 data/Patrimoine/lien_parent_enfant/*.csv
 data/Patrimoine/lien_parent_enfant/*.h5
 model/*.csv
 model/*.h5
 model/*.csv
+!model/test.h5
 #model/data/*.csv
 
 data/Patrimoine/Past/*.dta
