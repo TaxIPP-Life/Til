@@ -16,7 +16,8 @@ local.properties
 .classpath
 .settings/
 .loadpath
-
+*~
+*.egg-info
 
 *.Rdata
 *.Rhistory
@@ -44,3 +45,5 @@ output/*.csv
 output/check_simul/*.csv
 
 pgm/CONFIG.py
+pgm/CONFIG.pydata/Patrimoine/path_config.R
+
