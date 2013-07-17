@@ -5,7 +5,9 @@ Created on 2 Apr 2013
 
 @author: alexis_e
 '''
-import sys
+import sys 
+sys.path.append('C:\\til-liam\\')
+sys.path.append('C:\\openfisca\\')
 
 from src_liam.simulation import Simulation
 from src_liam.importer import  file2h5
@@ -15,7 +17,7 @@ from src_liam.importer import  file2h5
 chemin = 'C:\\til\\'
 fichier = chemin+'data\\Patrimoine\\lien_parent_enfant\\import.yml'
 
-#file2h5(fichier)
+file2h5(fichier)
 
 
 fichier = chemin+'data\\Patrimoine\\lien_parent_enfant\\match_score.yml'

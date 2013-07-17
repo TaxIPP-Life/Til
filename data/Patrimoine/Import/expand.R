@@ -12,13 +12,22 @@ library(plyr)
 pond_unif = min(menage$pond)
 pond_unif = max(150,pond_unif)
 num_dup = 1+floor(menage$pond/pond_unif)
+  # test surpondération: 
+  surpond = which( min(menage$pond) < menage$pond & menage$pond < pond_unif )
+  pond_unif * length(surpond)
+  sum(menage$pond[surpond])
+  ratio = 100*(pond_unif * length(surpond) - sum(menage$pond[surpond])) /  sum(menage$pond)
+  ratio
 
 ### table mÃ©nage
 taille.m = nrow(menage)
 pond = menage$pond
+menage$pond = menage$pond/num_dup
 menage = menage[rep(1:nrow(menage), num_dup),]
 menage$id_old = menage$id
 menage$id = seq(1:nrow(menage))
+  # test surpopulation dans Til
+  100*(sum(nrow(menage)*pond_unif) - sum(menage$pond)) / sum(menage$pond)
 
 ### table foyer
 #pour l'instant c'est exactement le meme format que menage

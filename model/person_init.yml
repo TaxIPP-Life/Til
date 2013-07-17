@@ -42,7 +42,7 @@ entities:
         # patrimoine
             - patrimoine: {type: float, initialdata: false}
            
-            # legislation
+        # legislation
             - salsuperbrut: {type: int, initialdata: false, default: 0} 
             - cotsoc_noncontrib: {type: int, initialdata: false} 
             - cotsal_noncontrib: {type: int, initialdata: false} 
@@ -63,10 +63,10 @@ entities:
         links:
             l_men:      {type: many2one, target: menage, field: men}
             l_foy:      {type: many2one, target: declar, field: foy}
-            l_mere:     {type: many2one, target: person, field: mere}  # to know alive mother
+            l_mere:     {type: many2one, target: person, field: mere}  
             l_pere:     {type: many2one, target: person, field: pere}
             l_conj:     {type: many2one, target: person, field: conj}
-            invl_mere:  {type: one2many, target: person, field: mere}  # to know alive children
+            invl_mere:  {type: one2many, target: person, field: mere} 
             invl_pere:  {type: one2many, target: person, field: pere}
             pers2reg:   {type: many2one, target: register, field: id}
             
@@ -155,7 +155,7 @@ entities:
                        count(civilstate <1), fname='civilstate.csv', mode='a')
                 
             qui_solve: 
-                - quimen: if(quimen>1,2,quimen)
+                - quimen: if(quimen>1, 2, quimen)
                 - quimen: if(quimen==2,  
                                 if( id == l_men.get(persons.min(id, quimen==2)),2,3),
                                 quimen)

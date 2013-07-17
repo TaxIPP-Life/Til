@@ -2,7 +2,7 @@ output: lien.h5
 
 entities:
     person:
-        path: lien.Rdata
+        path: C://til//data//Patrimoine//lien_parent_enfant//lien.Rdata
         files: lien
         fields:
             - couple: int

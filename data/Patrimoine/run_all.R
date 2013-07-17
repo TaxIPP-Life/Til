@@ -83,8 +83,6 @@ if (option_lien == "oui") {
   
   method_link = "score"
   # le bon python (64bit) doit être dans le path system
-  # ne marche plus, lancer le ficher à la main à l'exterieur (ou trouver une solution pour 
-  #que les package soit importés)
   system('python lien_parent_enfant/run_lien.py')
   print("Le warning est normal: ZeroDivisionError: integer division or modulo by zero")
   # Remarque si on veut changer le yaml qu'on lance, ouvrir, le run_lien.py avec n'importe quel ?diteur et
@@ -122,44 +120,19 @@ person = rename(person, c("res"="men", "quires"="quimen"))
 retro = rename(retro, c("res"="men", "quires"="quimen"))
 declar = rename(declar, c("res"="men"))
 
-# person$period = as.integer(person$period*100 + 1)
-# menage$period = as.integer(menage$period*100 + 1)
-# declar$period = as.integer(declar$period*100 + 1)
-
 save(person,menage,retro,declar,file='to_import.Rdata') 
-
-# person$period = as.integer(person$period/100)
-# menage$period = as.integer(menage$period/100)
-# declar$period = as.integer(declar$period/100)
 
 load('to_import.Rdata')
 
 
-# 
-# ## retro
-# retro = merge(retro,person, by=c("id","res"),suffixes = c("",""))
-# retro = retro[order(retro[,"id"]),]
-# retro = apply(retro, 2,as.numeric)
-# retro[which(is.na(retro))] <- 0
-# write.csv(retro,file=paste0(dest,"retro.csv"),row.names=F)
-# 
-# 
-# ## person
-# person = apply(person, 2,as.numeric)
-# person[which(is.na(person))] <- 0
-# write.csv(person,file=paste0(dest,"person2009.csv"),row.names=F)
-# ## menage
-# menage = apply(menage, 2,as.numeric)
-# menage[which(is.na(menage))] <- 0
-# write.csv(menage,file=paste0(dest,"menage2009.csv"),row.names=F)
-# 
-# ### declar
-# declar = apply(declar, 2,as.numeric)
-# declar[which(is.na(declar))] <- 0
-# write.csv(declar,file=paste0(dest,"declar2009.csv"),row.names=F)
-# 
-# ### cree une table factice avec les dead
-# # idealement, on ferait une table vide mais Liam ne le permet pas encore
-# dead = apply(dead, 2,as.numeric)
-# dead [which(is.na(dead))] <- 0
-# write.csv(dead,file=paste0(dest,"dead2009.csv"),row.names=F)
+# # subset
+# sub2 = subset(person,id %in% 1:100)
+# sub1 = data.frame()
+# while (nrow(sub2) != nrow(sub1)) {
+#   sub1 = subset(person,id %in% unique(c(sub2$pere,sub2$mere,sub2$id)))
+#   sub2 = subset(person, men %in% sub1$men)
+# }
+# save(person,menage,retro,declar,file='subset.Rdata')
+
+
+
