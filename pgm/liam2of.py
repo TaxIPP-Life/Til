@@ -16,11 +16,11 @@ import pandas.rpy.common as com
 from rpy2.robjects import r
 import os
 
-
+from CONFIG import path_of, path_til_liam, path_til
 
 def main(simulation, period=None, output=".h5"):
     temps = time.clock()    
-    output_tab = "C:/til/output/to_run_leg.h5"
+    output_tab = path_til + "/output/to_run_leg.h5"
     name_convertion = {'person':'ind','declar':'foy','menage':'men', 'fam':'fam'}
 
 

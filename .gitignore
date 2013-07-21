@@ -45,3 +45,4 @@ output/*.csv
 output/check_simul/*.csv
 
 pgm/CONFIG.py
+data/Patrimoine/path_config.R

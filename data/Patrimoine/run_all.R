@@ -17,13 +17,10 @@ gc() # Garbage collecting (for memory efficiency)
 options(scipen=50) # to prevent scientific notation in csv files
 library(plyr)
 
-## chemin
-chem_patr = switch(user,
-                   IFS = "T:/data/",
-                   AE_port = "M:/data/",
-                   IPP = "M:/")
-chem_patr = paste0(chem_patr,"Patrimoine/EP 2009-10/Stata/")
-dest <-"C:/til/data/Patrimoine/"
+## path configuration : modify the file path_configREMOVE_THIS_AFTER_MODIFICATION.R
+## to suit your needs
+
+source("./path_config.R")
 setwd(dest)
 
 
@@ -82,16 +79,16 @@ if (option_lien == "oui") {
   save(lien,file="lien_parent_enfant/lien.Rdata")
   
   method_link = "score"
-  # le bon python (64bit) doit être dans le path system
+  # le bon python (64bit) doit ?tre dans le path system
   system('python lien_parent_enfant/run_lien.py')
   print("Le warning est normal: ZeroDivisionError: integer division or modulo by zero")
   # Remarque si on veut changer le yaml qu'on lance, ouvrir, le run_lien.py avec n'importe quel ?diteur et
   # modifier le chemin du fichier appeler.
   # Remarque : si on veut ajouter une variable.
-  # i) travailler dans le fichier lien_parent_enfant/lien_parenf.R (qui pourrait être dans import d'ailleurs)
+  # i) travailler dans le fichier lien_parent_enfant/lien_parenf.R (qui pourrait ?tre dans import d'ailleurs)
   # ii) ouvrir lien_parent_enfant/import.yml puis ajouter les variables avec le bon type
   # iii) ouvrir lien_parent_enfant/match_XXX.yml puis ajouter les variables avec le bon type dans la partie entities (
-  # un copier coller de l'étape ii fait l'affaire)
+  # un copier coller de l'?tape ii fait l'affaire)
   source("lien_parent_enfant/merge.R")
   
   
@@ -126,13 +123,19 @@ load('to_import.Rdata')
 
 
 # # subset
-# sub2 = subset(person,id %in% 1:100)
-# sub1 = data.frame()
-# while (nrow(sub2) != nrow(sub1)) {
-#   sub1 = subset(person,id %in% unique(c(sub2$pere,sub2$mere,sub2$id)))
-#   sub2 = subset(person, men %in% sub1$men)
-# }
-# save(person,menage,retro,declar,file='subset.Rdata')
+load('to_import.Rdata')
 
+list = sample(person$id,50)
+sub2 = subset(person,id %in% list)
+sub1 = data.frame()
+while (nrow(sub2) != nrow(sub1)) {
+  sub1 = subset(person,id %in% unique(c(sub2$pere,sub2$mere,sub2$id)))
+  sub2 = subset(person, men %in% sub1$men)
+}
+person = sub2
+menage = subset(menage, id %in% sub2$men)
+declar = subset(declar, id %in% sub2$foy)
+save(person,menage,declar,file='subset.Rdata')
+load('to_import.Rdata')
 
 

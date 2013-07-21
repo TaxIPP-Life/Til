@@ -42,9 +42,9 @@ simulation:
         # - person: [age, dump_info, show_demography , marriage]
         - register: [rien]
         - person: [ageing]
-        - person: [[death,'year']]
-        - person: [[independance,'year']]
-        - person: [[birth,'year']]
+        - person: [death]
+        - person: [independance]
+        - person: [birth]
         - menage: [men_composition]
         - declar: [cases,empty_declar]
         - person: [[marriage,'year']]
@@ -52,7 +52,7 @@ simulation:
         - menage: [[men_composition,'year']]
         - declar: [[cases,'year']]
         - declar: [[empty_declar,'year']]        
-        - person: [[divorce,'year']]
+        - person: [divorce]
         # - declar: [declar_composition,empty_declar]
         - person: [ineducation, outwork, inwork, retire, chomage, retraite, salaire
 #            dump_all            
@@ -70,9 +70,9 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: simple2009.h5
+        file: test.h5
+        
     output:
-        path: C:\Til\output\
         file: simul.h5
         
     skip_shows: True
@@ -83,4 +83,4 @@ simulation:
 
     # first simulated period
     init_period: 200901
-    periods: 10
+    periods: 1

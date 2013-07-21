@@ -67,7 +67,6 @@ simulation:
         # file: exp50_2009.h5
         file: retro.h5
     output:
-        path: C:\Til\output\
         file: past.h5
         
     skip_shows: False

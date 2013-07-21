@@ -18,11 +18,10 @@ import datetime as dt
 import pandas.rpy.common as com     
 from rpy2.robjects import r
 import gc
-import sys
-chemin = 'C:\\Myliam2\\src\\'
-sys.path.append(chemin)
+
 import liam2of
 
+from CONFIG import path_of, path_til_liam, path_til
 
 
 def main(simulation, annee_leg=None,annee_base=None, output='array'):  
@@ -51,7 +50,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
         if isinstance(annee_base,int):
             annee_base = [annee_base]
     else:
-        get_years =  HDFStore("C:/til/output/to_run_leg.h5")   
+        get_years =  HDFStore(path_til + "/output/to_run_leg.h5")   
         years = [x[-4:] for x in dir(get_years.root) if x[0]!='_' ]
         get_years.close()
     
@@ -85,7 +84,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
         deb_write =  time.clock()        
         if output == '.h5':
             # chemin de sortie
-            output = "C:/til/output/"
+            output = path_til + "/output/"
             output_h5 = tables.openFile(output+"simul_leg.h5",mode='w')
             output_entities = output_h5.createGroup("/", "entities",
                                                               "Entities")              
