@@ -5,6 +5,7 @@ Alexis Eidelman
 '''
 
 
+from matching import Matching
 from pgm.CONFIG import path_data_patr, path_til
 import pandas as pd
 from pandas import merge, notnull, DataFrame, Series
@@ -114,6 +115,12 @@ class DataTil(object):
         idmen.columns = ['identmen', 'men']
         ind = merge(idmen, ind)
         ind['id'] = ind.index
+        
+        dict_rename = {"dip14":"diplome", "zsalaires_i":"sali", "zchomage_i":"choi",
+                "zpenalir_i":"alr", "zretraites_i":"rsti", "agfinetu":"findet",
+                "cyder":"anc", "duree":"xpr"}
+        ind = ind.rename(columns=dict_rename)
+        
         self.men = men
         self.ind = ind 
         
@@ -347,12 +354,12 @@ class DataTil(object):
         ind = self.ind
         
         ## info sur les enfants hors du domicile des parents
-        enf_hdom = DataFrame()
+        par_look_enf = DataFrame()
         for k in range(1,13):
             k = str(k)
             var_hod = ['hodln','hodsex','hodan','hodco','hodip','hodenf',
                        'hodemp','hodcho','hodpri','hodniv']
-            var_hod_rename=['hodln','sex','anais','couple','dip6','nb_enf',
+            var_hod_rename=['hodln','sexe','anais','couple','dip6','nb_enf',
                             'hodemp','hodcho','hodpri','hodniv']
             var_hod_k = [var + k for var in var_hod]
             temp = men.ix[notnull(men[var_hod_k[0]]), ['id','pond']+var_hod_k]
@@ -373,7 +380,7 @@ class DataTil(object):
             temp['classif'][prive] = temp['hodpri'][prive]
             temp['classif'][~prive] = temp['hodniv'][~prive]
         
-            enf_hdom = enf_hdom.append(temp)
+            par_look_enf = par_look_enf.append(temp)
         
         var_parent = ["id","men","sexe","anais","cs42"]
         ind['gpar'] = ind['per1e'].isin([1,2]) | ind['mer1e'].isin([1,2]) 
@@ -389,53 +396,103 @@ class DataTil(object):
         info_cj_pere = info_cj[info_cj['sexe']==1].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof'})
         info_pere = info_pr_pere.append(info_cj_pere)
         
-        cond1 = enf_hdom['hodln']==1
-        cond2 = enf_hdom['hodln']==2
-        cond3 = enf_hdom['hodln']==3
-        enf_hdom1 = merge(enf_hdom[cond1], info_pere, left_on='id', right_on='men', how = 'left')
-        enf_hdom2 = merge(enf_hdom[cond2], info_pr_pere, left_on='id', right_on='men', how = 'left')
-        enf_hdom3 = merge(enf_hdom[cond3], info_cj_pere, left_on='id', right_on='men', how = 'left')
+        cond1 = par_look_enf['hodln']==1
+        cond2 = par_look_enf['hodln']==2
+        cond3 = par_look_enf['hodln']==3
+        par_look_enf1 = merge(par_look_enf[cond1], info_pere, left_on='id', right_on='men', how = 'left')
+        par_look_enf2 = merge(par_look_enf[cond2], info_pr_pere, left_on='id', right_on='men', how = 'left')
+        par_look_enf3 = merge(par_look_enf[cond3], info_cj_pere, left_on='id', right_on='men', how = 'left')
          
         # d'abord les peres puis les meres
         info_pr_mere = info_pr[info_pr['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof'}) 
         info_cj_mere = info_cj[info_cj['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof'}) 
         info_mere = info_pr_mere.append(info_cj_mere)
 
-        enf_hdom1 = merge(enf_hdom1, info_mere, left_on='id', right_on='men', how = 'left')
-        enf_hdom2 = merge(enf_hdom2, info_pr_mere, left_on='id', right_on='men', how = 'left')
-        enf_hdom3 = merge(enf_hdom3, info_cj_mere, left_on='id', right_on='men', how = 'left')        
+        par_look_enf1 = merge(par_look_enf1, info_mere, left_on='id', right_on='men', how = 'left')
+        par_look_enf2 = merge(par_look_enf2, info_pr_mere, left_on='id', right_on='men', how = 'left')
+        par_look_enf3 = merge(par_look_enf3, info_cj_mere, left_on='id', right_on='men', how = 'left')        
              
-        enf_hdom =  enf_hdom1.append(enf_hdom2).append(enf_hdom3)  
-                          
+        par_look_enf =  par_look_enf1.append(par_look_enf2).append(par_look_enf3)  
+        par_look_enf.index = range(len(par_look_enf))
+
         ## info sur les parents hors du domicile des enfants
-        cond_par_hdom = (ind['per1e']==2) | (ind['mer1e']==2)
-        par_hdom = ind[cond_par_hdom]
+        cond_enf_look_par = (ind['per1e']==2) | (ind['mer1e']==2)
+        enf_look_par = ind[cond_enf_look_par]
         # Remarque: avant on mettait à zéro les valeurs quand on ne cherche pas le parent, maintenant
         # on part du principe qu'on fait les choses assez minutieusement
                 
-        par_hdom['dip6'] = Series()
-        par_hdom['dip6'][par_hdom['diplome']>=30] = 5
-        par_hdom['dip6'][par_hdom['diplome']>=41] = 4
-        par_hdom['dip6'][par_hdom['diplome']>=43] = 3
-        par_hdom['dip6'][par_hdom['diplome']>=50] = 2
-        par_hdom['dip6'][par_hdom['diplome']>=60] = 1
+        enf_look_par['dip6'] = Series()
+        enf_look_par['dip6'][enf_look_par['diplome']>=30] = 5
+        enf_look_par['dip6'][enf_look_par['diplome']>=41] = 4
+        enf_look_par['dip6'][enf_look_par['diplome']>=43] = 3
+        enf_look_par['dip6'][enf_look_par['diplome']>=50] = 2
+        enf_look_par['dip6'][enf_look_par['diplome']>=60] = 1
         
-        par_hdom['classif2'] = par_hdom['classif']
-        par_hdom['classif2'][par_hdom['classif'].isin([1,2,3])] = 4
-        par_hdom['classif2'][par_hdom['classif'].isin([4,5])] = 2
-        par_hdom['classif2'][par_hdom['classif'].isin([6,7])] = 1
-        par_hdom['classif2'][par_hdom['classif'].isin([8,9])] = 3
-        par_hdom['classif'] = par_hdom['classif2']
+        enf_look_par['classif2'] = enf_look_par['classif']
+        enf_look_par['classif2'][enf_look_par['classif'].isin([1,2,3])] = 4
+        enf_look_par['classif2'][enf_look_par['classif'].isin([4,5])] = 2
+        enf_look_par['classif2'][enf_look_par['classif'].isin([6,7])] = 1
+        enf_look_par['classif2'][enf_look_par['classif'].isin([8,9])] = 3
+        enf_look_par['classif'] = enf_look_par['classif2']
 
         ## nb d'enfant
         nb_enf_mere_dom = ind.groupby('mere').size()
         nb_enf_pere_dom = ind.groupby('pere').size()
-        nb_enf_mere_hdom = enf_hdom.groupby('mere').size()
-        nb_enf_pere_hdom = enf_hdom.groupby('pere').size()
+        nb_enf_mere_hdom = par_look_enf.groupby('mere').size()
+        nb_enf_pere_hdom = par_look_enf.groupby('pere').size()
         enf_tot = pd.concat([nb_enf_mere_dom, nb_enf_pere_dom, nb_enf_mere_hdom, nb_enf_pere_hdom], axis=1)
         enf_tot = enf_tot.sum(axis=1)
+        #comme enf_tot a le bon index on fait
+        enf_look_par['nb_enf'] = enf_tot
+        enf_look_par['nb_enf'] = enf_look_par['nb_enf'].fillna(0)
+        #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
+        var_match = ['jepnais','jepprof','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
+        #TODO: gerer les valeurs nulles, pour l'instant c'est très moche
+        #TODO: avoir une bonne distance
+        score = "- 1 * (other.anais - anais) **2 - 1.0 * (other.situa - situa) **2 - 0.5 * (other.sexe - sexe) **2 - 1.0 * (other.dip6 - dip6) \
+         **2 - 1.0 * (other.nb_enf - nb_enf) **2"
+
+        # etape1 : deux parents vivants
+        cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
+        cond1_par = notnull(par_look_enf['pere']) & notnull(par_look_enf['mere'])
+        # TODO: si on fait les modif de variables plus tôt, on peut mettre directement par_look_enf1
+        #à cause du append plus haut, on prend en fait ici les premiers de par_look_enf
+        match1 = Matching(enf_look_par.ix[cond1_enf, var_match], 
+                          par_look_enf.ix[cond1_par, var_match], score)
+        parent_found = match1.evaluate()
+        ind.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
         
+        enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
+        cond2_enf = (~notnull(enf_look_par['mere'])) & (enf_look_par['mer1e'] == 2)
+        cond2_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['mere'])
+        match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
+                          par_look_enf.ix[cond2_par, var_match], score)
+        parent_found2 = match2.evaluate()
+        ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
         
+        parent_found = parent_found.append(parent_found2, True)    
+        enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
+        cond3_enf = (~notnull(enf_look_par['pere'])) & (enf_look_par['per1e'] == 2)
+        cond3_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['pere'])
+        # TODO: changer le score pour avoir un lien entre pere et mere plus évident
+        match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
+                          par_look_enf.ix[cond3_par, var_match], score)
+        parent_found3 = match3.evaluate()
+        ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
+        
+#          Temps de calcul approximatif : 15 secondes, je laisse là juste pour voir les évolution du temps de calcul par la suite 
+#          mais il faudra supprimer un jour        
+#         match = Matching(enf_look_par[var_match], par_look_enf[var_match], score)
+#         match.evaluate()
+        
+        self.ind = ind
+        
+        pdb.set_trace()
+
+         
+    def lien_couple_maries(self):
+        
+        NotImplementedError()        
 # #TODO au moment où on en a besoin
 # nb_enf_mere = enf.groupby('mere').size()
 # nb_enf_pere = enf.groupby('pere').size()
