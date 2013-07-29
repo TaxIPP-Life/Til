@@ -25,13 +25,13 @@ fichier= path_til + 'Model\\console.yml'
 #fichier=  path_til + '\\Model\\console_retro.yml'
 # fichier= 'path_til + '\\tests\\functional\\simulation.yml'
 
-# simulation= Simulation.from_yaml( fichier,
-#                      input_dir=None,
-#                     input_file=None,
-#                     output_dir=path_til + '//output',                    
-#                     output_file=None)
+simulation= Simulation.from_yaml( fichier,
+                     input_dir=None,
+                    input_file=None,
+                    output_dir=path_til + '//output',                    
+                    output_file=None)
 
-# simulation.run(False)
+simulation.run(False)
 
 # import cProfile
 # command = """simulation.run(False)"""

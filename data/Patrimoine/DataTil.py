@@ -5,16 +5,54 @@ Alexis Eidelman
 '''
 
 
+
 from matching import Matching
 from pgm.CONFIG import path_data_patr, path_til
 import pandas as pd
+import numpy as np
 from pandas import merge, notnull, DataFrame, Series
+from numpy.lib.stride_tricks import as_strided
 import pdb
 import gc
 
 print path_data_patr
 
+def recode(table,var_in, var_out, list, method):
+    '''
+    code une variable à partir d'une autre
+    attention à la liste et à son ordre pour des méthode avec comparaison d'ordre
+    '''
+    if var_in == var_out:
+        raise Exception("Passer par une variable intermédiaire c'est plus safe")
+    
+    table[var_out] = Series()
+    for el in list:
+        val_in = el[0]
+        val_out = el[1]
+        if method is 'geq':
+            table[var_out][table[var_in]>=val_in] = val_out
+        if method is 'eq':
+            table[var_out][table[var_in]==val_in] = val_out
+        if method is 'leq':
+            table[var_out][table[var_in]<=val_in] = val_out                    
+        if method is 'lth':
+            table[var_out][table[var_in]< val_in] = val_out                      
+        if method is 'gth':
+            table[var_out][table[var_in]> val_in] = val_out  
+        if method is 'isin':
+            table[var_out][table[var_in].isin(val_in)] = val_out  
 
+def index_repeated(nb_rep):
+    '''
+    Fonction qui permet de numeroter les réplications. Si [A,B,C] sont répliqués 3,4 et 2 fois alors la fonction retourne
+    [0,1,2,0,1,2,3,0,1] qui permet ensuite d'avoir 
+    [[A,A,A,B,B,B,B,C,C],[0,1,2,0,1,2,3,0,1]] et d'identifier les replications
+    '''
+    id_rep = np.arange(nb_rep.max())
+    id_rep = as_strided(id_rep, shape=nb_rep.shape + id_rep.shape, strides=(0,) + id_rep.strides)
+    return  id_rep[id_rep < nb_rep[:, None]]  
+            
+            
 class DataTil(object):
     """
     La classe qui permet de lancer le travail sur les données
@@ -25,11 +63,13 @@ class DataTil(object):
         self.survey_date = 200901
         self.ind = None
         self.men = None
-        self.decl = None
+        self.foy = None
         
     def lecture(self):
         print "début de l'importation des données"
-        # pd.read_stata(path_data_patr + 'individu.dta')
+#fonctionne mais est trop long
+#         ind = pd.read_stata(path_data_patr + 'individu.dta')
+#         men = pd.read_stata(path_data_patr + 'menage.dta')
         ind = pd.read_csv(path_data_patr + 'individu.csv')
         men = pd.read_csv(path_data_patr + 'menage.csv')
         print "fin de l'importation des données"
@@ -233,13 +273,13 @@ class DataTil(object):
             # avpf      <-  8
             # preret    <-  9
             #on travaille avec situa puis avec statut puis avec classif
-            ind['workstate'] = Series()
-            ind['workstate'][ ind['situa'].isin([1,2])] = 3
-            ind['workstate'][ ind['situa']==3] =  11
-            ind['workstate'][ ind['situa']==4] =  2
-            ind['workstate'][ ind['situa'].isin([5,6,7])] = 1
-            ind['workstate'][ ind['situa'].isin([1,2])] = 0
-            ind['workstate'][ ind['situa']==3] =  0 #remet ce qui était en R, mais étrange TODO: explications
+            list_situa_work = [ [[1,2],3], 
+                                  [[4],2], 
+                                  [[5,6,7],1] 
+                                  [[1,2],3] ]
+            recode(ind,'situa','workstate', list_situa_work ,'isin')
+#           Note:  ind['workstate'][ ind['situa']==3] =  0 : etudiant -> NA
+           
             #precision inactif
             ind['workstate'][ ind['preret']==1]  = 9
             # precision AVPF
@@ -367,6 +407,7 @@ class DataTil(object):
             for num_varname in range(len(var_hod_rename)):
                 dict_rename[var_hod_k[num_varname]] = var_hod_rename[num_varname]
             temp = temp.rename(columns=dict_rename)
+            
             temp['situa'] = Series()
             temp['situa'][temp['hodemp']==1] = 1
             temp['situa'][temp['hodemp']==2] = 5
@@ -420,19 +461,10 @@ class DataTil(object):
         enf_look_par = ind[cond_enf_look_par]
         # Remarque: avant on mettait à zéro les valeurs quand on ne cherche pas le parent, maintenant
         # on part du principe qu'on fait les choses assez minutieusement
-                
-        enf_look_par['dip6'] = Series()
-        enf_look_par['dip6'][enf_look_par['diplome']>=30] = 5
-        enf_look_par['dip6'][enf_look_par['diplome']>=41] = 4
-        enf_look_par['dip6'][enf_look_par['diplome']>=43] = 3
-        enf_look_par['dip6'][enf_look_par['diplome']>=50] = 2
-        enf_look_par['dip6'][enf_look_par['diplome']>=60] = 1
+                                                     
         
-        enf_look_par['classif2'] = enf_look_par['classif']
-        enf_look_par['classif2'][enf_look_par['classif'].isin([1,2,3])] = 4
-        enf_look_par['classif2'][enf_look_par['classif'].isin([4,5])] = 2
-        enf_look_par['classif2'][enf_look_par['classif'].isin([6,7])] = 1
-        enf_look_par['classif2'][enf_look_par['classif'].isin([8,9])] = 3
+        recode(enf_look_par, 'diplome', 'dip6', [[30,5], [41,4], [43,3], [50,2], [60,1]] , method='geq')
+        recode(enf_look_par, 'classif', 'classif2', [ [[1,2,3],4], [[4,5],2], [[6,7],1], [[8,9], 3], [[10],0]], method='isin')
         enf_look_par['classif'] = enf_look_par['classif2']
 
         ## nb d'enfant
@@ -452,55 +484,175 @@ class DataTil(object):
         score = "- 1 * (other.anais - anais) **2 - 1.0 * (other.situa - situa) **2 - 0.5 * (other.sexe - sexe) **2 - 1.0 * (other.dip6 - dip6) \
          **2 - 1.0 * (other.nb_enf - nb_enf) **2"
 
-        # etape1 : deux parents vivants
-        cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
-        cond1_par = notnull(par_look_enf['pere']) & notnull(par_look_enf['mere'])
-        # TODO: si on fait les modif de variables plus tôt, on peut mettre directement par_look_enf1
-        #à cause du append plus haut, on prend en fait ici les premiers de par_look_enf
-        match1 = Matching(enf_look_par.ix[cond1_enf, var_match], 
-                          par_look_enf.ix[cond1_par, var_match], score)
-        parent_found = match1.evaluate()
-        ind.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
-        
-        enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
-        cond2_enf = (~notnull(enf_look_par['mere'])) & (enf_look_par['mer1e'] == 2)
-        cond2_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['mere'])
-        match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
-                          par_look_enf.ix[cond2_par, var_match], score)
-        parent_found2 = match2.evaluate()
-        ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
-        
-        parent_found = parent_found.append(parent_found2, True)    
-        enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
-        cond3_enf = (~notnull(enf_look_par['pere'])) & (enf_look_par['per1e'] == 2)
-        cond3_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['pere'])
-        # TODO: changer le score pour avoir un lien entre pere et mere plus évident
-        match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
-                          par_look_enf.ix[cond3_par, var_match], score)
-        parent_found3 = match3.evaluate()
-        ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
+#         # etape1 : deux parents vivants
+#         cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
+#         cond1_par = notnull(par_look_enf['pere']) & notnull(par_look_enf['mere'])
+#         # TODO: si on fait les modif de variables plus tôt, on peut mettre directement par_look_enf1
+#         #à cause du append plus haut, on prend en fait ici les premiers de par_look_enf
+#         match1 = Matching(enf_look_par.ix[cond1_enf, var_match], 
+#                           par_look_enf.ix[cond1_par, var_match], score)
+#         parent_found = match1.evaluate()
+#         ind.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
+#         
+#         enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
+#         cond2_enf = (~notnull(enf_look_par['mere'])) & (enf_look_par['mer1e'] == 2)
+#         cond2_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['mere'])
+#         match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
+#                           par_look_enf.ix[cond2_par, var_match], score)
+#         parent_found2 = match2.evaluate()
+#         ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
+#            
+#         enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
+#         cond3_enf = (~notnull(enf_look_par['pere'])) & (enf_look_par['per1e'] == 2)
+#         cond3_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['pere'])
+#         # TODO: changer le score pour avoir un lien entre pere et mere plus évident
+#         match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
+#                           par_look_enf.ix[cond3_par, var_match], score)
+#         parent_found3 = match3.evaluate()
+#         ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
         
 #          Temps de calcul approximatif : 15 secondes, je laisse là juste pour voir les évolution du temps de calcul par la suite 
 #          mais il faudra supprimer un jour        
-#         match = Matching(enf_look_par[var_match], par_look_enf[var_match], score)
-#         match.evaluate()
+        match = Matching(enf_look_par[var_match], par_look_enf[var_match], score)
+        match.evaluate()
         
         self.ind = ind
-        
-        pdb.set_trace()
-
-         
-    def lien_couple_maries(self):
-        
-        NotImplementedError()        
-# #TODO au moment où on en a besoin
-# nb_enf_mere = enf.groupby('mere').size()
-# nb_enf_pere = enf.groupby('pere').size()
-# # note, qu'on doit faire la somme en cas de couple homosexuel    
+            
     
     def lien_couple_hdom(self):
-        NotImplementedError()
+        NotImplementedError()   
+        
+        
+    def expand_data(self, seuil=150, nb_ligne=None):
+        '''
+        Note: ne doit pas tourner après lien parent_enfant
+        TODO: Une sélecion préalable des variables des tables ind et men ne peut pas faire de mal
+        '''
+        if seuil!=0 and nb_ligne is not None:
+            raise Exception("On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur \
+            qui va determiner le nombre de ligne")
+        #TODO: on peut prendre le min des deux quand même...
+        
+        men = self.men      
+        ind = self.ind        
+        foy = self.foy
+        if foy is None: 
+            print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les \
+            declaration plutôt que de les faire à partir des tables déjà étendue")
+        
+        min_pond = min(men['pond'])
+        target_pond = max(min_pond, seuil)
+    
+        men['nb_rep'] = 1 + men['pond'].div(target_pond).astype(int)
+        men['pond'] = men['pond'].div(men['nb_rep'])
+        columns_men = men.columns      
+        nb_rep_men = np.asarray(men['nb_rep'])
+        men_exp = np.asarray(men)        
+        men_exp = np.asarray(men).repeat(nb_rep_men, axis=0)
+        men_exp = pd.DataFrame(men_exp)
+        men_exp.columns = columns_men
+        men_exp['id_rep'] =  index_repeated(nb_rep_men)
+        men_exp['id_ini'] = men_exp['id']
+        men_exp['id'] = men_exp.index
+        
+        
 
+        if foy is not None:
+            foy = merge(men.ix[:,['identmen','nb_rep']],foy, on='identmen', how='right')
+            columns_foy = foy.columns 
+                       
+            nb_rep_foy = np.asarray(foy['nb_rep'])       
+            foy_exp =  np.asarray(foy).repeat(nb_rep_men, axis=0)
+            foy_exp = pd.DataFrame(foy_exp)
+            foy_exp.columns = columns_men
+            foy_exp['id_ini'] = foy_exp['id_ini']
+            foy_exp['id'] = foy_exp['id']
+            foy_exp['id_rep'] =  index_repeated(nb_rep_foy)
+            
+            id_ini = np.asarray(foy.index).repeat(nb_rep_foy, axis=0)
+            foy_exp = np.asarray(foy).repeat(nb_rep_foy, axis=0)
+            #lien foy men
+            nb_foy_men = np.asarray(ind.groupby('men').size())
+            #TODO: améliorer avec numpy et groupby ? 
+            group_old_id = men_exp[['id_ini','id']].groupby('id_ini').groups.values()
+            group_old_id = np.array(group_old_id)
+            group_old_id =  group_old_id.repeat(nb_foy_men)
+            new_id = []
+            for el in group_old_id: 
+                new_id += el
+            foy_exp['men'] = new_id
+
+        
+        else: 
+            foy_exp = None
+            
+        ind = merge(men.ix[:,['identmen','nb_rep']],ind, on='identmen', how='right')
+        columns_ind = ind.columns
+        
+        nb_rep_ind = np.asarray(ind['nb_rep'])
+        id_ini = np.asarray(ind.index).repeat(nb_rep_ind, axis=0)
+        ind_exp = np.asarray(ind).repeat(nb_rep_ind, axis=0)
+        # on cree un numero de la duplication..., ie si l'indiv 1 est répété trois fois on met id_rep = [0,1,2]
+
+        ind_exp = pd.DataFrame(ind_exp)
+        ind_exp.columns = columns_ind
+        ind_exp['id_rep'] = index_repeated(nb_rep_ind)
+        ind_exp['id_ini'] = id_ini
+        
+        # liens entre individus
+        tableA = ind_exp[['pere','mere','conj','id_rep']].reset_index()
+        tableB = ind_exp[['id_rep','id_ini']]
+        tableB['id_index'] = tableB.index
+        ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
+        print("debut travail sur identifiant")
+        pere = tableA.merge(tableB,left_on=['pere','id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
+        pere = pere.drop(['pere','mere','conj','id_ini','id_rep'], axis=1).rename(columns={'id_index':'pere'})
+        ind_exp = ind_exp.merge(pere, left_index=True,right_index=True, how='left', copy=False) 
+        
+        mere = tableA.merge(tableB,left_on=['mere','id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
+        mere = mere.drop(['pere','mere','conj','id_ini','id_rep'], axis=1).rename(columns={'id_index':'mere'})
+        ind_exp = ind_exp.merge(mere, left_index=True,right_index=True, how='left', copy=False) 
+        
+        conj = tableA.merge(tableB,left_on=['conj','id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
+        conj = conj.drop(['pere','mere','conj','id_ini','id_rep'], axis=1).rename(columns={'id_index':'conj'})
+        ind_exp = ind_exp.merge(conj, left_index=True,right_index=True, how='left', copy=False) 
+        print("fin travail sur identifiant")
+        
+        ind_exp['id'] = ind_exp.index
+        
+        # lien indiv - men
+        nb_ind_men = np.asarray(ind.groupby('men').size())
+        #TODO: améliorer avec numpy et groupby ? 
+        group_old_id = men_exp[['id_ini','id']].groupby('id_ini').groups.values()
+        group_old_id = np.array(group_old_id)
+        group_old_id =  group_old_id.repeat(nb_ind_men)
+        new_id = []
+        for el in group_old_id: 
+            new_id += el
+        ind_exp['men'] = new_id
+
+        men_exp['pref'] = ind_exp.ix[ ind_exp['quimen']==0,'id'].values
+        
+        # lien indiv - foy
+        if foy is not None:
+            nb_ind_foy = np.asarray(ind.groupby('foy').size())
+            group_old_id = foy_exp[['id_ini','id']].groupby('id_ini').groups.values()
+            group_old_id = np.array(group_old_id)
+            group_old_id =  group_old_id.repeat(nb_ind_foy)
+            new_id = []
+            for el in group_old_id: 
+                new_id += el
+            ind_exp['foy'] = new_id  
+            
+            foy_exp['vous'] = ind_exp.ix[ ind_exp['quifoy']==0,'id'].values      
+       
+       
+        pdb.set_trace()
+
+        self.men = men_exp
+        self.ind = ind_exp
+        self.foy = foy_exp
+        
 
 if __name__ == '__main__':
     data = DataTil()
@@ -512,5 +664,7 @@ if __name__ == '__main__':
     data.enfants()
 
 #     data.creations_foy()
-    data.lien_parent_enfant_hdom()
+#     data.lien_parent_enfant_hdom()
 #     data.mise_au_format()
+
+    data.expand_data()

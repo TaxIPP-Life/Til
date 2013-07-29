@@ -70,7 +70,7 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: test.h5
+        file: simple2009.h5
         
     output:
         file: simul.h5
@@ -83,4 +83,4 @@ simulation:
 
     # first simulated period
     init_period: 200901
-    periods: 1
+    periods: 3
