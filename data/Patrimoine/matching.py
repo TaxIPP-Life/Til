@@ -52,31 +52,41 @@ class Matching(object):
             #boucle:
             debut_match = time.clock()
 
+
+            percent = 0
             table2 = self.table2.fillna(0)
-            table1 =self.table1.fillna(0)
-            
+            table1 = self.table1.fillna(0)
             match = pd.Series(0, index=self.table1.index)
             index2 = pd.Series(True, index=self.table2.index)  
-            percent = 0
+            
+            
             k_max = min(len(table2), len(table1))
-            for k in xrange(k_max):   
-                temp = table1.iloc[k] 
-                score = eval(score_str)[index2]
-                idx2 = score.idxmax()
-                match.iloc[k] = idx2 # print( k, 0, index2)
-                index2[idx2] = False
+            def matching():
+                for k in xrange(k_max):   
+                    temp = table1.iloc[k] 
+                    score = eval(score_str)[index2]
+                    idx2 = score.idxmax()
+                    match.iloc[k] = idx2 # print( k, 0, index2)
+                    index2[idx2] = False
                 
-                # update progress bar
-                percent_done = (k * 100) / k_max
-                to_display = percent_done - percent
-                if to_display:
-                    chars_to_write = list("." * to_display)
-                    offset = 9 - (percent % 10)
-                    while offset < to_display:
-                        chars_to_write[offset] = '|'
-                        offset += 10
-                    sys.stdout.write(''.join(chars_to_write))
-                percent = percent_done
+            pdb.set_trace()
+#                 # update progress bar
+#                 percent_done = (k * 100) / k_max
+#                 to_display = percent_done - percent
+#                 if to_display:
+#                     chars_to_write = list("." * to_display)
+#                     offset = 9 - (percent % 10)
+#                     while offset < to_display:
+#                         chars_to_write[offset] = '|'
+#                         offset += 10
+#                     sys.stdout.write(''.join(chars_to_write))
+#                 percent = percent_done
+#                 
+            import cProfile
+            command = """matching()"""
+            cProfile.runctx( command, globals(), locals(), filename="matching.profile1" )
+            
+            pdb.set_trace()
 
             print 'temps dédié au matching :', time.clock() - debut_match  
             return match
