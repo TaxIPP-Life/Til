@@ -4,7 +4,7 @@ Created on 22 juil. 2013
 Alexis Eidelman
 '''
 
-
+#TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
 from matching import Matching
 from pgm.CONFIG import path_data_patr, path_til
@@ -17,7 +17,7 @@ import gc
 
 print path_data_patr
 
-def recode(table,var_in, var_out, list, method):
+def recode(table, var_in, var_out, list, method, dtype=None):
     '''
     code une variable à partir d'une autre
     attention à la liste et à son ordre pour des méthode avec comparaison d'ordre
@@ -25,7 +25,11 @@ def recode(table,var_in, var_out, list, method):
     if var_in == var_out:
         raise Exception("Passer par une variable intermédiaire c'est plus safe")
     
-    table[var_out] = Series()
+    if dtype is None:
+        dtype1 = table[var_in].dtype
+        # dtype1 = table[var_in].max()
+    
+    table[var_out] = Series(dtype=dtype)
     for el in list:
         val_in = el[0]
         val_out = el[1]
@@ -64,6 +68,11 @@ class DataTil(object):
         self.ind = None
         self.men = None
         self.foy = None
+        self.par_look_enf = None
+        
+        #TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
+        self.done = []
+        self.order = ['lecture',]
         
     def lecture(self):
         print "début de l'importation des données"
@@ -78,92 +87,200 @@ class DataTil(object):
         #TODO: not solved, see with read_stat in forcoming pandas release
         men['identmen'] = men['identmen'].apply(int)
         ind['identmen'] = ind['identmen'].apply(int)
+
+        
+        def correction_carriere():
+            '''
+            Fait des corrections (à partir de vérif écrit en R)
+
+            '''       
+            # Note faire attention à la numérotation à partir de 0
+            ind['cydeb1'] = ind['prodep']
+            liste1 = [6723,7137,10641,21847,30072,31545,33382]
+            liste1 = [x - 1 for x in liste1]
+            ind['cydeb1'][liste1] = ind.anais[liste1] + 20
+            ind['cydeb1'][15206] = 1963
+            ind['cydeb1'][27800] = 1999
+            ind['modif'] = Series("", index=ind.index)
+            ind['modif'].iloc[liste1 +[15206,27800]] =  "cydeb1_manq"
+            
+            ind['cyact3'][10833] = 4
+            ind['cyact2'][23584] = 11
+            ind['cyact3'][27816] = 5
+            ind['modif'].iloc[[10833,23584,27816]] = "cyact manq"
+            
+            var = ["cyact","cydeb","cycaus","cytpto"]
+            #TODO: la solution ne semble pas être parfaite du tout
+            # cond : gens pour qui on a un probleme de date
+            cond1 = notnull(ind['cyact2']) & ~notnull(ind['cyact1'])  & \
+                ((ind['cydeb1']==ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1']==(ind['cydeb2']-1)))
+            cond1[8297] = True
+            
+            ind['modif'][cond1] = "decal act"
+            # on decale tout de 1 à gauche en espérant que ça résout le problème
+            for k in range(1,16):
+                var_k = [x + str(k) for x in var]
+                var_k1 = [x + str(k+1) for x in var]
+                ind.ix[cond1, var_k] = ind.ix[cond1, var_k1]
+            
+            # si le probleme n'est pas resolu, le souci était sur cycact seulement, on met une valeur
+            cond1 = notnull(ind['cyact2']) & ~notnull(ind['cyact1'])  & \
+                ((ind['cydeb1']==ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1']==(ind['cydeb2']-1)))
+            ind['modif'][cond1] = "cyact1 manq"
+            ind.ix[ cond1 & (ind['cyact2'] != 4),'cyact1'] = 4
+            ind.ix[ cond1 & (ind['cyact2'] == 4),'cyact1'] = 2  
+            
+            cond2 = ~notnull(ind['cydeb1']) & ( notnull(ind['cyact1']) | notnull(ind['cyact2']))
+            ind['modif'][cond1] = "jeact ou anfinetu manq"
+            ind.ix[ cond2,'cydeb1'] =  ind.ix[ cond2,['jeactif','anfinetu']].max(axis=1)
+            # quand l'ordre des dates n'est pas le bon on fait l'hypothèse que c'est la première date entre
+            #anfinetu et jeactif qu'il faut prendre en non pas l'autre
+            cond2 = ind['cydeb1'] > ind['cydeb2']
+            ind.ix[ cond2,'cydeb1'] = ind.ix[ cond2,['jeactif','anfinetu']].min(axis=1)
+            
+        def champ_metro(men,ind):
+            ''' 
+            Se place sur le champ France métropolitaine en supprimant les antilles
+            Pourquoi ? - elles n'ont pas les memes variables + l'appariemment EIR n'est pas possible
+            '''
+            antilles = men.ix[ men['zeat'] == 0,'identmen'].copy()
+            men = men[~men['identmen'].isin(antilles)]
+            ind = ind[~ind['identmen'].isin(antilles)]                    
+            return men, ind        
+            
+        correction_carriere()
+        # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
+        men, ind = champ_metro(men,ind)
+        
         self.men = men
-        self.ind = ind
+        self.ind = ind 
+        all = self.ind.columns.tolist()
+        carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
+        self.drop_variable(dict_to_drop={'ind':carriere})       
         
-    def correction(self):
-        '''
-        Fait des corrections (à partir de vérif écrit en R)
-        Se met sur le champ des Antilles. 
-        '''  
+    def drop_variable(self, dict_to_drop=None, option='white'):
+        if dict_to_drop is None:
+            dict_to_drop={}
+            
+        # travail sur men 
+            all = self.men.columns.tolist()
+            #liste noire
+            pr_or_cj = [x for x in all if (x[-2:]=='pr' or x[-2:]=='cj') and x not in ['indepr','r_dcpr','r_detpr']]
+            detention = [x for x in all if len(x)==6 and x[0]=='p' and x[1] in ['0','1']]
+            diplom = [x for x in all if x[:6]=='diplom']
+            conj_died = [x for x in all if x[:2]=='cj']
+            even_rev =  [x for x in all if x[:3]=='eve']
+            black_list = pr_or_cj + detention + diplom + conj_died +even_rev #+ enfants_hdom 
+            #liste blanche
+            var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
+            var_apjf = ['asf','allocpar','complfam','paje']
+            enfants_hdom = [x for x in all if x[:3]=='hod']
+            white_list = ['identmen','pond'] + var_apjf + enfants_hdom + var_to_declar 
+            if option=='white':
+                dict_to_drop['men'] = [x for x in all if x not in white_list]
+            else:
+                dict_to_drop['men'] = black_list
+                            
+        # travail sur ind 
+            all = self.ind.columns.tolist()
+            #liste noire
+            parent_prop = [x for x in all if x[:6]=='jepro_']
+            jeunesse_grave = [x for x in all if x[:6]=='jepro_']
+            jeunesse = [x for x in all if x[:7]=='jegrave']
+            black_list = jeunesse_grave + parent_prop  + diplom
+            #liste blanche
+            info_pers = ['anais','mnais','sexe']
+            famille = ['couple','lienpref','enf','etamatri','pacs','gpar','per1e','mer1e']
+            jobmarket = ['statut','situa','preret','classif']
+            carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
+            white_list = ['identmen','noi', 'pond'] + info_pers + famille + jobmarket + carriere            
+            
+            if option=='white':
+                dict_to_drop['ind'] = [x for x in all if x not in white_list]
+            else:
+                dict_to_drop['ind'] = black_list            
+
+        if 'ind' in dict_to_drop.keys():
+            self.ind = self.ind.drop(dict_to_drop['ind'], axis=1)
+        if 'men' in dict_to_drop.keys():
+            self.men = self.men.drop(dict_to_drop['men'], axis=1)
+        if 'foy' in dict_to_drop.keys():
+            self.foy = self.foy.drop(dict_to_drop['foy'], axis=1)            
+            
+        
+    def format_initial(self):
+        
         men = self.men      
-        ind = self.ind        
-        # correction après utilisation des programmes verif (en R pour l'instant)
-        # Note faire attention à la numérotation à partir de 0
-        ind['cydeb1'] = ind.prodep
-        liste1 = [6723,7137,10641,21847,30072,31545,33382]
-        liste1 = [x - 1 for x in liste1]
-        ind['cydeb1'][liste1] = ind.anais[liste1] + 20
-        ind['cydeb1'][15206] = 1963
-        ind['cydeb1'][27800] = 1999
-        ind['modif'] = Series("", index=ind.index)
-        ind['modif'].iloc[liste1 +[15206,27800]] =  "cydeb1_manq"
+        ind = self.ind 
         
-        ind['cyact3'][10833] = 4
-        ind['cyact2'][23584] = 11
-        ind['cyact3'][27816] = 5
-        ind['modif'].iloc[[10833,23584,27816]] = "cyact manq"
-        
-        var = ["cyact","cydeb","cycaus","cytpto"]
-        #TODO: la solution ne semble pas être parfaite du tout
-        # cond : gens pour qui on a un probleme de date
-        cond1 = notnull(ind['cyact2']) & ~notnull(ind['cyact1'])  & \
-            ((ind['cydeb1']==ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1']==(ind['cydeb2']-1)))
-        cond1[8297] = True
-        
-        ind['modif'][cond1] = "decal act"
-        # on decale tout de 1 à gauche en espérant que ça résout le problème
-        for k in range(1,16):
-            var_k = [x + str(k) for x in var]
-            var_k1 = [x + str(k+1) for x in var]
-            ind.ix[cond1, var_k] = ind.ix[cond1, var_k1]
-        
-        # si le probleme n'est pas resolu, le souci était sur cycact seulement, on met une valeur
-        cond1 = notnull(ind['cyact2']) & ~notnull(ind['cyact1'])  & \
-            ((ind['cydeb1']==ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1']==(ind['cydeb2']-1)))
-        ind['modif'][cond1] = "cyact1 manq"
-        ind.ix[ cond1 & (ind['cyact2'] != 4),'cyact1'] = 4
-        ind.ix[ cond1 & (ind['cyact2'] == 4),'cyact1'] = 2  
-        
-        cond2 = ~notnull(ind['cydeb1']) & ( notnull(ind['cyact1']) | notnull(ind['cyact2']))
-        ind['modif'][cond1] = "jeact ou anfinetu manq"
-        ind.ix[ cond2,'cydeb1'] =  ind.ix[ cond2,['jeactif','anfinetu']].max(axis=1)
-        
-        # quand l'ordre des dates n'est pas le bon on fait l'hypothèse que c'est la première date entre
-        #anfinetu et jeactif qu'il faut prendre en non pas l'autre
-        cond2 = ind['cydeb1'] > ind['cydeb2']
-        ind.ix[ cond2,'cydeb1'] = ind.ix[ cond2,['jeactif','anfinetu']].min(axis=1)
-
-
-        ############### on supprime les antilles ##################
-        # Pourquoi ? - elles n'ont pas les memes variables + l'appariemment EIR n'est pas possible
-        # Pourquoi pas dès le début ? - Des raison historiques : si on remonte ca casse les numeros de
-        # lignes utilises plus haut mais TODO:
-        antilles = men.ix[ men['zeat'] == 0,'identmen'].copy()
-        men = men[~men['identmen'].isin(antilles)]
-        men = men.reset_index()
+        men = men.reset_index(range(len(men)))
         men['id'] = men.index
-        # on fusionne ind et men pour ne garder que les ind de men.
-        #pref inutile pour l'isntant, ajouter d'autre plus tard
-        ind = merge(men.ix[:,['identmen','pref']],ind, \
-                        on='identmen', how='left')
         
-        # travail sur le 'men'
+        #passage de ind à men, variable ind['men']
         idmen = Series(ind['identmen'].unique())
         idmen = DataFrame(idmen)
         idmen['men'] = idmen.index
         idmen.columns = ['identmen', 'men']
-        ind = merge(idmen, ind)
+        verif_match = len(ind)
+        ind = merge(idmen, ind, how='inner')
+        if len(ind) != verif_match:
+            raise Exception("On a perdu le lien entre ind et men via identmen")
         ind['id'] = ind.index
         
         dict_rename = {"dip14":"diplome", "zsalaires_i":"sali", "zchomage_i":"choi",
-                "zpenalir_i":"alr", "zretraites_i":"rsti", "agfinetu":"findet",
-                "cyder":"anc", "duree":"xpr"}
+        "zpenalir_i":"alr", "zretraites_i":"rsti", "agfinetu":"findet",
+        "cyder":"anc", "duree":"xpr"}
         ind = ind.rename(columns=dict_rename)
+        
+        def work_on_workstate(ind):
+            ###### situation sur le marché du travail
+            print("début du codage de workstate")
+            # code destinie reproduit ici
+            # inactif   <-  1
+            # chomeur   <-  2
+            # non_cadre <-  3
+            # cadre     <-  4
+            # fonct_a   <-  5
+            # fonct_s   <-  6
+            # indep     <-  7
+            # avpf      <-  8
+            # preret    <-  9
+            #on travaille avec situa puis avec statut puis avec classif
+            list_situa_work = [ [[1,2],3], 
+                                  [[4],2], 
+                                  [[5,6,7],1], 
+                                  [[1,2],3] ]
+            recode(ind,'situa','workstate', list_situa_work ,'isin')
+#           Note:  ind['workstate'][ ind['situa']==3] =  0 : etudiant -> NA
+           
+            #precision inactif
+            ind['workstate'][ind['preret']==1]  = 9
+            # precision AVPF
+            #TODO: "vous pouver bénéficier de l'AVPF si vous n'exercer aucune activité 
+            # professionnelle (ou seulement à temps partiel) et avez 
+            # la charge d'une personne handicapée (enfant de moins de 20 ans ou adulte).
+            # Pour l'instant, on fait ça parce que ça colle avec PensIPP mais il faudrait faire mieux.
+            #en particulier c'est de la législation l'avpf finalement.
+            cond =  (men['paje']==1) | (men['complfam']==1) | (men['allocpar']==1) | (men['asf']==1)
+            avpf = men.ix[cond,:].index.values + 1 
+            ind['workstate'][(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2]))] = 8
+            # public, privé, indépendant
+            ind['workstate'][ ind['statut'].isin([1,2])] = 5
+            ind['workstate'][ ind['statut']==7] =  7
+            # cadre, non cadre
+            ind['workstate'][ (ind['classif']==6)  & (ind['workstate']==5)] = 6
+            ind['workstate'][ (ind['classif']==7)  & (ind['workstate']==3)] = 4
+            #retraite
+            ind['workstate'][ (ind['anais'] < 2009-64)  & (ind['workstate']==1)] = 10
+            print("fin du codage de workstate")
+            return ind['workstate']
+
+        ind['workstate'] = work_on_workstate(ind)
+        ind['workstate'].dtype = np.int8
         
         self.men = men
         self.ind = ind 
-        
+        self.drop_variable({'men':['identmen','paje','complfam','allocpar','asf'], 'ind':['identmen','preret']})       
         
     def conjoint(self):
         '''
@@ -216,8 +333,8 @@ class DataTil(object):
         enf4 = enf[enf['enf'].isin([1,2,3])]
         enf4['lienpref'] = 21
         enf4 = merge(enf4, ind[['men','lienpref','id']], on=['men','lienpref'], how='inner', suffixes=('_4', ''))
-        enf4['id_1'] = Series()
-        enf4['id_2'] = Series()
+        enf4['id_1'] = Series(-1, dtype=np.int32)
+        enf4['id_2'] = Series(-1, dtype=np.int32)
         parents = pd.groupby(enf4, 'id')
         for id, parent in parents:
             if len(parent) == 1:
@@ -236,9 +353,9 @@ class DataTil(object):
         enf = merge(enf,ind[['id','sexe']], left_on='id_1', right_on='id', how = 'left', suffixes=('', '_'))
         del enf['id_']
         
-        enf['pere'] = Series()
+        enf['pere'] = Series(-1, dtype=np.int32)
         enf['pere'][enf['sexe']==1] = enf['id_1'][enf['sexe']==1] 
-        enf['mere'] = Series()
+        enf['mere'] = Series(-1, dtype=np.int32)
         enf['mere'][enf['sexe']==2] = enf['id_1'][enf['sexe']==2] 
         
         cond_pere = notnull(enf['mere']) & notnull(enf['id_2'])
@@ -258,51 +375,7 @@ class DataTil(object):
         '''
         men = self.men      
         ind = self.ind 
-    
-        def workstate(ind):
-            ###### situation sur le marché du travail
-            print("début du codage de workstate")
-            # code destinie reproduit ici
-            # inactif   <-  1
-            # chomeur   <-  2
-            # non_cadre <-  3
-            # cadre     <-  4
-            # fonct_a   <-  5
-            # fonct_s   <-  6
-            # indep     <-  7
-            # avpf      <-  8
-            # preret    <-  9
-            #on travaille avec situa puis avec statut puis avec classif
-            list_situa_work = [ [[1,2],3], 
-                                  [[4],2], 
-                                  [[5,6,7],1] 
-                                  [[1,2],3] ]
-            recode(ind,'situa','workstate', list_situa_work ,'isin')
-#           Note:  ind['workstate'][ ind['situa']==3] =  0 : etudiant -> NA
-           
-            #precision inactif
-            ind['workstate'][ ind['preret']==1]  = 9
-            # precision AVPF
-            #TODO: "vous pouver bénéficier de l'AVPF si vous n'exercer aucune activité 
-            # professionnelle (ou seulement à temps partiel) et avez 
-            # la charge d'une personne handicapée (enfant de moins de 20 ans ou adulte).
-            # Pour l'instant, on fait ça parce que ça colle avec PensIPP mais il faudrait faire mieux.
-            #en particulier c'est de la législation l'avpf finalement.
-            cond =  (men['paje']==1) | (men['complfam']==1) | (men['allocpar']==1) | (men['asf']==1)
-            avpf = men.ix[cond,:].index.values + 1 
-            ind['workstate'][(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2]))] = 8
-            # public, privé, indépendant
-            ind['workstate'][ ind['statut'].isin([1,2])] = 5
-            ind['workstate'][ ind['statut']==7] =  7
-            # cadre, non cadre
-            ind['workstate'][ (ind['classif']==6)  & (ind['workstate']==5)] = 6
-            ind['workstate'][ (ind['classif']==7)  & (ind['workstate']==3)] = 4
-            #retraite
-            ind['workstate'][ (ind['anais'] < 2009-64)  & (ind['workstate']==1)] = 10
-            print("fin du codage de workstate")
-            return ind['workstate']
-            
-        ind['workstate'] = workstate(ind)
+
         ind['quimen'] = ind['lienpref']
         ind['quimen'][ind['quimen'] >1 ] = 2
         ind['age'] = self.survey_date/100 - ind['anais']
@@ -314,8 +387,9 @@ class DataTil(object):
         
         self.men = men
         self.ind = ind
+        self.drop_variable({'ind':['lienpref','age','anais','mnais']})    
 
-    def creations_foy(self):
+    def creation_foy(self):
         men = self.men      
         ind = self.ind
         print ("creation des declaration")
@@ -358,7 +432,7 @@ class DataTil(object):
         foy = DataFrame({'id':range(sum(vous)), 'vous': ind['id'][vous], 
                            'men':ind['men'][vous] })
         
-        ind['foy'] = Series()
+        ind['foy'] = Series(dtype=np.int32)
         ind['foy'][vous] = range(sum(vous))
         spouse1 = spouse & ~decl & ~notnull(ind['foy'])
         ind['foy'][spouse] = ind.ix[spouse,['foy']]
@@ -366,10 +440,8 @@ class DataTil(object):
         children = children & ~notnull(ind['foy'])
         ind['foy'][children] = ind.ix[ind['mere'][children],['foy']]
         print "le nombre de personne sans foyer est: ", sum(~notnull(ind['foy']))
-        pdb.set_trace()
         #repartition des revenus du ménage par déclaration
-        var_to_declar = ['zcsgcrds','zfoncier','zimpot', \
-             'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
+        var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
         foy_men = men[var_to_declar]
         nb_foy_men = ind[vous].groupby('men').size()
         foy_men = foy_men.div(nb_foy_men,axis=0) 
@@ -377,18 +449,18 @@ class DataTil(object):
         foy = merge(ind[['foy','men']],foy_men, left_on='men', right_index=True)
         foy['period'] = self.survey_date
         foy['vous'] = ind['id'][vous]
-        foy = foy.reset_index()
+        foy = foy.reset_index(range(len(foy)))
         foy['id'] = foy.index
         print("fin de la creation des declarations")
         #### fin de declar
         self.men = men
         self.ind = ind
         self.foy = foy
-
-    def lien_parent_enfant_hdom(self):
+        
+    def creation_par_look_enf(self):
         '''
         Travail sur les liens parents-enfants. 
-        On regarde d'abord les variables utiles pour le matching puis on le réalise
+        On regarde d'abord les variables utiles pour le matching
         '''
         men = self.men      
         ind = self.ind
@@ -402,13 +474,13 @@ class DataTil(object):
             var_hod_rename=['hodln','sexe','anais','couple','dip6','nb_enf',
                             'hodemp','hodcho','hodpri','hodniv']
             var_hod_k = [var + k for var in var_hod]
-            temp = men.ix[notnull(men[var_hod_k[0]]), ['id','pond']+var_hod_k]
+            temp = men.ix[notnull(men[var_hod_k[0]]), ['id']+var_hod_k]
             dict_rename = {}
             for num_varname in range(len(var_hod_rename)):
                 dict_rename[var_hod_k[num_varname]] = var_hod_rename[num_varname]
             temp = temp.rename(columns=dict_rename)
             
-            temp['situa'] = Series()
+            temp['situa'] = Series(dtype=np.int8)
             temp['situa'][temp['hodemp']==1] = 1
             temp['situa'][temp['hodemp']==2] = 5
             temp['situa'][temp['hodcho']==1] = 4
@@ -422,6 +494,7 @@ class DataTil(object):
             temp['classif'][~prive] = temp['hodniv'][~prive]
         
             par_look_enf = par_look_enf.append(temp)
+            
         
         var_parent = ["id","men","sexe","anais","cs42"]
         ind['gpar'] = ind['per1e'].isin([1,2]) | ind['mer1e'].isin([1,2]) 
@@ -431,10 +504,9 @@ class DataTil(object):
         var_parent_pr[var_parent_pr.index('anais')] = 'anais_pr'
         var_parent_cj = [nom +'_cj' for nom in var_parent]
         
-    
         # d'abord les peres puis les meres
-        info_pr_pere = info_pr[info_pr['sexe']==1].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof'})
-        info_cj_pere = info_cj[info_cj['sexe']==1].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof'})
+        info_pr_pere = info_pr[info_pr['sexe']==1].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
+        info_cj_pere = info_cj[info_cj['sexe']==1].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
         info_pere = info_pr_pere.append(info_cj_pere)
         
         cond1 = par_look_enf['hodln']==1
@@ -444,9 +516,9 @@ class DataTil(object):
         par_look_enf2 = merge(par_look_enf[cond2], info_pr_pere, left_on='id', right_on='men', how = 'left')
         par_look_enf3 = merge(par_look_enf[cond3], info_cj_pere, left_on='id', right_on='men', how = 'left')
          
-        # d'abord les peres puis les meres
-        info_pr_mere = info_pr[info_pr['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof'}) 
-        info_cj_mere = info_cj[info_cj['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof'}) 
+        # puis les meres
+        info_pr_mere = info_pr[info_pr['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
+        info_cj_mere = info_cj[info_cj['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
         info_mere = info_pr_mere.append(info_cj_mere)
 
         par_look_enf1 = merge(par_look_enf1, info_mere, left_on='id', right_on='men', how = 'left')
@@ -454,14 +526,26 @@ class DataTil(object):
         par_look_enf3 = merge(par_look_enf3, info_cj_mere, left_on='id', right_on='men', how = 'left')        
              
         par_look_enf =  par_look_enf1.append(par_look_enf2).append(par_look_enf3)  
-        par_look_enf.index = range(len(par_look_enf))
+        par_look_enf.index = range(len(par_look_enf))  
+        par_look_enf['men'] = Series(dtype=np.int32)
+        par_look_enf['men'][notnull(par_look_enf['men_x'])] = par_look_enf['men_x']*notnull(par_look_enf['men_x'])
+        par_look_enf['men'][notnull(par_look_enf['men_y'])] = par_look_enf['men_y']*notnull(par_look_enf['men_y'])
+        par_look_enf = par_look_enf.drop(['hodcho','hodemp','hodniv','hodpri','men_x','men_y','to_delete_x','to_delete_y','jepprof'],axis=1)
+        self.par_look_enf = par_look_enf
+        
+    def matching_par_enf(self):
+        '''
+        Matching des parents et des enfants hors du domicile
+        '''
+        
+        ind = self.ind
+        par_look_enf = self.par_look_enf
 
         ## info sur les parents hors du domicile des enfants
         cond_enf_look_par = (ind['per1e']==2) | (ind['mer1e']==2)
         enf_look_par = ind[cond_enf_look_par]
         # Remarque: avant on mettait à zéro les valeurs quand on ne cherche pas le parent, maintenant
-        # on part du principe qu'on fait les choses assez minutieusement
-                                                     
+        # on part du principe qu'on fait les choses assez minutieusement                                           
         
         recode(enf_look_par, 'diplome', 'dip6', [[30,5], [41,4], [43,3], [50,2], [60,1]] , method='geq')
         recode(enf_look_par, 'classif', 'classif2', [ [[1,2,3],4], [[4,5],2], [[6,7],1], [[8,9], 3], [[10],0]], method='isin')
@@ -517,7 +601,7 @@ class DataTil(object):
         match.evaluate()
         
         self.ind = ind
-            
+        self.drop_variable({'ind':['couple','enf','lien','per1e','mer1e']})
     
     def lien_couple_hdom(self):
         NotImplementedError()   
@@ -533,12 +617,19 @@ class DataTil(object):
             qui va determiner le nombre de ligne")
         #TODO: on peut prendre le min des deux quand même...
         
+        #TODO: travailler sur le nombre de variable et le type ! un peu plus
+        all = self.men.columns.tolist()
+        enfants_hdom = [x for x in all if x[:3]=='hod']
+        self.drop_variable({'men':enfants_hdom})
+        
         men = self.men      
         ind = self.ind        
         foy = self.foy
+        par = self.par_look_enf
+        
         if foy is None: 
-            print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les \
-            declaration plutôt que de les faire à partir des tables déjà étendue")
+            print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables \
+            foy et par_look_enf plutôt que de les faire à partir des tables déjà étendue")
         
         min_pond = min(men['pond'])
         target_pond = max(min_pond, seuil)
@@ -546,8 +637,7 @@ class DataTil(object):
         men['nb_rep'] = 1 + men['pond'].div(target_pond).astype(int)
         men['pond'] = men['pond'].div(men['nb_rep'])
         columns_men = men.columns      
-        nb_rep_men = np.asarray(men['nb_rep'])
-        men_exp = np.asarray(men)        
+        nb_rep_men = np.asarray(men['nb_rep'])      
         men_exp = np.asarray(men).repeat(nb_rep_men, axis=0)
         men_exp = pd.DataFrame(men_exp)
         men_exp.columns = columns_men
@@ -558,38 +648,58 @@ class DataTil(object):
         
 
         if foy is not None:
-            foy = merge(men.ix[:,['identmen','nb_rep']],foy, on='identmen', how='right')
+            foy = merge(men.ix[:,['id','nb_rep']],foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
             columns_foy = foy.columns 
                        
             nb_rep_foy = np.asarray(foy['nb_rep'])       
-            foy_exp =  np.asarray(foy).repeat(nb_rep_men, axis=0)
+            foy_exp =  np.asarray(foy).repeat(nb_rep_foy, axis=0)
             foy_exp = pd.DataFrame(foy_exp)
-            foy_exp.columns = columns_men
-            foy_exp['id_ini'] = foy_exp['id_ini']
-            foy_exp['id'] = foy_exp['id']
+            foy_exp.columns = columns_foy
+            foy_exp['id_ini'] = foy_exp['id']
+            foy_exp['id'] = foy_exp.index
             foy_exp['id_rep'] =  index_repeated(nb_rep_foy)
             
-            id_ini = np.asarray(foy.index).repeat(nb_rep_foy, axis=0)
-            foy_exp = np.asarray(foy).repeat(nb_rep_foy, axis=0)
             #lien foy men
-            nb_foy_men = np.asarray(ind.groupby('men').size())
+            nb_foy_by_men = np.asarray(foy.groupby('men').size())
             #TODO: améliorer avec numpy et groupby ? 
             group_old_id = men_exp[['id_ini','id']].groupby('id_ini').groups.values()
             group_old_id = np.array(group_old_id)
-            group_old_id =  group_old_id.repeat(nb_foy_men)
+            group_old_id =  group_old_id.repeat(nb_foy_by_men)
             new_id = []
             for el in group_old_id: 
                 new_id += el
             foy_exp['men'] = new_id
-
-        
         else: 
             foy_exp = None
+
+        if par is not None:
+            par = merge(men.ix[:,['id','nb_rep']], par, left_on='id', right_on='men', how='right', suffixes=('_men',''))
+            columns_par = par.columns    
+            nb_rep_par = np.asarray(par['nb_rep'])       
+            par_exp =  np.asarray(par).repeat(nb_rep_par, axis=0)
+            par_exp = pd.DataFrame(par_exp)
+            par_exp.columns = columns_par
+            par_exp['id_ini'] = par_exp['id']
+            par_exp['id'] = par_exp.index
+            par_exp['id_rep'] =  index_repeated(nb_rep_par)
             
-        ind = merge(men.ix[:,['identmen','nb_rep']],ind, on='identmen', how='right')
-        columns_ind = ind.columns
-        
+            #lien par men
+            nb_par_by_men = np.asarray(par.groupby('men').size())
+            #TODO: améliorer avec numpy et groupby ? 
+            group_old_id = men_exp.ix[men_exp['id_ini'].isin(par['men']),['id_ini','id']].groupby('id_ini').groups.values()
+            group_old_id = np.array(group_old_id)
+            group_old_id =  group_old_id.repeat(nb_par_by_men)
+            new_id = []
+            for el in group_old_id: 
+                new_id += el 
+            par_exp['men'] = new_id           
+        else: 
+            par_exp = None
+                        
+        ind = merge(men.ix[:,['id','nb_rep']],ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
         nb_rep_ind = np.asarray(ind['nb_rep'])
+        ind = ind.drop(['nb_rep'], axis=1)
+        columns_ind = ind.columns
         id_ini = np.asarray(ind.index).repeat(nb_rep_ind, axis=0)
         ind_exp = np.asarray(ind).repeat(nb_rep_ind, axis=0)
         # on cree un numero de la duplication..., ie si l'indiv 1 est répété trois fois on met id_rep = [0,1,2]
@@ -600,6 +710,7 @@ class DataTil(object):
         ind_exp['id_ini'] = id_ini
         
         # liens entre individus
+        ind_exp[['pere','id_rep']]
         tableA = ind_exp[['pere','mere','conj','id_rep']].reset_index()
         tableB = ind_exp[['id_rep','id_ini']]
         tableB['id_index'] = tableB.index
@@ -643,28 +754,32 @@ class DataTil(object):
             for el in group_old_id: 
                 new_id += el
             ind_exp['foy'] = new_id  
-            
             foy_exp['vous'] = ind_exp.ix[ ind_exp['quifoy']==0,'id'].values      
-       
-       
-        pdb.set_trace()
-
+        
+        self.par_look_enf = par
         self.men = men_exp
         self.ind = ind_exp
         self.foy = foy_exp
-        
+        self.drop_variable({'men':['id_rep','nb_rep','index'], 'ind':['id_rep','id_men',]})    
 
 if __name__ == '__main__':
     data = DataTil()
     data.lecture()
-    
-    data.correction()
+    data.drop_variable()
+    #drop_variable() doit tourner avant format_initial() car on fait comme si diplome par exemple n'existait pas
+    # plus généralement, on aurait un problème avec les variables qui sont renommées.
+    data.format_initial()
     
     data.conjoint()
     data.enfants()
 
-#     data.creations_foy()
-#     data.lien_parent_enfant_hdom()
-#     data.mise_au_format()
-
+#     data.creation_foy()
+    data.creation_par_look_enf()
+#     data.matching_par_enf()
+    data.mise_au_format()
+    
+    import time
+    start = time.clock()
     data.expand_data()
+    print "temps de l'expansion : ", time.clock() - start
+    pdb.set_trace()
