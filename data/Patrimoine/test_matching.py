@@ -10,30 +10,6 @@ import pdb
 import numpy as np
 import time
 
-size = 20000 
-score_str = "(table2['age']-temp['age'])**2 +  5*(table2['diploma']-temp['diploma'])"
-
-table2 = pd.DataFrame(np.random.randint(0,500,[size, 2]), columns=['age','diploma'])
-table1 = pd.DataFrame(np.random.randint(0,500,[size, 2]), columns=['age','diploma'])
-
-match = pd.Series(0, index=table1.index)
-index2 = pd.Series(True, index=table2.index)  
-k_max = min(len(table2), len(table1))
-
-
-def matching():
-    for k in xrange(k_max):   
-        temp = table1.iloc[k] 
-        score = eval(score_str)
-        score = score[index2]
-        idx2 = score.idxmax()
-        match.iloc[k] = idx2 # print( k, 0, index2)
-        index2[idx2] = False
-    
-    return match
-
-
-
 # #TODO: J'aime bien l'idée de regarder sur les valeurs potentielles, de séléctionner la meilleure et de prendre quelqu'un dans cette case.
 # # L'avantage c'est qu'au lieu de regarder sur tous les individus, on regarde sur les valeurs, on a potentiellement plusieurs gens par 
 # # case donc moins de case que de gens ce qui peut améliorer le temps de calcul. 
@@ -90,10 +66,12 @@ def run_time(n):
     table2 = pd.DataFrame(np.random.randint(0,100, [n,2]), columns=['age','diploma'])
     table1 = pd.DataFrame(np.random.randint(0,100, [n,2]), columns=['age','diploma'])
  
+    score_str = "(table2['age']-temp['age'])**2 +  5*(table2['diploma']-temp['diploma'])"
+    
     match = pd.Series(0, index=table1.index)
     index2 = pd.Series(True, index=table2.index)  
     k_max = min(len(table2), len(table1))
- 
+    
     debut = time.clock()
     for k in xrange(k_max):   
         temp = table1.iloc[k] 
@@ -105,12 +83,47 @@ def run_time(n):
     print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
     return time.clock()-debut
 
+
+def run_time_cell(n):
+    table2 = pd.DataFrame(np.random.randint(0,100, [n,2]), columns=['age','diploma'])
+    table1 = pd.DataFrame(np.random.randint(0,100, [n,2]), columns=['age','diploma'])
+ 
+    match = pd.Series(0, index=table1.index)
+    index2 = pd.Series(True, index=table2.index)  
+    k_max = min(len(table2), len(table1))
+ 
+    age_groups = table2['age'].unique()
+    dip_groups = table2['diploma'].unique()
+    group_combinations = np.array([[ag, dip] for ag in age_groups for dip in dip_groups])
+    groups2 = table2.groupby(['age','diploma'])
+
+    cell_values = pd.DataFrame(groups2.groups.keys())
+    temp = pd.DataFrame(groups2.size())
+    temp = temp.rename(columns={0:'nb'})
+    cell_values = cell_values.merge(temp, left_on=[0,1], right_index=True)
+    
+    score_str = "(cell_values[0]-temp['age'])**2 +  5*(cell_values[1]-temp['diploma'])"
+       
+    debut = time.clock()
+    for k in xrange(len(table1)):   
+        temp = table1.iloc[k] 
+        score = eval(score_str)
+        idx2 = score.idxmax()
+        match.iloc[k] = idx2 # print( k, 0, index2)
+        cell_values.loc[idx2,'nb'] -= 1
+        if cell_values.loc[idx2,'nb']==0:
+            cell_values = cell_values.drop(idx2, axis=0)
+
+    print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
+    return time.clock()-debut
+
+
 def run_time_np(n):
     table2 = np.random.randint(0,100, [n,2])
     table1 = np.random.randint(0,100, [n,2])
     idx2 = np.array([np.arange(n)])
     table2 = np.concatenate((table2, idx2.T), axis=1)
-
+    
     match = np.empty(n, dtype=int)
     k_max = min(len(table2), len(table1))
     score_str = "(table2[:,0]-temp[0])**2 +  5*(table2[:,1]-temp[1])"
@@ -125,13 +138,36 @@ def run_time_np(n):
         table2 = np.delete(table2, idx, 0)
     print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
     return time.clock()-debut
+        
+def run_time_np_cell(n):
+    table2 = np.random.randint(0,100, [n,2])
+    table1 = np.random.randint(0,100, [n,2])
+    idx2 = np.array([np.arange(n)])
+    table2 = np.concatenate((table2, idx2.T), axis=1)
     
+    match = np.empty(n, dtype=int)
+    k_max = min(len(table2), len(table1))
+    score_str = "(table2[:,0]-temp[0])**2 +  5*(table2[:,1]-temp[1])"
+    k_max = min(len(table2), len(table1))
+    debut = time.clock()
+    for k in xrange(k_max):   
+        temp = table1[k]
+        score = eval(score_str)
+        idx = score.argmax()
+        idx2 = table2[score.argmax(),2]
+        match[k] = idx2 
+        table2 = np.delete(table2, idx, 0)
+    print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
+    return time.clock()-debut        
+        
+        
 temps = {}
 sizes = [1500000,2000000,1000000,2500000]
+#[1500000,2000000,1000000,2500000]
 #[20000,25000,30000,35000,40000,45000,50000,75000,100000]# [1000,3000,5000,7000,8000,10000,12500,15000]
         #20000,25000,30000,35000,40000,45000,50000,75000,100000
 for size in sizes:
-    temps[str(size)] = run_time_np(size)
+    temps[str(size)] = run_time_cell(size)
 #     
 # for size in sizes:
 #     temps[str(size)] = run_time(size)    
