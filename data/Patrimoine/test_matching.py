@@ -133,41 +133,62 @@ def run_time_np(n):
         temp = table1[k]
         score = eval(score_str)
         idx = score.argmax()
-        idx2 = table2[score.argmax(),2]
+        idx2 = table2[idx,2]
         match[k] = idx2 
         table2 = np.delete(table2, idx, 0)
     print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
     return time.clock()-debut
         
 def run_time_np_cell(n):
-    table2 = np.random.randint(0,100, [n,2])
-    table1 = np.random.randint(0,100, [n,2])
-    idx2 = np.array([np.arange(n)])
-    table2 = np.concatenate((table2, idx2.T), axis=1)
+  
+    table2 = pd.DataFrame(np.random.randint(0,100, [n,2]), columns=['age','diploma'])
+    table1 = pd.DataFrame(np.random.randint(0,100, [n,2]), columns=['age','diploma'])
+ 
+    match = pd.Series(0, index=table1.index)
+    index2 = pd.Series(True, index=table2.index)  
+    k_max = min(len(table2), len(table1))
+ 
+    age_groups = table2['age'].unique()
+    dip_groups = table2['diploma'].unique()
+    group_combinations = np.array([[ag, dip] for ag in age_groups for dip in dip_groups])
+    groups2 = table2.groupby(['age','diploma'])
+
+    cell_values = pd.DataFrame(groups2.groups.keys())
+    temp = pd.DataFrame(groups2.size())
+    temp = temp.rename(columns={0:'nb'})
+    cell_values = cell_values.merge(temp, left_on=[0,1], right_index=True)
+    cell_values['idx'] = range(len(cell_values))
+    
+    
+    table1 = np.array(table1)
+    cell_values = np.array(cell_values)
     
     match = np.empty(n, dtype=int)
-    k_max = min(len(table2), len(table1))
-    score_str = "(table2[:,0]-temp[0])**2 +  5*(table2[:,1]-temp[1])"
-    k_max = min(len(table2), len(table1))
+    score_str = "(cell_values[:,0]-temp[0])**2 +  5*(cell_values[:,1]-temp[1])"
+    k_max = len(table1)
     debut = time.clock()
     for k in xrange(k_max):   
         temp = table1[k]
         score = eval(score_str)
         idx = score.argmax()
-        idx2 = table2[score.argmax(),2]
+        idx2 = cell_values[idx,3]
         match[k] = idx2 
-        table2 = np.delete(table2, idx, 0)
+        cell_values[idx,2] -= 1
+        if cell_values[idx,2]==0:
+            cell_values = np.delete(cell_values, idx, 0)
     print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
+    pdb.set_trace()
     return time.clock()-debut        
-        
-        
+
 temps = {}
-sizes = [1500000,2000000,1000000,2500000]
+sizes = [500000,1500000,2000000,1000000,2500000]
 #[1500000,2000000,1000000,2500000]
-#[20000,25000,30000,35000,40000,45000,50000,75000,100000]# [1000,3000,5000,7000,8000,10000,12500,15000]
+#[20000,25000,30000,35000,40000,45000,50000,75000,100000]
+# [1000,3000,5000,7000,8000,10000,12500,15000]
         #20000,25000,30000,35000,40000,45000,50000,75000,100000
+
 for size in sizes:
-    temps[str(size)] = run_time_cell(size)
+    temps[str(size)] = run_time_np_cell(size)
 #     
 # for size in sizes:
 #     temps[str(size)] = run_time(size)    

@@ -92,7 +92,6 @@ class DataTil(object):
         def correction_carriere():
             '''
             Fait des corrections (à partir de vérif écrit en R)
-
             '''       
             # Note faire attention à la numérotation à partir de 0
             ind['cydeb1'] = ind['prodep']
@@ -189,11 +188,12 @@ class DataTil(object):
             jeunesse = [x for x in all if x[:7]=='jegrave']
             black_list = jeunesse_grave + parent_prop  + diplom
             #liste blanche
-            info_pers = ['anais','mnais','sexe']
+            info_pers = ['anais','mnais','sexe','dip14']
             famille = ['couple','lienpref','enf','etamatri','pacs','gpar','per1e','mer1e']
             jobmarket = ['statut','situa','preret','classif']
+            info_parent = ['jepnais','jemnais','jemprof']
             carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
-            white_list = ['identmen','noi', 'pond'] + info_pers + famille + jobmarket + carriere            
+            white_list = ['identmen','noi', 'pond'] + info_pers + famille + jobmarket + carriere + info_parent           
             
             if option=='white':
                 dict_to_drop['ind'] = [x for x in all if x not in white_list]
@@ -227,7 +227,7 @@ class DataTil(object):
             raise Exception("On a perdu le lien entre ind et men via identmen")
         ind['id'] = ind.index
         
-        dict_rename = {"dip14":"diplome", "zsalaires_i":"sali", "zchomage_i":"choi",
+        dict_rename = {"zsalaires_i":"sali", "zchomage_i":"choi",
         "zpenalir_i":"alr", "zretraites_i":"rsti", "agfinetu":"findet",
         "cyder":"anc", "duree":"xpr"}
         ind = ind.rename(columns=dict_rename)
@@ -547,7 +547,7 @@ class DataTil(object):
         # Remarque: avant on mettait à zéro les valeurs quand on ne cherche pas le parent, maintenant
         # on part du principe qu'on fait les choses assez minutieusement                                           
         
-        recode(enf_look_par, 'diplome', 'dip6', [[30,5], [41,4], [43,3], [50,2], [60,1]] , method='geq')
+        recode(enf_look_par, 'dip14', 'dip6', [[30,5], [41,4], [43,3], [50,2], [60,1]] , method='geq')
         recode(enf_look_par, 'classif', 'classif2', [ [[1,2,3],4], [[4,5],2], [[6,7],1], [[8,9], 3], [[10],0]], method='isin')
         enf_look_par['classif'] = enf_look_par['classif2']
 
@@ -562,46 +562,41 @@ class DataTil(object):
         enf_look_par['nb_enf'] = enf_tot
         enf_look_par['nb_enf'] = enf_look_par['nb_enf'].fillna(0)
         #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
-        var_match = ['jepnais','jepprof','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
+        var_match = ['jepnais','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
         #TODO: gerer les valeurs nulles, pour l'instant c'est très moche
         #TODO: avoir une bonne distance
         score = "- 1 * (other.anais - anais) **2 - 1.0 * (other.situa - situa) **2 - 0.5 * (other.sexe - sexe) **2 - 1.0 * (other.dip6 - dip6) \
          **2 - 1.0 * (other.nb_enf - nb_enf) **2"
 
-#         # etape1 : deux parents vivants
-#         cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
-#         cond1_par = notnull(par_look_enf['pere']) & notnull(par_look_enf['mere'])
-#         # TODO: si on fait les modif de variables plus tôt, on peut mettre directement par_look_enf1
-#         #à cause du append plus haut, on prend en fait ici les premiers de par_look_enf
-#         match1 = Matching(enf_look_par.ix[cond1_enf, var_match], 
-#                           par_look_enf.ix[cond1_par, var_match], score)
-#         parent_found = match1.evaluate()
-#         ind.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
-#         
-#         enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
-#         cond2_enf = (~notnull(enf_look_par['mere'])) & (enf_look_par['mer1e'] == 2)
-#         cond2_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['mere'])
-#         match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
-#                           par_look_enf.ix[cond2_par, var_match], score)
-#         parent_found2 = match2.evaluate()
-#         ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
-#            
-#         enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
-#         cond3_enf = (~notnull(enf_look_par['pere'])) & (enf_look_par['per1e'] == 2)
-#         cond3_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['pere'])
-#         # TODO: changer le score pour avoir un lien entre pere et mere plus évident
-#         match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
-#                           par_look_enf.ix[cond3_par, var_match], score)
-#         parent_found3 = match3.evaluate()
-#         ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
-        
-#          Temps de calcul approximatif : 15 secondes, je laisse là juste pour voir les évolution du temps de calcul par la suite 
-#          mais il faudra supprimer un jour        
-        match = Matching(enf_look_par[var_match], par_look_enf[var_match], score)
-        match.evaluate()
+        # etape1 : deux parents vivants
+        cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
+        cond1_par = notnull(par_look_enf['pere']) & notnull(par_look_enf['mere'])
+        # TODO: si on fait les modif de variables plus tôt, on peut mettre directement par_look_enf1
+        #à cause du append plus haut, on prend en fait ici les premiers de par_look_enf
+        match1 = Matching(enf_look_par.ix[cond1_enf, var_match], 
+                          par_look_enf.ix[cond1_par, var_match], score)
+        parent_found = match1.evaluate(orderby=None, method='cells')
+        ind.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
+         
+        enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
+        cond2_enf = (~notnull(enf_look_par['mere'])) & (enf_look_par['mer1e'] == 2)
+        cond2_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['mere'])
+        match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
+                          par_look_enf.ix[cond2_par, var_match], score)
+        parent_found2 = match2.evaluate(orderby=None, method='cells')
+        ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
+            
+        enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
+        cond3_enf = (~notnull(enf_look_par['pere'])) & (enf_look_par['per1e'] == 2)
+        cond3_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['pere'])
+        # TODO: changer le score pour avoir un lien entre pere et mere plus évident
+        match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
+                          par_look_enf.ix[cond3_par, var_match], score)
+        parent_found3 = match3.evaluate(orderby=None, method='cells')
+        ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
         
         self.ind = ind
-        self.drop_variable({'ind':['couple','enf','lien','per1e','mer1e']})
+        self.drop_variable({'ind':['couple','enf','per1e','mer1e','gpar','dip14'] + ['jepnais','jemnais','jemprof']})
     
     def lien_couple_hdom(self):
         NotImplementedError()   
@@ -613,8 +608,8 @@ class DataTil(object):
         TODO: Une sélecion préalable des variables des tables ind et men ne peut pas faire de mal
         '''
         if seuil!=0 and nb_ligne is not None:
-            raise Exception("On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur \
-            qui va determiner le nombre de ligne")
+            raise Exception("On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur" \
+            "qui va determiner le nombre de ligne")
         #TODO: on peut prendre le min des deux quand même...
         
         #TODO: travailler sur le nombre de variable et le type ! un peu plus
@@ -628,8 +623,8 @@ class DataTil(object):
         par = self.par_look_enf
         
         if foy is None: 
-            print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables \
-            foy et par_look_enf plutôt que de les faire à partir des tables déjà étendue")
+            print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables" \
+            "foy et par_look_enf plutôt que de les faire à partir des tables déjà étendue")
         
         min_pond = min(men['pond'])
         target_pond = max(min_pond, seuil)
@@ -775,11 +770,11 @@ if __name__ == '__main__':
 
 #     data.creation_foy()
     data.creation_par_look_enf()
-#     data.matching_par_enf()
     data.mise_au_format()
     
     import time
     start = time.clock()
-    data.expand_data()
+    data.expand_data(seuil=0)
+    data.matching_par_enf()    
     print "temps de l'expansion : ", time.clock() - start
     pdb.set_trace()
