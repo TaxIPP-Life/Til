@@ -46,7 +46,7 @@ def _rewrite_score(score, first, other, list_col1=None, list_col2=None ):
                     word = _varname_or_index(word, list_col1)
                     word = first + "[" +  word + "]"
         final += word
-    return final, other_var
+    return final, list(set(other_var)) #astuce pour avoir des valeurs uniques
 
 class Matching(object):
     #TODO: Faire des sous classes Matching_cells et matching_simple, ce serait plus propre 
@@ -74,20 +74,21 @@ class Matching(object):
             table1 = self.table1.sort(orderby)
         else:
             table1 = self.table1.loc[np.random.permutation(index_init)]
-                
+        index_init = table1.index
+        
+        table2 = self.table2.fillna(0)
+        table1 = self.table1.fillna(0)
+             
         if len(table1)>len(table2):
             print ("WARNING : La table de gauche doit être la plus petite, "\
                 "traduire le score dans l'autre sens et changer l'ordre." \
                 "pour l'instant table1 est reduite à la taille de table2. ")
             table1 = table1[:len(table2)]
         index_modif = table1.index    
-            
-        table2 = self.table2.fillna(0)
-        table1 = self.table1.fillna(0)
-                    
+        
+
         score_str, vars = _rewrite_score(self.score_str, 'temp', 'table2', table1.columns.tolist(), table2.columns.tolist())    
         n = len(table1)       
-        
         
         if method=='cells':
             groups2 = table2.groupby(vars)
@@ -144,7 +145,10 @@ class Matching(object):
                     score = eval(score_str)
                 except:
                     pdb.set_trace()
-                idx = score.argmax()
+                try:
+                    idx = score.argmax()
+                except:
+                    pdb.set_trace()
                 idx2 = cells[idx,nvar+2]
                 match[k] = idx2 
                 cells[idx,nvar+1] -= 1

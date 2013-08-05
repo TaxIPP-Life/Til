@@ -8,7 +8,7 @@ user <- "IPP" # sert pout les chemins
 
 option_run = "oui" # if run=="oui" then calcule les etapes depuis le debut avec import
 option_expand = "non" # if expand=="oui" then calcule avec la version etandue
-option_retro = "oui" # if retro=="oui" then calcule le retro sinon part de retro.csv
+option_retro = "non" # if retro=="oui" then calcule le retro sinon part de retro.csv
 # attention option_lien = "oui" quand "option_expand="oui" en general
 option_lien = "oui" # if lien=="oui" then calcule les liens pere et mere en +, sinon non
 
