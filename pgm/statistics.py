@@ -15,6 +15,7 @@ import datetime as dt
 import pandas.rpy.common as com     
 from rpy2.robjects import r
 
+from utils import til_name_to_of
 
 temps = time.clock()    
 simul = "C:/til/output/simul.h5"
@@ -41,8 +42,8 @@ pdb.set_trace()
 table = {}
 nom = 'person'
 base = 'entities/'+nom
-name_convertion = {'person':'ind','declar':'foy','menage':'men', 'fam':'fam'}
-ent = name_convertion[nom]
+
+ent = til_name_to_of[nom]
 table[ent] = simul[str(base)]
 table[ent] = table[ent].rename(columns={'men': 'idmen', 'foy': 'idfoy', 'id': 'noi'})
 

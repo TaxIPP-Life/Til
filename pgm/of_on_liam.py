@@ -19,14 +19,13 @@ import pandas.rpy.common as com
 from rpy2.robjects import r
 import gc
 
+from utils import of_name_to_til
 import liam2of
-
 from CONFIG import path_of, path_til_liam, path_til
 
 
 def main(simulation, annee_leg=None,annee_base=None, output='array'):  
     print "annee base", annee_base
-    name_convertion = {'person':'ind','declar':'foy','menage':'men', 'fam':'fam'}
     #TODO: test output is either a simulation either a string
     # if not isinstance(output,SurveySimulation)
 #    #### initialisation, si on veut une grosse table de sortie
@@ -115,8 +114,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
                 tab = tab.drop(to_remove,axis=1)
                 tab = tab.rename(columns={ident:'id'})           
                 tab['id'] = tab['id'].astype(int)           
-                name_convertion = {'ind':'person','foy':'declar','men':'menage', 'fam':'famille'}
-                nom = name_convertion[ent]
+                nom = of_name_to_til[ent]
                 output_type = tab.to_records(index=False).dtype
                 #TODO: ameliorer pour optimiser tout ca, les type
                 to_int = ['id','period']

@@ -15,6 +15,7 @@ from pandas import merge, notnull, DataFrame, Series
 from numpy.lib.stride_tricks import as_strided
 import pdb
 import gc
+from utils import of_name_to_til
 
 
 class DataTil(object):
@@ -237,7 +238,7 @@ class DataTil(object):
             ent_table = entity.to_records(index=False)
             dtypes = ent_table.dtype                
             try:
-                table = h5file.createTable(ent_node, ent_name, dtypes, title="%s table" % ent_name)         
+                table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
             except:
                 pdb.set_trace()
             table.append(entity.to_records(index=False))

@@ -17,11 +17,11 @@ from rpy2.robjects import r
 import os
 
 from CONFIG import path_of, path_til_liam, path_til
+from utils import til_name_to_of
 
 def main(simulation, period=None, output=".h5"):
     temps = time.clock()    
     output_tab = path_til + "/output/to_run_leg.h5"
-    name_convertion = {'person':'ind','declar':'foy','menage':'men', 'fam':'fam'}
 
 
     # on travaille d'abord sur l'ensemble des tables puis on selectionne chaque annee
@@ -32,7 +32,7 @@ def main(simulation, period=None, output=".h5"):
     for entity in entities:
         nom = entity.name
         if nom == 'person':
-            ent = name_convertion[nom]
+            ent = til_name_to_of[nom]
             # convert from PyTables to Pandas
             table[ent] = pd.DataFrame(entity.array.columns)
             # rename variables to make them OF ones
@@ -83,10 +83,10 @@ def main(simulation, period=None, output=".h5"):
     
     for entity in entities:
         nom = entity.name
-        if nom in name_convertion:
+        if nom in til_name_to_of:
             if nom != 'person': 
                 pd.DataFrame(entity.array.columns)
-                ent = name_convertion[nom]
+                ent = til_name_to_of[nom]
                 # convert from PyTables to Pandas
                 table[ent] = pd.DataFrame(entity.array.columns)
                 ident = 'id'+ent
@@ -108,7 +108,7 @@ def main(simulation, period=None, output=".h5"):
 #    test = {}
 #    for year in years: 
 #        for nom in ('menage','declar'):
-#            ent = name_convertion[nom] 
+#            ent = til_name_to_of[nom] 
 ##            print ent, base, ident
 #            test[ent] = pd.DataFrame(entity.array.columns).rename(columns={'id': ident})
 #            test[ent] = test[ent].ix[test[ent]['period']==year,:]
