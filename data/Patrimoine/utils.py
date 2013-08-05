@@ -8,8 +8,10 @@ import numpy as np
 from pandas import Series, DataFrame
 from numpy.lib.stride_tricks import as_strided
 import pandas as pd
-
 import pdb
+
+of_name_to_til=  {'ind':'person','foy':'declar','men':'menage', 'fam':'famille'}
+
 
 def recode(table, var_in, var_out, list, method, dtype=None):
     '''

@@ -7,15 +7,20 @@ Alexis Eidelman
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
 from matching import Matching
-from utils import recode, index_repeated, replicate, new_link_with_men
-from pgm.CONFIG import path_data_patr, path_til
+from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til
+from pgm.CONFIG import path_data_patr, path_til, path_til_liam
 import pandas as pd
 import numpy as np
+import tables
 from pandas import merge, notnull, DataFrame, Series
 from numpy.lib.stride_tricks import as_strided
 import pdb
 import gc
-from utils import of_name_to_til
+
+
+import sys 
+sys.path.append(path_til_liam)
+import src_liam.importer as imp
 
 
 class DataTil(object):
@@ -227,23 +232,65 @@ class DataTil(object):
         self.drop_variable({'ind':['lienpref','age','anais','mnais']})  
             
     def store_to_liam(self):
-        import tables
+        '''
+        Sauvegarde des données au format utilisé ensuite par le modèle Til
+        Appelle des fonctions de Liam2
+        Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
+        '''
+        
         path = path_til +'model\\' + self.name + '.h5' # + syrvey_date
         h5file = tables.openFile( path, mode="w")
-        ent_node = h5file.createGroup("/", "entities", "Entities")
+        #on met d'abord les global en recopiant le cade de liam2
+        globals_def = {'periodic': {'path': 'param\\globals.csv'}}
+
+        const_node = h5file.createGroup("/", "globals", "Globals")
+        localdir = path_til + '\\model'
+        for global_name, global_def in globals_def.iteritems():
+            print()
+            print(" %s" % global_name)
+            req_fields = ([('PERIOD', int)] if global_name == 'periodic'
+                                            else [])
+            kind, info = imp.load_def(localdir, global_name,
+                                  global_def, req_fields)
+            # comme dans import
+#             if kind == 'ndarray':
+#                 imp.array_to_disk_array(h5file, const_node, global_name, info,
+#                                     title=global_name,
+#                                     compression=compression)
+#             else:
+            assert kind == 'table'
+            fields, numlines, datastream, csvfile = info
+            imp.stream_to_table(h5file, const_node, global_name, fields,
+                            datastream, numlines,
+                            title="%s table" % global_name,
+                            buffersize=10 * 2 ** 20,
+                            compression=None)
         
+        ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name in ['ind','foy','men']:
             entity = eval('self.'+ent_name)
+            entity = entity.fillna(0)
             
             ent_table = entity.to_records(index=False)
             dtypes = ent_table.dtype                
-            try:
-                table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
-            except:
-                pdb.set_trace()
-            table.append(entity.to_records(index=False))
+            table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
+            table.append(ent_table)
             table.flush()    
-
+            
+            if ent_name == 'men':
+                ent_table2 = entity[['pond','id','period']].to_records(index=False)
+                dtypes2 = ent_table2.dtype 
+                table = h5file.createTable(ent_node, 'companies', dtypes2, title="%s table" % ent_name)
+                table.append(ent_table2)
+                table.flush()  
+            if ent_name == 'ind':
+                ent_table2 = entity[['agem','sexe','pere','mere','id','findet','period']].to_records(index=False)
+                dtypes2 = ent_table2.dtype 
+                table = h5file.createTable(ent_node, 'register', dtypes2, title="%s table" % ent_name)
+                table.append(ent_table2)
+                table.flush()  
+        h5file.close()
+            
 
     def store(self):
         self.men.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/men')
