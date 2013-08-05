@@ -49,7 +49,7 @@ class Patrimoine(DataTil):
         men['identmen'] = men['identmen'].apply(int)
         ind['identmen'] = ind['identmen'].apply(int)
 
-        def correction_carriere(ind):
+        def _correction_carriere(ind):
             '''
             Fait des corrections (à partir de vérif écrit en R)
             ''' 
@@ -100,7 +100,7 @@ class Patrimoine(DataTil):
             ind.ix[ cond2,'cydeb1'] = ind.ix[ cond2,['jeactif','anfinetu']].min(axis=1)
             return ind
             
-        def correction_etamatri(ind):
+        def _correction_etamatri(ind):
             '''
             Cohérence entre le statut maritale et le fait d'être en couple ou non
             Utile pour le lien mais aussi pour la création des foyers
@@ -135,7 +135,7 @@ class Patrimoine(DataTil):
             ind.ix[manque_conj.index,'couple'] = 2
             return ind
             
-        def champ_metro(ind,men):
+        def _champ_metro(ind,men):
             ''' 
             Se place sur le champ France métropolitaine en supprimant les antilles
             Pourquoi ? - elles n'ont pas les memes variables + l'appariemment EIR n'est pas possible
@@ -147,10 +147,10 @@ class Patrimoine(DataTil):
         
         # Note avec la version Python3.x on utiliserait la notion de nonlocal pour ne pas mettre de paramètre 
         # et d'affectation aux fonctions ci-dessous
-        ind = correction_carriere(ind)
+        ind = _correction_carriere(ind)
         # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
-        ind = correction_etamatri(ind)
-        ind, men = champ_metro(ind, men)
+        ind = _correction_etamatri(ind)
+        ind, men = _champ_metro(ind, men)
         
         self.men = men
         self.ind = ind 
@@ -235,7 +235,7 @@ class Patrimoine(DataTil):
         "cyder":"anc", "duree":"xpr"}
         ind = ind.rename(columns=dict_rename)
         
-        def work_on_workstate(ind):
+        def _work_on_workstate(ind):
             '''
             On code en s'inspirant de destinie et de PENSIPP ici. 
             Il faudrait voir à modifier pour avoir des temps partiel
@@ -272,7 +272,7 @@ class Patrimoine(DataTil):
             ind['workstate'][ (ind['anais'] < 2009-64)  & (ind['workstate']==1)] = 10
             return ind['workstate']
 
-        ind['workstate'] = work_on_workstate(ind)
+        ind['workstate'] = _work_on_workstate(ind)
         ind['workstate'].dtype = np.int8
         
         self.men = men
@@ -384,7 +384,7 @@ class Patrimoine(DataTil):
         men = self.men      
         ind = self.ind
         print ("creation des declaration")
-        def correction_etamatri(ind):
+        def _correction_etamatri(ind):
             '''
             verification et correction que les etamatri sont reciproque
             '''
@@ -403,7 +403,7 @@ class Patrimoine(DataTil):
             ind.ix[out_sin['id'],'etamatri'] = test_spouse2.ix[out_sin.index,'etamatri_conj'].values
             return ind['etamatri']
             
-        ind['etamatri'] = correction_etamatri(ind)
+        ind['etamatri'] = _correction_etamatri(ind)
         spouse = (notnull(ind['conj'])) & (ind['etamatri'].isin([2,5])) 
         # selection du conjoint qui va être le declarant : pas d'incidence en théorie
         decl = spouse & ( ind['conj'] > ind['id'])
