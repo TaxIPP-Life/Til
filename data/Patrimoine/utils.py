@@ -7,6 +7,9 @@ Created on 2 août 2013
 import numpy as np
 from pandas import Series, DataFrame
 from numpy.lib.stride_tricks import as_strided
+import pandas as pd
+
+import pdb
 
 def recode(table, var_in, var_out, list, method, dtype=None):
     '''
@@ -49,10 +52,16 @@ def index_repeated(nb_rep):
             
 def replicate(table):
         columns_ini = table.columns   
+        dtypes_ini = table.dtypes
         nb_rep_table = np.asarray(table['nb_rep'])     
         table_exp = np.asarray(table).repeat(nb_rep_table, axis=0)
-        table_exp = DataFrame(table_exp)
-        table_exp.columns = columns_ini
+        table_exp = DataFrame(table_exp,  columns = columns_ini, dtype = float)
+        # change pour avoir les dtype initiaux malgré le passage par numpy
+        for type in [np.int64, np.int32, np.int16, np.int8, np.float32, np.float16]:
+            var_type = dtypes_ini == type
+            modif_types = dtypes_ini[var_type].index.tolist()
+            table_exp[modif_types] = table_exp[modif_types].astype(type)
+
         table_exp['id_rep'] =  index_repeated(nb_rep_table)
         table_exp['id_ini'] = table_exp['id']
         table_exp['id'] = table_exp.index

@@ -209,55 +209,42 @@ class DataTil(object):
         On met ici les variables avec les bons codes pour achever le travail de DataTil
         On crée aussi les variables utiles pour la simulation
         '''
-        raise NotImplementedError()
+        men = self.men      
+        ind = self.ind 
+
+        ind['quimen'] = ind['lienpref']
+        ind['quimen'][ind['quimen'] >1 ] = 2
+        ind['age'] = self.survey_date/100 - ind['anais']
+        ind['agem'] = 12*ind['age'] + 11 - ind['mnais']
+        ind['period'] = self.survey_date
+        men['period'] = self.survey_date
+        # a changer avec values quand le probleme d'identifiant et résolu .values
+        men['pref'] = ind.ix[ ind['lienpref']==0,'id'].values
+        
+        self.men = men
+        self.ind = ind
+        self.drop_variable({'ind':['lienpref','age','anais','mnais']})  
             
     def store_to_liam(self):
         import tables
-        h5file = tables.openFile(path_til + 'model\\patrimoine.h5', mode="w")
+        path = path_til +'model\\' + self.name + '.h5' # + syrvey_date
+        h5file = tables.openFile( path, mode="w")
         ent_node = h5file.createGroup("/", "entities", "Entities")
         
         for ent_name in ['ind','foy','men']:
             entity = eval('self.'+ent_name)
-            entity['nb_rep'].astype(int)
-            
             
             ent_table = entity.to_records(index=False)
-            dtypes = ent_table.dtype
-            for var in dtypes.names: 
-                print var, dtypes[var]
-                 
+            dtypes = ent_table.dtype                
             try:
-                table = h5file.createTable(ent_node, ent_name, dtype, title="%s table" % ent_name)         
+                table = h5file.createTable(ent_node, ent_name, dtypes, title="%s table" % ent_name)         
             except:
                 pdb.set_trace()
             table.append(entity.to_records(index=False))
-            table.flush()        
-    
-    def store_to_R(self):
-        import pandas.rpy.common as com
-        pdb.set_trace()
-        r_dataframe = com.convert_to_r_dataframe()
+            table.flush()    
 
-if __name__ == '__main__':
-    
-    import time
-    start = time.clock()
-    data = DataTil()
-    data.lecture()
-    data.drop_variable()
-    # drop_variable() doit tourner avant format_initial() car on fait comme si diplome par exemple n'existait pas
-    # plus généralement, on aurait un problème avec les variables qui sont renommées.
-    data.format_initial()
-    data.conjoint()
-    data.enfants()
-    data.creation_par_look_enf()
-    data.expand_data(seuil=150)
-    data.matching_par_enf()  
-    data.match_couple_hdom()
-    data.creation_foy()    
-    data.mise_au_format()
- 
-#     data.store_to_R()
-    data.store_to_liam()
-    print "temps de calcul : ", time.clock() - start, 's.'
-    pdb.set_trace()
+
+    def store(self):
+        self.men.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/men')
+        self.ind.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/ind')
+        self.foy.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/foy')
