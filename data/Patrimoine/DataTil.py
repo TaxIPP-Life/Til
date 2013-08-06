@@ -35,6 +35,7 @@ class DataTil(object):
         self.men = None
         self.foy = None
         self.par_look_enf = None
+        self.seuil= None
         
         #TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
         self.done = []
@@ -119,6 +120,7 @@ class DataTil(object):
         '''
         Note: ne doit pas tourner après lien parent_enfant
         '''
+        self.seuil = seuil
         if seuil!=0 and nb_ligne is not None:
             raise Exception("On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur" \
             "qui va determiner le nombre de ligne")
@@ -227,6 +229,15 @@ class DataTil(object):
         # a changer avec values quand le probleme d'identifiant et résolu .values
         men['pref'] = ind.ix[ ind['lienpref']==0,'id'].values
         
+        ind = ind.fillna(-1)
+        
+        #TODO: comprendre pourquoi le type n'est pas bon plus haut, et le changer le plus tôt possible
+        #souvent c'est à cause des NA
+        var_to_int = ['anc','conj','findet','foy','mere','pere','workstate','xpr']
+        var_to_float = ['choi','rsti','sali']
+        ind[var_to_int] = ind[var_to_int].astype(int)
+        ind[var_to_float] = ind[var_to_float].astype(float)
+        
         self.men = men
         self.ind = ind
         self.drop_variable({'ind':['lienpref','age','anais','mnais']})  
@@ -238,7 +249,7 @@ class DataTil(object):
         Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
         '''
         
-        path = path_til +'model\\' + self.name + '.h5' # + syrvey_date
+        path = path_til +'model\\' + self.name + '_' + str(self.seuil) +'.h5' # + syrvey_date
         h5file = tables.openFile( path, mode="w")
         #on met d'abord les global en recopiant le cade de liam2
         globals_def = {'periodic': {'path': 'param\\globals.csv'}}

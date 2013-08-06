@@ -17,8 +17,8 @@ from src_liam.simulation import Simulation
 fichier = path_til + '\\model\\import_retro.yml'
 fichier = path_til + '\\model\\import_PatrimoineR.yml'
 # fichier= path_til_liam + '\\tests\\functional\\import.yml'
-file2h5(fichier, 
-        input_dir=path_til + '\\data\\Patrimoine\\')
+# file2h5(fichier, 
+#         input_dir=path_til + '\\data\\Patrimoine\\')
 
 
 fichier= path_til + 'Model\\console.yml'

@@ -134,8 +134,8 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
             entities = simulation.entities
             for entity in entities:
                 nom = entity.name
-                if nom in name_convertion:
-                    ent = name_convertion[nom]
+                if nom in of_name_to_til:
+                    ent = of_name_to_til [nom]
                     vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
                     for var in vars:
                         value = simu.output_table.table3[ent][var]
