@@ -90,6 +90,10 @@ entities:
                 - rsti: if(ISRETIRED, 
                              if(BEGINER, 0.7*sali, rsti), 
                           0)
+                # - salaire_annee_derniere : lag(sali,1)
+                # - rsti2: retraite()
+                # - test : count(rsti>0)
+                
                           
             salaire:
                 - mincer: 0

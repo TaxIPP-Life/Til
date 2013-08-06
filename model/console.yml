@@ -63,7 +63,7 @@ simulation:
         - menage: [init_value,consumption,saving]
         - companies: [rien]
         - person: [qui_solve] 
-        - legislation: [2009] #[annee leg]
+        # - legislation: [2009] #[annee leg]
         # - register: [alive]
         # - register: [sum_indiv]
         # - person: [stat_period]
