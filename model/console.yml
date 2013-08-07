@@ -26,13 +26,13 @@ globals:
         
 simulation:
     init: 
-        - menage: [init_weight_men, init_region_id,init_rent, init_value, init_wealth, init_owner, men_composition]
+        - menage: [init_weight_men, init_region_id, init_rent, init_value, init_wealth, init_owner, men_composition]
         - person: [init_weight_ind, init_couple, init_education_level, init_productivity]
         - companies: [init_size]
         - declar: [cases,empty_declar]
         - register: [init_reg]
         - person: [qui_solve]
-        # - legislation: [2009]
+        - legislation: [2009]
         - register: [sum_indiv]
         - person: [stat_period_ini, stat_period]
         
@@ -47,13 +47,16 @@ simulation:
         - person: [birth]
         - menage: [men_composition]
         - declar: [cases,empty_declar]
-        - person: [[marriage,'year']]
+        - person: [[into_couple,'year']]
+        - person: [move_together]
+        - person: [legal_union]
         # - register: [sum_indiv]
         - menage: [[men_composition,'year']]
         - declar: [[cases,'year']]
         - declar: [[empty_declar,'year']]        
         - person: [divorce]
-        # - declar: [declar_composition,empty_declar]
+        - menage: [men_composition]
+        - declar: [cases,empty_declar]
         - person: [ineducation, outwork, inwork, retire, chomage, retraite, salaire
 #            dump_all            
         ]
@@ -62,25 +65,25 @@ simulation:
         - person: [qui_solve] 
         - legislation: [2009] #[annee leg]
         # - register: [alive]
-        - register: [sum_indiv]
-        - person: [stat_period]
+        # - register: [sum_indiv]
+        # - person: [stat_period]
     
     # final_stat: True
     
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: simple2009.h5
+        file: patrimoine_1000.h5
         
     output:
         file: simul.h5
         
     skip_shows: True
     timings: False
-    time_scale: 'semester' 
+    time_scale: 'year' 
     # retro: True
 
 
     # first simulated period
     init_period: 200901
-    periods: 3
+    periods: 20

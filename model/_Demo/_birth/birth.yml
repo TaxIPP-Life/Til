@@ -19,7 +19,7 @@ entities:
                       pere = conj,
                       age = 0,
                       agem = 0,
-                      conj = 0,
+                      conj = UNSET,
                       civilstate = SINGLE,
                       workstate = STUDENT,
                       sexe = choice([1,2], [0.512, 0.488]),
@@ -43,4 +43,5 @@ entities:
                 - show('Avg age of all mothers', avg(l_mere.age, filter=l_mere.age>-1))  #la condition -1 permet de ne prendre que les vraies meres !
                 - show('Avg age of all fathers', avg(l_pere.age, filter=l_pere.age>-1 ))  
                 - show('Number of birth', count(age==0))
+                
               

@@ -637,16 +637,19 @@ class Patrimoine(DataTil):
         match_found = match_contrat.evaluate(orderby=None, method='cells')
         ind.ix[match_found.values,'conj'] =  match_found.index
         ind.ix[match_found.index,'conj'] =  match_found.values
-        ind.ix[men_contrat & ~notnull(ind['conj']),['etamatri','couple']] =  [3,3]
-        ind.ix[women_contrat & ~notnull(ind['conj']),['etamatri','couple']] =  [3,3]
+
                     
         match_libre = Matching(ind.ix[women_libre, var_match], ind.ix[men_libre, var_match], score)
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.ix[match_found.values,'conj'] =  match_found.index
         ind.ix[match_found.index,'conj'] =  match_found.values
-        ind.ix[men_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [3,3]
-        ind.ix[women_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [3,3]                    
-                    
+        ind.ix[men_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [1,3]
+        ind.ix[women_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [1,3]  
+        
+        #on corrige là, les innocents qui se disent mariés et pas en couple.  
+        ind.ix[ind['etamatri'].isin([2,5]) & ~notnull(ind['conj']),['etamatri','couple']] =  [3,3] 
+           
+        self.ind = ind   
         self.drop_variable({'ind':['couple','age']})        
     
         
@@ -664,7 +667,7 @@ if __name__ == '__main__':
     data.conjoint()
     data.enfants()
     data.creation_par_look_enf()
-    data.expand_data(seuil=200)
+    data.expand_data(seuil=1000)
     data.matching_par_enf()  
     data.match_couple_hdom()
     data.creation_foy()    
@@ -672,3 +675,14 @@ if __name__ == '__main__':
  
     data.store_to_liam()
     print "temps de calcul : ", time.clock() - start, 's'
+    print "nombre d'individus : ", len(data.ind) 
+    
+    # des petites verifs.
+    ind = data.ind
+    ind['en_couple'] = ind['conj']>-1 
+    test = ind['conj']>-1   
+    print ind.groupby(['civilstate','en_couple']).size()
+    pdb.set_trace()
+    
+
+    

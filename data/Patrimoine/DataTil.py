@@ -237,6 +237,7 @@ class DataTil(object):
         var_to_float = ['choi','rsti','sali']
         ind[var_to_int] = ind[var_to_int].astype(int)
         ind[var_to_float] = ind[var_to_float].astype(float)
+        ind = ind.rename(columns={'etamatri':'civilstate'})
         
         self.men = men
         self.ind = ind
