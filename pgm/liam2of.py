@@ -59,8 +59,8 @@ def main(simulation, period=None, output=".h5"):
         pdb.set_trace()
     
     # save information on qui == 0
-    foy0 = table[ent].ix[table[ent]['quifoy']==0,['noi','idfoy','idmen','idfam','period']]
-    men0 = table[ent].ix[table[ent]['quimen']==0,['noi','idfoy','idmen','idfam','period']]
+    foy0 = table[ent].loc[table[ent]['quifoy']==0,['noi','idfoy','idmen','idfam','period']]
+    men0 = table[ent].loc[table[ent]['quimen']==0,['noi','idfoy','idmen','idfam','period']]
 
 #    # Travail sur les qui quand on ne controle pas dans la simulation que tout le monde n'est pas qui==2
 ## inutile car fait maintenant dans la simulation mais peut-être mieux à refaire ici un jour
@@ -80,7 +80,6 @@ def main(simulation, period=None, output=".h5"):
 #    print "le temps passé à s'occuper des qui a été",time_qui
     
 
-    
     for entity in entities:
         nom = entity.name
         if nom in til_name_to_of:

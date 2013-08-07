@@ -24,8 +24,7 @@ entities:
                 - entree_chom : ISUNEMPLOYED and not lag(ISUNEMPLOYED)
                 #TODO: avoir une meilleure fonction que duration pour avoir toutes les 
                 #preriode d'emploi, la on a que la derniere, on mettra la periode d'evaluation plus tard
-                - show('nombre d entree au chom', count(entree_chom)) 
-                - test: workstate
+                # - show('nombre d entree au chom', count(entree_chom)) 
                 - workstate: if(entree_chom,CADRE,workstate)
                 - dur_ver: if(entree_chom, 
                                 if(age <50 ,
@@ -34,7 +33,7 @@ entities:
                                 0)
                 - dur_ver: dur_ver -1                
                 - workstate: if(entree_chom,UNEMPLOYED,workstate)
-                - show('nombre dannees de d act', groupby(ISUNEMPLOYED,dur_ver))                 
+                # - show('nombre dannees de d act', groupby(ISUNEMPLOYED,dur_ver))                 
                                
                 # maximum: c'est bien en vrai c'est 730 jours(=2 ans) + 365 jours(=1 ans)
                 # ser supprime quand on aura une bonne fonction duration
