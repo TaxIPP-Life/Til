@@ -8,7 +8,8 @@ Alexis Eidelman
 
 from matching import Matching
 from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til
-from pgm.CONFIG import path_data_patr, path_til, path_til_liam
+
+from path_config import path_data_patr, path_til, path_til_liam
 import pandas as pd
 import numpy as np
 import tables
@@ -27,6 +28,7 @@ class DataTil(object):
     """
     La classe qui permet de lancer le travail sur les données
     La structure de classe n'est peut-être pas nécessaire pour l'instant 
+    
     """
     def __init__(self):
         self.name = None

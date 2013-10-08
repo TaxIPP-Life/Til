@@ -3,20 +3,32 @@
 Created on 2 août 2013
 
 @author: a.eidelman
+
+Ce programme :
+- 
+
+Input : 
+Output :
+
 '''
 
+# 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
+ 
 from DataTil import DataTil
 from matching import Matching
 from utils import recode, index_repeated, replicate, new_link_with_men
-from pgm.CONFIG import path_data_patr, path_til
+from path_config import path_data_patr, path_til
+
 import pandas as pd
 import numpy as np
+
 from pandas import merge, notnull, DataFrame, Series
 from numpy.lib.stride_tricks import as_strided
+
 import pdb
 import gc
 
-
+# Patrimoine est définie comme une classe fille de DataTil
 class Patrimoine(DataTil):   
        
     def __init__(self):
@@ -24,7 +36,7 @@ class Patrimoine(DataTil):
         self.name = 'Patrimoine'
         self.survey_date = 200901
          
-        #TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
+        #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
         self.order = ['lecture','drop_variable','format_initial','conjoint','enfants',
@@ -43,16 +55,18 @@ class Patrimoine(DataTil):
 #         ind = pd.read_stata(path_data_patr + 'individu.dta')
 #         men = pd.read_stata(path_data_patr + 'menage.dta')
         ind = pd.read_csv(path_data_patr + 'individu.csv')
+        ind.to_csv('testcsv_ind.csv', sep=';')
         men = pd.read_csv(path_data_patr + 'menage.csv')
+        men.to_csv('testcsv_men.csv', sep=';')
         print "fin de l'importation des données"
-        
-        #check parce qu'on a un proble dans l'import au niveau de identmen
+              
+        #check parce qu'on a un probleme dans l'import au niveau de identmen(pas au format numérique)
         men['identmen'] = men['identmen'].apply(int)
         ind['identmen'] = ind['identmen'].apply(int)
 
         def _correction_carriere(ind):
             '''
-            Fait des corrections (à partir de vérif écrit en R)
+            Fait des corrections sur le déroulé des caarrières(à partir de vérif écrit en R)
             ''' 
             # Note faire attention à la numérotation à partir de 0
             #TODO: verifier que c'est bien pris en compte malgré le fait qu'on ne passe pas par .loc 
@@ -222,6 +236,7 @@ class Patrimoine(DataTil):
         
         men = men.reset_index(range(len(men)))
         men['id'] = men.index
+        
         #passage de ind à men, variable ind['men']
         idmen = Series(ind['identmen'].unique())
         idmen = DataFrame(idmen)
@@ -284,7 +299,7 @@ class Patrimoine(DataTil):
         
     def conjoint(self):
         '''
-        Calcule l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
+        Calcul de l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
         '''     
         print ("travail sur les conjoints")
         ind = self.ind
@@ -305,18 +320,19 @@ class Patrimoine(DataTil):
             if len(potential) == 1:
                 conj.loc[ conj['id_x']==id, 'id_y'] = potential['id_y']
             else:
-                pdb.set_trace()
+               pdb.set_trace()
         # TODO: pas de probleme, bizarre
         conj = conj.rename(columns={'id_x': 'id', 'id_y':'conj'})
         ind = merge(ind,conj[['id','conj']], on='id', how='left')
+
         
-        self.ind = ind
-        ## verif sur les conj réciproque
         test_conj = merge(ind[['conj','id']],ind[['conj','id']],
                              left_on='id',right_on='conj')
         print "le nombre de couple non réciproque est:", sum(test_conj['id_x'] != test_conj['conj_y'])
+
         print ("fin du travail sur les conjoints")
-        
+
+     
 
     def enfants(self):   
         '''
@@ -572,6 +588,7 @@ class Patrimoine(DataTil):
         parent_found = match1.evaluate(orderby=None, method='cells')
         ind.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
          
+        #etape 2 : seulement mère vivante
         enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
         cond2_enf = (~notnull(enf_look_par['mere'])) & (enf_look_par['mer1e'] == 2)
         cond2_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['mere'])
@@ -579,10 +596,12 @@ class Patrimoine(DataTil):
                           par_look_enf.ix[cond2_par, var_match], score)
         parent_found2 = match2.evaluate(orderby=None, method='cells')
         ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
-            
+        
+        #étape 3 : seulement père vivant
         enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
         cond3_enf = (~notnull(enf_look_par['pere'])) & (enf_look_par['per1e'] == 2)
         cond3_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['pere'])
+        
         # TODO: changer le score pour avoir un lien entre pere et mere plus évident
         match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
                           par_look_enf.ix[cond3_par, var_match], score)
@@ -596,7 +615,7 @@ class Patrimoine(DataTil):
         '''
         Certaines personnes se déclarent en couple avec quelqu'un ne vivant pas au domicile, on les reconstruit ici. 
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
-        On séléctionne les individus qui se déclare en couple avec quelqu'un hors du domicile.
+        On sélectionne les individus qui se déclarent en couple avec quelqu'un hors du domicile.
         On match mariés,pacsé d'un côté et sans contrat de l'autre. Dit autrement, si on ne trouve pas de partenaire à une personne mariée ou pacsé on change son statut de couple.
         Comme pour les liens parents-enfants, on néglige ici la possibilité que le conjoint soit hors champ (étrange, prison, casernes, etc).
         Calcul aussi la variable ind['nb_enf']
@@ -676,7 +695,7 @@ if __name__ == '__main__':
     data.store_to_liam()
     print "temps de calcul : ", time.clock() - start, 's'
     print "nombre d'individus : ", len(data.ind) 
-    
+
     # des petites verifs.
     ind = data.ind
     ind['en_couple'] = ind['conj']>-1 
