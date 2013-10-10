@@ -121,6 +121,7 @@ class DataTil(object):
     def expand_data(self, seuil=150, nb_ligne=None):
         '''
         Note: ne doit pas tourner après lien parent_enfant
+        Cependant par_look_enfant doit déjà avoir été créé car on s'en sert pour la réplication
         '''
         self.seuil = seuil
         if seuil!=0 and nb_ligne is not None:
@@ -149,12 +150,20 @@ class DataTil(object):
         
         min_pond = min(men['pond'])
         target_pond = max(min_pond, seuil)
-    
-        men['nb_rep'] = 1 + men['pond'].div(target_pond).astype(int)
+        print target_pond
+        # 1 - Réhaussement des pondérations inférieures à la pondération cible
+        men[men['pond'] < target_pond ]= target_pond
+        
+        # 2 - Calcul du nombre de réplications à effectuer
+        men['nb_rep'] = men['pond'].div(target_pond)
+        men['nb_rep'] = men['nb_rep'].round(0)
+        men['nb_rep'] = men['nb_rep'].astype(int)
+        men.to_csv('testcsv.csv', sep=';')
+        
+        # 3- Nouvelles pondérations (qui seront celles associées aux individus après réplication)
         men['pond'] = men['pond'].div(men['nb_rep'])
         men_exp = replicate(men) 
        
-
         if foy is not None:
             foy = merge(men.ix[:,['id','nb_rep']],foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
             foy_exp= replicate(foy)
@@ -172,7 +181,7 @@ class DataTil(object):
                         
         ind = merge(men.ix[:,['id','nb_rep']],ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
         ind_exp= replicate(ind)
-                
+        
         # liens entre individus
         ind_exp[['pere','id_rep']]
         tableA = ind_exp[['pere','mere','conj','id_rep']].reset_index()
@@ -213,7 +222,7 @@ class DataTil(object):
         self.ind = ind_exp
         self.foy = foy_exp
         self.drop_variable({'men':['id_rep','nb_rep','index'], 'ind':['id_rep','id_men',]})    
-        
+
     def mise_au_format(self):
         '''
         On met ici les variables avec les bons codes pour achever le travail de DataTil
@@ -244,7 +253,30 @@ class DataTil(object):
         self.men = men
         self.ind = ind
         self.drop_variable({'ind':['lienpref','age','anais','mnais']})  
-            
+        
+    def var_sup(self):
+        '''
+        Création des variables indiquant le nombre de personnes dans le ménage et dans le foyer
+        '''   
+        ind = self.ind        
+        #ind['nb_men'] = ind.groupby('men').size()
+        #ind['nb_foy'] = ind.groupby('foy').size()
+        
+
+        g = ind.groupby('men')       
+        ind= ind.set_index('men')
+        ind['nb_men'] = g.size() 
+        ind=ind.reset_index()
+
+        h=ind.groupby('foy')
+        ind = ind.set_index('foy')
+        ind['nb_foy'] = h.size() 
+        ind=ind.reset_index()
+        
+        self.ind=ind 
+        ind.to_csv('testcsv.csv', sep=';')  
+        
+        
     def store_to_liam(self):
         '''
         Sauvegarde des données au format utilisé ensuite par le modèle Til
@@ -254,7 +286,7 @@ class DataTil(object):
         
         path = path_til +'model\\' + self.name + '_' + str(self.seuil) +'.h5' # + syrvey_date
         h5file = tables.openFile( path, mode="w")
-        #on met d'abord les global en recopiant le cade de liam2
+        # 1 - on met d'abord les global en recopiant le code de liam2
         globals_def = {'periodic': {'path': 'param\\globals.csv'}}
 
         const_node = h5file.createGroup("/", "globals", "Globals")
@@ -280,13 +312,14 @@ class DataTil(object):
                             buffersize=10 * 2 ** 20,
                             compression=None)
         
+        # 2 - ensuite on s'occupe des entities
         ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name in ['ind','foy','men']:
             entity = eval('self.'+ent_name)
             entity = entity.fillna(0)
             
             ent_table = entity.to_records(index=False)
-            dtypes = ent_table.dtype                
+            dtypes = ent_table.dtype         
             table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
             table.append(ent_table)
             table.flush()    

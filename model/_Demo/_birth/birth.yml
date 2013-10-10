@@ -33,7 +33,8 @@ entities:
                       findet = findet_temp,
                       wprm_init = wprm_init,
                       quifoy = 2
-                      )     
+                      )   
+
                 
                 - new('register', filter=(age == 0) ,
                         id=id, sexe=sexe, pere=pere, mere=mere, vivant=True, naiss=period, findet=findet)

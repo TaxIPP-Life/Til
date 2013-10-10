@@ -39,7 +39,7 @@ class Patrimoine(DataTil):
         #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
-        self.order = ['lecture','drop_variable','format_initial','conjoint','enfants',
+        self.methods_order = ['lecture','drop_variable','format_initial','conjoint','enfants',
                       'creation_par_look_enf','expand_data','matching_par_enf','matching_couple_hdom'
                       'creation_foy','mise_au_format']
 # explication de l'ordre en partant de la fin, besoin des couples pour et des liens parents enfants pour les mariages.
@@ -137,6 +137,7 @@ class Patrimoine(DataTil):
             # présence d'un conjoint si couple=1 et lienpref in 0,1
             conj = ind.ix[ind['couple']==1,['identmen','lienpref','id']]
 #             conj['lienpref'].value_counts()
+            # pref signifie "personne de reference"
             pref0 = conj.ix[conj['lienpref']==0,'identmen']
             pref1 = conj.ix[conj['lienpref']==1,'identmen']
             assert sum(~pref1.isin(pref0)) == 0
@@ -166,7 +167,6 @@ class Patrimoine(DataTil):
         # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
         ind = _correction_etamatri(ind)
         ind, men = _champ_metro(ind, men)
-        
         self.men = men
         self.ind = ind 
         all = self.ind.columns.tolist()
@@ -224,6 +224,7 @@ class Patrimoine(DataTil):
             
             if option=='white':
                 dict_to_drop['ind'] = [x for x in all if x not in white_list]
+                
             else:
                 dict_to_drop['ind'] = black_list            
             
@@ -328,9 +329,12 @@ class Patrimoine(DataTil):
         
         test_conj = merge(ind[['conj','id']],ind[['conj','id']],
                              left_on='id',right_on='conj')
+        self.ind = ind
         print "le nombre de couple non réciproque est:", sum(test_conj['id_x'] != test_conj['conj_y'])
 
         print ("fin du travail sur les conjoints")
+
+    
 
      
 
@@ -352,6 +356,7 @@ class Patrimoine(DataTil):
         # aux petits enfants (lienpref=31)
         # en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le registre...
         # et savoir que ce sont les petites enfants (pour l'héritage par exemple)
+        
         par4 = enf[enf['enf'].isin([1,2,3])]
         par4['lienpref'] = 21
         par4 = merge(par4, ind[['men','lienpref','id']], on=['men','lienpref'], how='inner', suffixes=('_4', ''))
@@ -374,9 +379,10 @@ class Patrimoine(DataTil):
         
         enf4['id'] = enf4.index
         enf4['id_2'] = ind.ix[enf4['id_1'],'conj'].values
+        
 
         enf = merge(enf0[['id','id_1']],enf1[['id','id_2']], how='outer')
-        enf = enf.append(enf4[['id','id_1','id_2']])       
+        #enf = enf.append(enf4[['id','id_1','id_2']])       
         enf = merge(enf,ind[['id','sexe']], left_on='id_1', right_on='id', how = 'left', suffixes=('', '_'))
         del enf['id_']
     
@@ -392,7 +398,7 @@ class Patrimoine(DataTil):
         #sum(sexe1==sexe2) 6 couples de parents homosexuels
         ind = merge(ind,enf[['id','pere','mere']], on='id', how='left')
         self.ind = ind
-  
+
 
     def creation_foy(self):
         '''
@@ -403,11 +409,13 @@ class Patrimoine(DataTil):
         men = self.men      
         ind = self.ind
         print ("creation des declaration")
+        
+        
         def _correction_etamatri(ind):
             '''
             verification et correction que les etamatri sont reciproque
             '''
-            spouse = notnull(ind['conj']) & (ind['etamatri'].isin([2,5]))
+            spouse = ind['conj'].notnull() & (ind['etamatri'].isin([2,5]))
             test_spouse = ind.ix[spouse,['conj','id','etamatri']]
             test_spouse = merge(test_spouse,test_spouse,
                                  left_on='id',right_on='conj',how='outer')
@@ -421,7 +429,7 @@ class Patrimoine(DataTil):
             out_sin = test_spouse2.ix[test_spouse2['etamatri_conj'].isin([2,5]),['id','etamatri']]
             ind.ix[out_sin['id'],'etamatri'] = test_spouse2.ix[out_sin.index,'etamatri_conj'].values
             return ind['etamatri']
-            
+                        
         ind['etamatri'] = _correction_etamatri(ind)
         spouse = (notnull(ind['conj'])) & (ind['etamatri'].isin([2,5])) 
         # selection du conjoint qui va être le declarant : pas d'incidence en théorie
@@ -461,12 +469,21 @@ class Patrimoine(DataTil):
         foy['vous'] = ind['id'][vous]
         foy = foy.reset_index(range(len(foy)))
         foy['id'] = foy.index
-        print("fin de la creation des declarations")
+        
+     
+
+
         #### fin de declar
         self.men = men
         self.ind = ind
         self.foy = foy
         
+
+
+
+        print("fin de la creation des declarations")
+#         pdb.set_trace() 
+                
     def creation_par_look_enf(self):
         '''
         Travail sur les liens parents-enfants. 
@@ -564,9 +581,11 @@ class Patrimoine(DataTil):
         nb_enf_mere_dom = ind.groupby('mere').size()
         nb_enf_pere_dom = ind.groupby('pere').size()
         nb_enf_mere_hdom = par_look_enf.groupby('mere').size()
+        
         nb_enf_pere_hdom = par_look_enf.groupby('pere').size()
         enf_tot = pd.concat([nb_enf_mere_dom, nb_enf_pere_dom, nb_enf_mere_hdom, nb_enf_pere_hdom], axis=1)
         enf_tot = enf_tot.sum(axis=1)
+        
         #comme enf_tot a le bon index on fait
         enf_look_par['nb_enf'] = enf_tot
         enf_look_par['nb_enf'] = enf_look_par['nb_enf'].fillna(0)
@@ -654,17 +673,18 @@ class Patrimoine(DataTil):
          
         match_contrat = Matching(ind.ix[women_contrat, var_match], ind.ix[men_contrat, var_match], score)
         match_found = match_contrat.evaluate(orderby=None, method='cells')
+
         ind.ix[match_found.values,'conj'] =  match_found.index
         ind.ix[match_found.index,'conj'] =  match_found.values
 
-                    
+                   
         match_libre = Matching(ind.ix[women_libre, var_match], ind.ix[men_libre, var_match], score)
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.ix[match_found.values,'conj'] =  match_found.index
         ind.ix[match_found.index,'conj'] =  match_found.values
         ind.ix[men_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [1,3]
         ind.ix[women_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [1,3]  
-        
+    
         #on corrige là, les innocents qui se disent mariés et pas en couple.  
         ind.ix[ind['etamatri'].isin([2,5]) & ~notnull(ind['conj']),['etamatri','couple']] =  [3,3] 
            
@@ -686,12 +706,12 @@ if __name__ == '__main__':
     data.conjoint()
     data.enfants()
     data.creation_par_look_enf()
-    data.expand_data(seuil=1000)
-    data.matching_par_enf()  
+    data.expand_data(seuil=850)
+    data.matching_par_enf() 
     data.match_couple_hdom()
-    data.creation_foy()    
+    data.creation_foy()   
     data.mise_au_format()
- 
+    data.var_sup()  
     data.store_to_liam()
     print "temps de calcul : ", time.clock() - start, 's'
     print "nombre d'individus : ", len(data.ind) 
@@ -701,6 +721,7 @@ if __name__ == '__main__':
     ind['en_couple'] = ind['conj']>-1 
     test = ind['conj']>-1   
     print ind.groupby(['civilstate','en_couple']).size()
+    
     pdb.set_trace()
     
 

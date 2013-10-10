@@ -51,6 +51,7 @@ def index_repeated(nb_rep):
     id_rep = np.arange(nb_rep.max())
     id_rep = as_strided(id_rep, shape=nb_rep.shape + id_rep.shape, strides=(0,) + id_rep.strides)
     return  id_rep[id_rep < nb_rep[:, None]]  
+
             
 def replicate(table):
         columns_ini = table.columns   
@@ -58,17 +59,19 @@ def replicate(table):
         nb_rep_table = np.asarray(table['nb_rep'])     
         table_exp = np.asarray(table).repeat(nb_rep_table, axis=0)
         table_exp = DataFrame(table_exp,  columns = columns_ini, dtype = float)
+
         # change pour avoir les dtype initiaux malgré le passage par numpy
         for type in [np.int64, np.int32, np.int16, np.int8, np.float32, np.float16]:
             var_type = dtypes_ini == type
             modif_types = dtypes_ini[var_type].index.tolist()
             table_exp[modif_types] = table_exp[modif_types].astype(type)
-
+        
         table_exp['id_rep'] =  index_repeated(nb_rep_table)
         table_exp['id_ini'] = table_exp['id']
         table_exp['id'] = table_exp.index
-        return table_exp
         
+        return table_exp
+
 def new_link_with_men(table, table_exp, link_name):
         '''
         A partir des valeurs initiables de lien initial (link_name) replique pour avoir le bon nouveau lien 

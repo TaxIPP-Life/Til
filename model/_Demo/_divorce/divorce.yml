@@ -27,6 +27,7 @@ entities:
                 # - show('nb divorce 1', sum(divorce1), 10+sum(proba_divorce))
                 # break link to partner
                 - to_divorce: divorce or l_conj.divorce
+              
                 
                 ### men 
                 # smallest id move out from house
@@ -59,6 +60,11 @@ entities:
                 - MOVE: (to_divorce and LEGAL_UNION and id > l_conj.id) 
                 - MOVE1: MOVE and not ((l_pere.foy == foy or l_mere.foy == foy) and (quifoy>1))  
                 - MOVE: MOVE1 or (l_conj.MOVE and not l_conj.MOVE1)  
+                
+                 # - csv(dump(id, age, sexe, l_conj.id, l_conj.age,
+                           # l_conj.sexe, men, filter=justcoupled),
+                      # fname='check_simul//person_{period}.csv')
+                
                 - assertEqual( count(MOVE) , count(to_divorce and LEGAL_UNION)/2)                
                 - new_foy: if(MOVE, 
                                 new('declar', filter=MOVE ,
