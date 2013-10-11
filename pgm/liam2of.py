@@ -72,7 +72,7 @@ def main(simulation, period=None, output=".h5"):
 #        ident = 'id'+ent
 #        trav = table['ind'].ix[table['ind'][qui]==2, [ident,qui,'period']]
 #        for name, groupfor nom in ('menage','declar','fam'):for nom in ('menage','declar','fam'): in trav.groupby([ident,'period']):
-#            to_add = range(len(group))
+#            to_add = range(len(group)) 
 #            group[qui] = group[qui]+to_add
 #            table['ind'].ix[group[qui].index, qui] = group[qui]
 #        print "les qui pour ", ent," sont réglés"

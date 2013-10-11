@@ -63,7 +63,7 @@ simulation:
         - menage: [init_value,consumption,saving]
         - companies: [rien]
         - person: [qui_solve] 
-        - legislation: [2012] #[annee leg]
+        - legislation: [2009] #[annee leg]
         # - register: [alive]
         # - register: [sum_indiv]
         # - person: [stat_period]
@@ -73,7 +73,7 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: patrimoine_850.h5
+        file: patrimoine_200.h5
         
     output:
         file: simul.h5
@@ -86,4 +86,4 @@ simulation:
 
     # first simulated period
     init_period: 200901
-    periods: 20
+    periods: 10

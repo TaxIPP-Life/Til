@@ -14,6 +14,7 @@ Output :
 
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
  
+ 
 from DataTil import DataTil
 from matching import Matching
 from utils import recode, index_repeated, replicate, new_link_with_men
@@ -98,6 +99,7 @@ class Patrimoine(DataTil):
                 var_k = [x + str(k) for x in var]
                 var_k1 = [x + str(k+1) for x in var]
                 ind.ix[cond1, var_k] = ind.ix[cond1, var_k1]
+                
             
             # si le probleme n'est pas resolu, le souci était sur cycact seulement, on met une valeur
             cond1 = notnull(ind['cyact2']) & ~notnull(ind['cyact1'])  & \
@@ -642,7 +644,7 @@ class Patrimoine(DataTil):
         ind = self.ind  
         couple_hdom = ind['couple']==2
         # ind[couple_hdom].groupby(['etamatri','sexe'])
-        # vu leur nombre, on regroupe pacsé et mariés dans le même sac
+        # vu leur nombre, on regroupe pacsés et mariés dans le même sac
         ind.ix[(couple_hdom) & (ind['etamatri']==5),  'etamatri'] = 2
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
         # ne gère pas les couples homosexuels
@@ -706,7 +708,7 @@ if __name__ == '__main__':
     data.conjoint()
     data.enfants()
     data.creation_par_look_enf()
-    data.expand_data(seuil=850)
+    data.expand_data(seuil=200)
     data.matching_par_enf() 
     data.match_couple_hdom()
     data.creation_foy()   

@@ -147,21 +147,21 @@ class DataTil(object):
                   " mais si on veut rattacher les enfants (par exemple de 22 ans) qui ne vivent pas au" \
                   " domicile des parents sur leur déclaration, il faut faire l'extension et la " \
                   " fermeture de l'échantillon d'abord. Pareil pour les couples. ")
-        
         min_pond = min(men['pond'])
-        target_pond = max(min_pond, seuil)
-        print target_pond
+        target_pond = float(max(min_pond, seuil))
+
         # 1 - Réhaussement des pondérations inférieures à la pondération cible
-        men[men['pond'] < target_pond ]= target_pond
+        men['pond'] [men ['pond']<target_pond] = target_pond 
         
         # 2 - Calcul du nombre de réplications à effectuer
         men['nb_rep'] = men['pond'].div(target_pond)
-        men['nb_rep'] = men['nb_rep'].round(0)
+        men['nb_rep'] = men['nb_rep'].round()
         men['nb_rep'] = men['nb_rep'].astype(int)
-        men.to_csv('testcsv.csv', sep=';')
-        
+
+                
         # 3- Nouvelles pondérations (qui seront celles associées aux individus après réplication)
         men['pond'] = men['pond'].div(men['nb_rep'])
+        men.to_csv('testcsv2.csv', sep=';')
         men_exp = replicate(men) 
        
         if foy is not None:
@@ -274,7 +274,6 @@ class DataTil(object):
         ind=ind.reset_index()
         
         self.ind=ind 
-        ind.to_csv('testcsv.csv', sep=';')  
         
         
     def store_to_liam(self):
