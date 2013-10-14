@@ -22,7 +22,7 @@ local.properties
 *.Rhistory
 *.gzip
 
-data/Destinie
+data/Destinie/Import
 data/Patrimoine/Archives/
 data/Patrimoine/*.xls
 data/Patrimoine/*.csv
