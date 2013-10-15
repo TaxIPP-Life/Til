@@ -14,32 +14,8 @@ Output :
 
 # Recup de ce dont on a besoin dans Patrimoine
 
-from path_config import path_data_patr, path_til, path_data_des
-#from DataTil import DataTil
-
-class DataTil(object):
-    """
-    La classe qui permet de lancer le travail sur les données
-    La structure de classe n'est peut-être pas nécessaire pour l'instant 
-    
-    """
-    def __init__(self):
-        self.name = None
-        self.survey_date = None
-        self.ind = None
-        self.men = None
-        self.foy = None
-        self.par_look_enf = None
-        self.seuil= None
-        
-        #TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
-        self.done = []
-        self.order = []
-        
-    def lecture(self):
-        print "début de l'importation des données"
-        raise NotImplementedError()
-        print "fin de l'importation des données"
+from pgm.CONFIG import path_data_patr, path_til, path_data_destinie
+from data.DataTil import DataTil
 
 import pandas as pd
 import numpy as np
@@ -51,11 +27,6 @@ from numpy.lib.stride_tricks import as_strided
 import pdb
 import gc
 
-#data = path_data_des+'\\BiosDestinie.RData'
-#bio = rpy.r.load(data)
-#bio = com.convert_robj(data) 
-#bio  = np.asarray(bio)
-#bio = pd.DataFrame(bio)
 
 
 class Destinie(DataTil):  
@@ -71,10 +42,13 @@ class Destinie(DataTil):
         self.methods_order = ['lecture']
        
     def lecture(self):
+        longueur_carriere = 106
         print "début de l'importation des données"
-        col= list(xrange(105)) + ['id']
-        BioEmp = pd.read_table(path_data_des +'BioEmp2.txt', names=col,header=None,sep=',')
-        BioFam = pd.read_table(path_data_des + 'BioFam2.txt', sep=',',
+        # TODO: revoir le colnames de BioEmp : le retirer ?
+        colnames = list(xrange(longueur_carriere)) 
+        BioEmp = pd.read_table(path_data_destinie +'BioEmp2.txt', 
+                               names=colnames, header=None, sep=';')
+        BioFam = pd.read_table(path_data_destinie + 'BioFam.txt', sep=',',
                           header=None, names=['id','pere','mere','statut',
                                            'conj','enf1',"enf2",
                                            "enf3",'enf4','enf5','enf6']) 
@@ -83,8 +57,32 @@ class Destinie(DataTil):
     #def built_BioEmp(self):
         print "Début mise en forme BioEmp"
         # 1 - Mise en forme de BioEmp
-        BioEmp = pd.DataFrame(BioEmp,index=range(0,len(BioEmp),1))
-        BioEmp['index'] = BioEmp.index
+# inutile car l'index est 
+#déjà comme ça par défaut       BioEmp = pd.DataFrame(BioEmp,index=range(0,len(BioEmp),1))
+
+        taille = len(BioEmp)/3
+        selection0 = [3*x for x in range(taille)]
+        selection1 = [3*x+1 for x in range(taille)]
+        selection2 = [3*x+2 for x in range(taille)]
+        ind = BioEmp.iloc[selection0]
+        ind = ind.reset_index()
+        ind = ind.rename(columns={0:'id', 1:'sexe', 2:'naiss', 3:'findet'})
+        ind = ind[['id','sexe','naiss','findet']]
+
+# j'avais mal compris...à effacer       
+# ind = pd.concat([ind, BioEmp.iloc[selection1].reset_index(),
+#                          BioEmp.iloc[selection2].reset_index()],
+#                          axis=1)
+#        ind.columns[5:(5+longueur_carriere)] = 
+#        ind.columns[5:(5+longueur_carriere)] = \
+#            ['statut_'+str(2009+x) for x in range(longueur_carriere)]
+#        ind.columns[5:(5+longueur_carriere)] = \
+#            ['statut_'+str(2009+x) for x in range(longueur_carriere)]
+#        pdb.set_trace()
+#        
+#        
+        
+        index = BioEmp.index  # BioEmp['index'] crée une variable, alors qu'on en a pas besoin
         BioEmp['id'] = BioEmp['index']/3
         BioEmp['id'] = BioEmp['id'].astype(int)
         #BioEmp['test'] = BioEmp[1] -> on appelle les colonnes avec un format numérique du coup
@@ -94,10 +92,13 @@ class Destinie(DataTil):
         # 2 - Construction de la Table ind : table avec toutes les info de bases sur les individus (appariement entre enfants et parents avec BioFam sur cette table) et car avec les infos sur carrières
         ind = BioEmp[BioEmp['nb_ligne']==0]
         ind = ind.rename(columns={1 :'sexe', 2 : 'naiss', 3 : 'findet'})
-        ind = ind[['id','sexe','naiss','findet']]
+        ind = ind.loc['id','sexe','naiss','findet']
 
         '''
         Le programme met pas mal de temps à tourner : le premier merge pourrait ertainement être évité en travaillant conjointement sur statut/salaire
+        C'est pas le tocsv qui prend du temps ? 
+        attention, normalement les trois apostrophes c'est pour la documentation, pas pour le commentaire
+        
         car = BioEmp[BioEmp['nb_ligne']>0]
         car['index'] = car.index
         car.to_csv('test1.csv')

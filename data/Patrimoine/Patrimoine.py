@@ -15,10 +15,10 @@ Output :
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
  
  
-from DataTil import DataTil
-from matching import Matching
-from utils import recode, index_repeated, replicate, new_link_with_men
-from path_config import path_data_patr, path_til
+from data.DataTil import DataTil
+from data.matching import Matching
+from data.utils import recode, index_repeated, replicate, new_link_with_men
+from pgm.CONFIG import path_data_patr, path_til
 
 import pandas as pd
 import numpy as np
