@@ -8,13 +8,15 @@ Alexis Eidelman
 
 from matching import Matching
 from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til
-
 from path_config import path_data_patr, path_til, path_til_liam
+
 import pandas as pd
 import numpy as np
 import tables
+
 from pandas import merge, notnull, DataFrame, Series
 from numpy.lib.stride_tricks import as_strided
+
 import pdb
 import gc
 

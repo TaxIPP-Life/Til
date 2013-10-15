@@ -14,9 +14,32 @@ Output :
 
 # Recup de ce dont on a besoin dans Patrimoine
 
- 
 from path_config import path_data_patr, path_til, path_data_des
-from DataTil import DataTil_d
+#from DataTil import DataTil
+
+class DataTil(object):
+    """
+    La classe qui permet de lancer le travail sur les données
+    La structure de classe n'est peut-être pas nécessaire pour l'instant 
+    
+    """
+    def __init__(self):
+        self.name = None
+        self.survey_date = None
+        self.ind = None
+        self.men = None
+        self.foy = None
+        self.par_look_enf = None
+        self.seuil= None
+        
+        #TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
+        self.done = []
+        self.order = []
+        
+    def lecture(self):
+        print "début de l'importation des données"
+        raise NotImplementedError()
+        print "fin de l'importation des données"
 
 import pandas as pd
 import numpy as np
@@ -35,10 +58,10 @@ import gc
 #bio = pd.DataFrame(bio)
 
 
-class Destinie(DataTil_d):  
+class Destinie(DataTil):  
       
     def __init__(self):
-        DataTil_d.__init__(self)
+        DataTil.__init__(self)
         self.name = 'Destinie'
         self.survey_date = 200901
         
@@ -50,15 +73,15 @@ class Destinie(DataTil_d):
     def lecture(self):
         print "début de l'importation des données"
         col= list(xrange(105)) + ['id']
-        BioEmp = pd.read_table(path_data_des +'BioEmp2.txt', names=col,sep=',')
-        BioFam = pd.read_csv(path_data_des + 'BioFam.csv', sep=';',
-                          header=0, names=['noi','pere','mere','statut',
+        BioEmp = pd.read_table(path_data_des +'BioEmp2.txt', names=col,header=None,sep=',')
+        BioFam = pd.read_table(path_data_des + 'BioFam2.txt', sep=',',
+                          header=None, names=['id','pere','mere','statut',
                                            'conj','enf1',"enf2",
                                            "enf3",'enf4','enf5','enf6']) 
         print "fin de l'importation des données"
         
     #def built_BioEmp(self):
-
+        print "Début mise en forme BioEmp"
         # 1 - Mise en forme de BioEmp
         BioEmp = pd.DataFrame(BioEmp,index=range(0,len(BioEmp),1))
         BioEmp['index'] = BioEmp.index
@@ -110,9 +133,38 @@ class Destinie(DataTil_d):
         # pers.to_csv('test_merge.csv')
         # print np.max(pers['id']) -> Donne bien 71937 correpondant aux 71938 personnes de l'échantillon initiale
         pers = pers[['id','annee','statut','salaire','sexe','naiss','findet']]
-        pers.to_csv('test_finish.csv')
+        pers['annee'] = pers['annee'] + pers['naiss']
+        pers['annee'] = pers['annee'].astype(int)
+        pers['annee'] = pers['annee'].astype(str) + '01' # Pour conserver un format similaire au format date de Til
+        pers['annee'] = pers['annee'].astype(float) # Plus facile pour manip
+        # pers.to_csv('test_finish.csv')
+        print "fin de la mise en forme de BioEmp"
 
+    #def add_link(self):
+        print "Début mise en forme BioFam"
         
+        # 1 - Mise en forme de  BioFam
+        BioFam = pd.DataFrame(BioFam,index=range(0,len(BioFam),1))
+        BioFam['index'] = BioFam.index
+        BioFam['index'] = BioFam['index'].astype(float)
+        
+        # 2 - Variable 'date de mise à jour'
+        fin = BioFam[BioFam['id'].str.contains('Fin')] # donne tous les index limites
+        fin = fin.reset_index()
+        fin['annee'] = fin.index + 2009
+        fin = fin[['index','annee']] 
+        fin.to_csv('test_fin.csv')      
+        
+        #BioFam['annee'] = fin[]
+        '''
+        #creation des ménages 
+               # faire une méthode plutôt
+        men = pd.Series(range(len(ind)))  # ne marche pas je pense, je
+               # séléctionner les gens qui ont un conjoint, puis un père, puis une mère avec un noi près du leur (moins de 10 disons). A chaque fois leur mettre l'ident de la personne concernée. Ca peut foirer s'il y a des cas vicieux (on vit avec sa mère mais aussi avec son conjoint) et il faudra faire une autre boucle mais ça m'interesse de savoir si ce cas existe. 
+        ''' 
+        
+        print "Fin mise en forme BioFam"
+
 import time
 start = time.clock()
 data = Destinie()
