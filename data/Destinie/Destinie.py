@@ -44,6 +44,7 @@ class Destinie(DataTil):
        
     def lecture(self):
         longueur_carriere = 106
+        
         print "début de l'importation des données"
         # TODO: revoir le colnames de BioEmp : le retirer ?
         colnames = list(xrange(longueur_carriere)) 
@@ -56,6 +57,7 @@ class Destinie(DataTil):
         print "fin de l'importation des données"
         
     #def built_BioEmp(self):
+    
         print "Début mise en forme BioEmp"
         
         # 1 - Division de BioEmpen trois tables
@@ -132,11 +134,12 @@ class Destinie(DataTil):
         # 2 - Fusion avec les informations sur déroulés des carrières
         pers = pd.merge(pers,BioFam, on = ['id','annee'], how='left') #, how='left', sort=False)
         pers = pers.fillna(method='pad') # problème des transitions entre individus
-        pers['pere' : ][pers['annee']<2009] = Nan
+        pers['annee'] = pers['annee'].astype(int)
+        pers.loc[pers.loc[:,'annee']<2009,'pere':] = -1 # a remplacer par un missing
+        pers = pers.fillna(method = 'backfill')
 
   
         # Bon format pour les dates
-        pers['annee'] = pers['annee'].astype(int)
         pers['annee'] = pers['annee'].astype(str) + '01' # Pour conserver un format similaire au format date de Til
         pers['annee'] = pers['annee'].astype(float) # Plus facile pour manip
         
