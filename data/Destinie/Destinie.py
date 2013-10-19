@@ -11,12 +11,6 @@ Output :
 '''
 
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de Destinie -> Recup des infos dans Patrimoine
-import sys
-import os.path
-
-path_add =  os.path.split(sys.path[0])
-path_add = os.path.split(path_add[0])[0]
-sys.path.append(path_add)
 
 #from pgm.CONFIG import path_data_patr, path_til, path_data_destinie
 from data.DataTil import DataTil
@@ -24,14 +18,11 @@ from pgm.CONFIG import path_data_destinie, path_til_liam, path_til, path_of
 
 import pandas as pd
 import numpy as np
-import pandas.rpy.common as com
-import rpy2.rpy_classic as rpy
 
 from pandas import merge, notnull, DataFrame, Series, HDFStore
 from numpy.lib.stride_tricks import as_strided
 import pdb
 import gc
-
 
 
 class Destinie(DataTil):  
@@ -76,15 +67,15 @@ class Destinie(DataTil):
         selection0 = [3*x for x in range(taille)]
         ind = BioEmp.iloc[selection0]
         ind = ind.reset_index()
-        ind = ind.rename(columns={ 1:'sexe', 2:'naiss', 3:'findet'})
+        ind = ind.rename(columns={1:'sexe', 2:'naiss', 3:'findet'})
         ind = ind[['id','sexe','naiss','findet']]
-        ind.to_csv('test_ind.csv') 
+        #ind.to_csv('test_ind.csv') 
         
         # selection1 : information sur les statuts d'emploi
         selection1 = [3*x+1 for x in range(taille)]
         stat = BioEmp.iloc[selection1]
         stat = stat.set_index('id').stack().reset_index()
-        stat = stat.rename(columns={ 'level_1': 'period', 0:'statut_emp'})
+        stat = stat.rename(columns={'level_1':'period', 0:'statut_emp'})
         stat = stat[['id','period','statut_emp']]
         #stat.to_csv('test_stat.csv') 
         
@@ -92,13 +83,13 @@ class Destinie(DataTil):
         selection2 = [3*x+2 for x in range(taille)]
         sal = BioEmp.iloc[selection2]
         sal = sal.set_index('id').stack().reset_index()
-        sal = sal.rename(columns={'level_1': 'period', 0:'salaire'})
+        sal = sal.rename(columns={'level_1':'period', 0:'salaire'})
         sal = sal[['salaire']]
         #sal.to_csv('test_sal.csv')
  
         # 2 - Sortie de la table agrégée contenant les infos de BioEmp -> pers
         m1 = merge(stat,sal,left_index = True, right_index = True, sort=False)  #  on ='index', sort = False)
-        m1 = m1[['id','period','statut_emp', 'salaire']]
+        m1 = m1[['id', 'period', 'statut_emp', 'salaire']]
         pers = merge(m1, ind, on='id', sort=False)
         # print np.max(pers['id']) -> Donne bien 71937 correpondant aux 71938 personnes de l'échantillon initiale
         
@@ -113,107 +104,100 @@ class Destinie(DataTil):
         # 1 - Variable 'date de mise à jour'
         
         # Index limites pour changement de date
-        fin = BioFam[BioFam['id'].str.contains('Fin')] # donne tous les index limites
-        fin = fin.reset_index()
-        fin['period'] = fin.index  + 2009 
-        #fin.to_csv('test_fin.csv')
-        fin = fin[['index','period']] # colonne 0 = index et colonne 1 = année
+        annee = BioFam[BioFam['id'].str.contains('Fin')] # donne tous les index limites
+        annee = annee.reset_index()
+        annee['period'] = annee.index + 2009 
+        #annee.to_csv('test_fin.csv')
+        annee = annee[['index','period']] # colonne 0 = index et colonne 1 = année
         
         # Actualisation des dates de mise à jour        
         BioFam['period'] = 2060 # colonne 11 de la table
-        BioFam.iloc[: fin.iloc[0,0],11] = fin.iloc[0,1]
-        
-        for k in range(1,len(fin)): 
-            BioFam.iloc[fin.iloc[k-1,0] + 1 : fin.iloc[k,0],11] = fin.iloc[k,1]
+
+        BioFam.loc[:annee.loc[0, 'index'], 'period'] = annee.loc[0, 'period']
+
+        for k in range(1, len(annee)): 
+            BioFam.loc[ 1 + annee.loc[k-1,'index']:annee.loc[k,'index'], 'period'] = annee.loc[k, 'period']
             
-        # Efface les lignes '*** Fin annee ...'
-        to_drop = fin['index']
+        # Efface les lignes '*** annee annee ...'
+        to_drop = annee['index']
         BioFam = BioFam.drop(BioFam.index[to_drop])
-        #BioFam.to_csv('test_fin.csv', sep=',')-> Toutes les années de changement sont OK
-        
+        #BioFam.to_csv('test_annee.csv', sep=',')-> Toutes les années de changement sont OK
+
         # Identifiants cohérents avec les identifiants pere/mere/enfants
         BioFam['id'] = BioFam['id'].astype(int)
+        
         pers['id'] = pers['id'] + 1     
- 
 
-        '''        
-        Indiquer si aucune info sur les parents (nécessaire pour la suite) dans BioFam
-        BioFam.sort(['id', 'period'], ascending=[True, False])
-        BioFam.set_index(['id', 'period'], ascending=[True, False])
-        BioFam.loc[0,'pere':] = np.nan
-        '''
-        
-        
         # 2 - Fusion avec les informations sur déroulés des carrières
-        '''
-        Informations sur BioFam qu'à partir de 2009 
-        -> on identifie père/mère avec les infos de 2060 + un moins indique leur mort donc reviennent à 0.
-        -> situation maritale : la même qu'en 2009 et après l'âge de fin d'étude, avant = célib et pas de conjoint.
-        -> info sur enfants : abandon.
-        '''
-        
-        # sélection des informations d'intéret et création d'un délimiteur (année fictive)
-        pers = pd.merge(pers,BioFam, on = ['id','period'], how='left') #, how='left', sort=False) 
-        pers = pers[['period','id','sexe','naiss','pere','mere','conj','statut_mar','findet','statut_emp','salaire']]
-               
-                # Création d'une ligne fictive 2061 pour délimiter les fillna dans la partie suivante
-        index = range(0,pers['id'].max()+1)
-        Delimit = pd.DataFrame(index=index, columns=['period','id','sexe','naiss', 'pere','mere','conj','statut_mar','findet','statut_emp','salaire'])
+       
+        #Informations sur BioFam qu'à partir de 2009 
+        #-> on identifie père/mère avec les infos de 2060 + un moins indique leur mort donc reviennent à 0.
+        #-> situation maritale : la même qu'en 2009 et après l'âge de fin d'étude, avant = célib et pas de conjoint.
+        #-> info sur enfants : abandon.
+
+        pers['period'] = pers['period'].astype(int)
+        # sélection des informations d'intéret 
+        pers = merge(pers,BioFam, on = ['id','period'], how='left') #, how='left', sort=False) 
+        pers = pers[['period','id','sexe','naiss','findet','statut_emp','salaire','pere','mere','conj','statut_mar']]
+        # Création d'une ligne fictive 2061 pour délimiter les fillna dans la partie suivante
+        index_del = range(0, pers['id'].max() + 1)
+        Delimit = pd.DataFrame(index=index_del, 
+                               columns=['period', 'id', 'sexe', 'naiss', 'findet',
+                                         'statut_emp', 'salaire', 'pere', 'mere', 
+                                         'conj', 'statut_mar'])
         Delimit['period'] = 2061
-        Delimit['id'] = Delimit.index
-        Delimit.loc[:,'sexe' : ] = -1
-        pers = pers.append(Delimit,ignore_index=True)
-        pers.set_index('id')
-        # pers[pers['id']==1].to_csv('index.csv') -> ligne 2061 apparait bien mais pb d'index
+        Delimit['id'] = Delimit.index + 1
+        Delimit['period'] = Delimit['period'].astype(int)
+        Delimit.loc[:,'sexe':] = - 999999999 # A remplacer par la suite 
+        pers = pers.append(Delimit)
+        pers = pers.sort(['id', 'period'])
+            # pers[ pers['id'] <4 ].to_csv('index.csv')  #-> ligne 2061 apparait bien mais pb d'index
  
         
-        '''
-        # problème des transitions entre individus : on commence par faire un "barrage" de zéro puis on propage les infos (infos de 2009 copiés pour 2010, 2011 ... jusqu'à ce qu'une nouvelle ligne apparaisse)
-        pers['period'] = pers['period'].astype(int)
-        pers.loc[pers.loc[:,'period']<2009,'pere':] = 0
+        # Propagation des infos (infos de 2009 copiés pour 2010, 2011 ... jusqu'à ce qu'une nouvelle ligne apparaisse)
         pers = pers.fillna(method='pad')
-        pers.loc[pers.loc[:,'period']<2009,'pere':] = np.nan # on rétablit les missings
-        '''
-        
+        pers.loc[pers.loc[:,'period'] < 2009, 'pere':] = np.nan # on rétablit les missings
         # Traitement particulier des parents : 
-        parents = ['pere','mere']
-        for parent in parents : 
+        for parent in ['pere','mere'] : 
             pers[parent] = pers[parent].astype(float)
-            pers[parent][pers[parent] == 0] = np.nan # On remplace les 0 par des missings
-            parent_viv = ((pers[parent] <0) == False ) # indicatrice du parent vivant : pas d'info sur sa mort ou identifiant positif : nécessaire étape suivante
-            pers[parent] = pers[parent].fillna(method = 'backfill') # rempli avec les infos précédentes
+            pers[parent][pers[parent] == 0] = np.nan 
+            # indicatrice du parent vivant : 0 si identifiant négatif
+            parent_viv = ~(pers[parent] < 0) 
+            pers[parent] = pers[parent].fillna(method='backfill') # rempli avec les infos précédentes
             pers[parent] = abs(pers[parent]*parent_viv) # identifant du parent seulement lorsqu'il est vivant (sinon 0)
 
         pers = pers.fillna(method = 'backfill') 
             
         # Création des variables d'âge/situation maritale (avant la fin des étude : personne célib pour les états antérieurs à 2009
         pers['age'] = pers['period'] - pers['naiss']
-        pers['agem'] = pers['age'] * 12
+        pers['agem'] = 12*pers['age']
         
         
-        pers.loc[(pers['age']<pers['findet'] ) & (pers['period']<2009) ,'statut_mar'] = 1
-        pers.loc[(pers['age']<pers['findet'] ) & (pers['period']<2009) ,'conj'] = np.nan 
+        pers.loc[(pers['age'] < pers['findet']) & (pers['period'] < 2009), 'statut_mar'] = 1
+        pers.loc[(pers['age'] < pers['findet']) & (pers['period'] < 2009), 'conj'] = np.nan 
         
         print "Fin traitement BioFam"       
 
     #def creation_tables(self) : 
     
-        # 0 - Non prise en compte des mouvements migratoires
+        # 0 - Non prise en compte des mouvements migratoires -> Peut-être idée à garder car cette modlité regroupe aussi les décédés
         #pers = pers.loc(pers['statut_emp' != 0])
         
         
         # 1 -Table pers au format Liam et Til : traitement des variables
         
         # Situation maritale :  1:célib / 2 : marié / 3 : veuf / 4 : divorcé / 5 : Pacsé : Même code dans les deux, c'est ok!
+        pers[pers['conj'] < 0] = 0 
+        
         
         # Workstate : pas de retraité car on va simuler le départ à la retraite!
-        '''
-         0 -> ? : décès, ou immigré pas encore arrivé en France./ 1-> 3 : privé non cadre /2->4 : privé cadre/31-> 5 : fonctionnaire actif /32-> 6 : fonctionnaire sédentaire
-        4-> 7 : indépendant / 5->2 : chômeur / 6-> 1: inactif, y compris scolaire / 7->9 : préretraite (uniquement en rétrospectif) / 9->8 : AVPF 
-        '''
+        
+        # 0 -> 0 : décès, ou immigré pas encore arrivé en France./ 1-> 3 : privé non cadre /2->4 : privé cadre/31-> 5 : fonctionnaire actif /32-> 6 : fonctionnaire sédentaire
+        # 4-> 7 : indépendant / 5->2 : chômeur / 6-> 1: inactif, y compris scolaire / 7->9 : préretraite (uniquement en rétrospectif) / 9->8 : AVPF 
         
         pers['statut_emp'] = pers['statut_emp'].astype(int)
-        pers['statut_emp'].replace([0,1,2,31,32,4,5,6,7,9],[np.nan,3,4,5,6,7,2,1,9,8])
+        pers['statut_emp'].replace([1, 2, 31, 32, 4, 5, 6, 7, 9],
+                                   [3, 4, 5, 6, 7, 2, 1, 9, 8])
 
         
         # Bon format pour les dates
@@ -221,18 +205,51 @@ class Destinie(DataTil):
         pers['period'] = pers['period'].astype(float) # Plus facile pour manip
         
         # Noms adéquates pour les variables :
-        pers = pers.rename(columns = {'statut_mar' : 'civilstate', 'statut_emp' : 'workstate', 'salaire' : 'Sali'})
-        pers = pers[['period','id','agem', 'age','sexe','pere','mere','conj','civilstate','findet','workstate','Sali']]
+        pers = pers.rename(columns = {'id': 'noi', 'statut_mar': 'civilstate', 'statut_emp': 'workstate', 'salaire': 'Sali'})
+        pers = pers[['period', 'noi', 'agem', 'age', 'sexe', 'pere', 'mere',
+                     'conj', 'civilstate', 'findet', 'workstate', 'Sali']]
 
-        pers[pers['workstate'] == 0 ].to_csv('test_migrant.csv')
-        pers.to_csv('test_finish2.csv')
-        # list_val = [1,33312,33313, 2,3369,30783]
-        # strange = pers[pers['id'].isin(list_val)]
+#        pers[pers['workstate'] == 0 ].to_csv('test_migrant.csv')
+        #pers.to_csv('test_finish3.csv')
+        
+        
+        list_val = [1480, 12455, 12454,
+                    1481, 33425, 33426,
+                    ]
+        strange = pers[pers['noi'].isin(list_val)]
         # strange.to_csv('strange.csv')
         
-        #creation des ménages 
-               # faire une méthode plutôt
-        men = pd.Series(range(len(ind)))  # ne marche pas je pense, je
+    # def crea_men(self) :  
+          
+        #creation des ménages en 2009
+        men_init = pers[pers['period'] == 200901]  
+        # Fiabilité des déclarations : 
+        decla = men_init[['noi', 'conj']][men_init['civilstate'] == 2]
+        verif = merge(decla, decla, left_on ='noi', right_on='conj')
+        Pb = verif[ verif['noi_y'] != verif['conj_x'] ]
+        print len(Pb), "couples non appariés"
+        
+        # Liste du premier déclarant du couple
+        s1 = decla['noi']
+        print len(s1)
+        s2 = decla['conj']
+        s = s1.append(s2)
+        s =s.sort_index(['id'])
+        s = s[s.duplicated(['noi']) == False]
+        s = s.reset_index()
+
+        
+        # Ménages constitués de couples
+        
+        
+        #Beaucoup trop long!
+        # for i in s:
+        #    men_init['men'][men_init['noi']==i] = k
+        #    men_init['men'][men_init['conj']==i] = k
+        #    men_init.loc[(men_init['pere']==i) & (men_init['age']<21), 'men'] = k
+        #    k = k + 1
+        # print k
+#        men_init.to_csv('menage.csv')
                # séléctionner les gens qui ont un conjoint, puis un père, puis une mère avec un noi près du leur (moins de 10 disons). A chaque fois leur mettre l'ident de la personne concernée. Ca peut foirer s'il y a des cas vicieux (on vit avec sa mère mais aussi avec son conjoint) et il faudra faire une autre boucle mais ça m'interesse de savoir si ce cas existe. 
      
         print "Fin de la mise au format"
@@ -242,4 +259,4 @@ import time
 start = time.clock()
 data = Destinie()
 data.lecture()
-#data.built_BioEmp()
+
