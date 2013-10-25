@@ -13,13 +13,13 @@ Output :
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de Destinie -> Recup des infos dans Patrimoine
 
 from data.DataTil import DataTil
-from pgm.CONFIG import path_data_destinie, path_til_liam, path_til, path_of
+from data.utils import minimal_dtype
+from pgm.CONFIG import path_data_destinie
 
 import pandas as pd
 import numpy as np
-
 from pandas import merge, notnull, DataFrame, Series, HDFStore
-from numpy.lib.stride_tricks import as_strided
+
 import pdb
 import gc
 import time
@@ -39,73 +39,71 @@ class Destinie(DataTil):
         self.methods_order = ['lecture']
        
     def lecture(self):
-        longueur_carriere = 106
+        longueur_carriere = self.last_year - self.survey_year #106
         
         print "début de l'importation des données"
         start_time = time.time()
         # TODO: revoir le colnames de BioEmp : le retirer ?
         colnames = list(xrange(longueur_carriere)) 
 
-        
         BioEmp = pd.read_table(path_data_destinie + 'BioEmp.txt', sep=';',
                                header=None, names=colnames)
-
         BioFam = pd.read_table(path_data_destinie + 'BioFam.txt', sep=';',
                                header=None, names=['noi', 'pere', 'mere', 'statut_mar',
                                                    'conj', 'enf1', "enf2",
                                                    "enf3", 'enf4', 'enf5', 'enf6']) 
-
-        # Ambiguité sur Pacs/marié (ex : 8669 et 8668 se déclarent en couple mais l'un en marié l'autre en pacsé)
-        BioFam.loc[BioFam['statut_mar'] == 5, 'statut_mar'] = 2
-        BioFam.loc[((BioFam['statut_mar'] == 2) | BioFam['statut_mar'].isnull()) & (BioFam['conj'].isnull()| (BioFam['conj'] == 0)), 'statut_mar'] = 1
+        
+        def _correction_fam():
+            # Ambiguité sur Pacs/marié (ex : 8669 et 8668 se déclarent en couple mais l'un en marié l'autre en pacsé)
+            BioFam.loc[BioFam['statut_mar'] == 5, 'statut_mar'] = 2
+            BioFam.loc[((BioFam['statut_mar'] == 2) | BioFam['statut_mar'].isnull()) & (BioFam['conj'].isnull()| (BioFam['conj'] == 0)), 'statut_mar'] = 1
+        
+        def BioEmp_in_3():
+            ''' Division de BioEmpen trois tables '''
+            taille = len(BioEmp)/3
+            BioEmp['noi'] = BioEmp.index/3
+            
+            # selection0 : informations atemporelles  sur les individus (identifiant, sexe, date de naissance et âge de fin d'étude)
+            selection0 = [3*x for x in range(taille)]
+            ind = BioEmp.iloc[selection0]
+            ind = ind.reset_index()
+            ind = ind.rename(columns={1:'sexe', 2:'naiss', 3:'findet', 4:'tx_prime_fct'})
+            ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct']]
+            ind = minimal_dtype(ind)
+            
+            # selection1 : information sur les statuts d'emploi
+            selection1 = [3*x + 1 for x in range(taille)]
+            statut = BioEmp.iloc[selection1]
+            statut = statut.set_index('noi').stack().reset_index()
+            statut = statut.rename(columns={'level_1':'period', 0:'workstate'})
+            statut = statut[['noi', 'period', 'workstate']]
+            
+            # selection2 : informations sue les salis
+            selection2 = [3*x + 2 for x in range(taille)]
+            sal = BioEmp.iloc[selection2]
+            sal = sal.set_index('noi').stack().reset_index()
+            sal = sal.rename(columns={'level_1':'period', 0:'sali'})
+            sal = sal[['sali']]       
+            return ind, statut, sal
+        
+        pdb.set_trace()        
+        _correction_fam()
         print "fin de l'importation des données"
-        
-    # def built_BioEmp(self):
-        print "Début mise en forme BioEmp"
         start_time = time.time()
-        # 1 - Division de BioEmpen trois tables
-        
-        taille = len(BioEmp)/3
-        index = BioEmp.index  # BioEmp['index'] crée une variable, alors qu'on en a pas besoin
-        BioEmp['noi'] = index/3
-        BioEmp['noi'] = BioEmp['noi'].astype(int)
-        # BioEmp['test'] = BioEmp[1] -> on appelle les colonnes avec un format numérique du coup
-        
-        # selection0 : informations atemporelles  sur les individus (identifiant, sexe, date de naissance et âge de fin d'étude)
-        selection0 = [3*x for x in range(taille)]
-        ind = BioEmp.iloc[selection0]
-        ind = ind.reset_index()
-        ind = ind.rename(columns={1:'sexe', 2:'naiss', 3:'findet'})
-        ind = ind[['noi', 'sexe', 'naiss', 'findet']]
-        # ind.to_csv('test_ind.csv') 
-        
-        # selection1 : information sur les statuts d'emploi
-        selection1 = [3*x + 1 for x in range(taille)]
-        stat = BioEmp.iloc[selection1]
-        stat = stat.set_index('noi').stack().reset_index()
-        stat = stat.rename(columns={'level_1':'period', 0:'statut_emp'})
-        stat = stat[['noi', 'period', 'statut_emp']]
-        # stat.to_csv('test_stat.csv') 
-        
-        # selection2 : informations sue les salaires
-        selection2 = [3*x + 2 for x in range(taille)]
-        sal = BioEmp.iloc[selection2]
-        sal = sal.set_index('noi').stack().reset_index()
-        sal = sal.rename(columns={'level_1':'period', 0:'salaire'})
-        sal = sal[['salaire']]
-        # sal.to_csv('test_sal.csv')
- 
+        ind, statut, sal = BioEmp_in_3()
+        print "temps ecoule pour BioEmp : " + str(time.time() - start_time) + "s"
+
+     
         # 2 - Sortie de la table agrégée contenant les infos de BioEmp -> pers
-        m1 = merge(stat, sal, left_index=True, right_index=True, sort=False)  #  on ='index', sort = False)
-        m1 = m1[['noi', 'period', 'statut_emp', 'salaire']]
+        m1 = merge(statut, sal, left_index=True, right_index=True, sort=False)  #  on ='index', sort = False)
+        m1 = m1[['noi', 'period', 'workstate', 'sali']]
         pers = merge(m1, ind, on='noi', sort=False)
         # print np.max(pers['noi']) -> Donne bien 71937 correpondant aux 71938 personnes de l'échantillon initiale
         
-        # pers = pers.iloc['noi','annee','statut','salaire','sexe','naiss','findet']
+        # pers = pers.iloc['noi','annee','statut','sali','sexe','naiss','findet']
         pers['period'] = pers['period'] + pers['naiss']
         # pers.to_csv('test_carriere.csv')
-        print "fin de la mise en forme de BioEmp"
-        print "temps ecoule pour BioEmp : " + str(time.time() - start_time) + "s"
+
         
         # def add_link(self):
         print "Début traitement BioFam"
@@ -169,13 +167,13 @@ class Destinie(DataTil):
         
         # sélection des informations d'intéret 
         pers = merge(pers, BioFam, on=['noi', 'period'], how='left') 
-        pers = pers[['period', 'noi', 'sexe', 'naiss', 'findet', 'statut_emp', 'salaire', 
+        pers = pers[['period', 'noi', 'sexe', 'naiss', 'findet', 'workstate', 'sali', 
                      'pere', 'mere', 'conj', 'statut_mar', 'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6', 'enf7', 'enf8', 'enf9']]
         # Création d'une ligne fictive 2061 pour délimiter les fillna dans la partie suivante
         index_del = range(0, pers['noi'].max() + 1)
         Delimit = pd.DataFrame(index=index_del,
                                columns=['period', 'noi', 'sexe', 'naiss', 'findet',
-                                         'statut_emp', 'salaire', 'pere', 'mere',
+                                         'workstate', 'sali', 'pere', 'mere',
                                          'conj', 'statut_mar', 'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6',
                                          'enf7', 'enf8', 'enf9'])
         Delimit['period'] = self.last_year + 1
@@ -223,7 +221,7 @@ class Destinie(DataTil):
         print "Début de la mise au format"
         start_time = time.time()
         # 0 - Non prise en compte des mouvements migratoires -> Peut-être idée à garder car cette modalité regroupe aussi les décédés
-        # pers = pers.loc(pers['statut_emp' != 0])
+        # pers = pers.loc(pers['workstate' != 0])
         
         # 1 -Table pers au format Liam et Til : traitement des variables
         
@@ -233,15 +231,15 @@ class Destinie(DataTil):
         # Workstate : pas de retraité car on va simuler le départ à la retraite!
         # 0 -> 0 : décès, ou immigré pas encore arrivé en France./ 1-> 3 : privé non cadre /2->4 : privé cadre/31-> 5 : fonctionnaire actif /32-> 6 : fonctionnaire sédentaire
         # 4-> 7 : indépendant / 5->2 : chômeur / 6-> 1: inactif, y compris scolaire / 7->9 : préretraite (uniquement en rétrospectif) / 9->8 : AVPF 
-        pers['statut_emp'] = pers['statut_emp'].astype(int)
-        pers['statut_emp'].replace([1, 2, 31, 32, 4, 5, 6, 7, 9],
+        pers['workstate'] = pers['workstate'].astype(int)
+        pers['workstate'].replace([1, 2, 31, 32, 4, 5, 6, 7, 9],
                                    [3, 4, 5, 6, 7, 2, 1, 9, 8])
 
         # Bon format pour les dates
         pers['period'] = 100 * pers['period'] + 1
              
         # Noms adéquates pour les variables :
-        pers = pers.rename(columns={'statut_mar': 'civilstate', 'statut_emp': 'workstate', 'salaire': 'Sali'})
+        pers = pers.rename(columns={'statut_mar': 'civilstate', 'workstate': 'workstate', 'sali': 'Sali'})
         pers_enf = pers[['pere', 'mere', 'period', 'noi', 'agem', 'age', 'sexe',
                          'conj', 'civilstate', 'findet', 'workstate', 'Sali', 
                          'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6', 'enf7', 'enf8', 'enf9']]
@@ -349,8 +347,8 @@ class Destinie(DataTil):
         mere_lost = par_lost.loc[par_lost['sexe'] == 2, 'noi' : ]
         mere_lost = mere_lost.set_index('noi').stack().reset_index()
         mere_lost.rename(columns={'noi': 'mere', 'level_1': 'link', 0:'noi'}, inplace=True)       
-        # pere_lost[['pere', 'noi']].astype(int).to_csv('pere_sup.csv')
-        # mere_lost[['mere', 'noi']].astype(int).to_csv('mere_sup.csv')
+        pere_lost[['pere', 'noi']].astype(int).to_csv('pere_sup.csv')
+        mere_lost[['mere', 'noi']].astype(int).to_csv('mere_sup.csv')
         
         # A ce stade deux types de parents à charge :         
                 # + ceux ayant aucun enfant : attribués au ménage '-4' équivalent de la maison de retraite

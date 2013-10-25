@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+from __future__ import print_function
+
 '''
 Created on 2 août 2013
 @author: a.eidelman
@@ -87,3 +89,80 @@ def new_link_with_men(table, table_exp, link_name):
         for el in group_old_id: 
             new_id += el
         return new_id
+    
+
+def _MinType_col_int_pos(col):
+    '''
+    retourne le type minimal d'une serie d'entier positif
+    on notera le -2 car on a deux valeurs prises par 0 et -1
+    '''
+    if max(abs(col)) < 2**8-2:
+        return col.astype(np.int8)
+    elif max(abs(col)) < 2**16-2:
+        return col.astype(np.int16)
+    elif max(abs(col)) < 2**32-2:
+        return col.astype(np.int32)
+    else:
+        return col.astype(np.int64)
+
+def minimal_dtype(table):
+    '''
+    Try to give columns the minimal type using -1 for NaN value
+    Variables with only two non null value are put into boolean asserting NaN value as False
+    Minimal type for float is not searched (only integer)
+    When integer has positive and negative value, there is no obvious default value for NaN values so nothing is done.
+    '''
+    assert isinstance(table, pd.DataFrame)
+    modif = {'probleme':[], 'boolean':[], 'int_one_sign':[], 'other_int':[], 'float':[], 'object':[]}
+    for colname in table.columns:
+        col = table[colname]
+        if len(col.value_counts()) <= 1:
+            #TODO: pour l'instant bug si la valeur de départ était -1
+            col = col.fillna(value=-1)
+            modif['probleme'].append(colname)
+        if col.dtype == 'O':
+            # print(colname," is an object, with a good dictionnary, we could transform it into integer")
+            modif['object'].append(colname)
+        if col.dtype != 'O':
+            if len(col.value_counts()) == 2:
+                min = col.min()
+                col = col.fillna(value=min)
+                try:
+                    col = col - min
+                except:
+                    pdb.set_trace()
+                modif['boolean'].append(colname)
+                table[colname] = col.astype(np.bool)
+            else:
+                try:
+                    if (col[col.notnull()].astype(int) == col[col.notnull()]).all():
+                        col[col.notnull()] = col[col.notnull()].astype(int)
+                        if col.min() > 0 or col.max() < 0 : # un seul signe pour les valeurs
+                            sign =1-2*(max(col) < 0)
+                            col = col.fillna(value=-1*sign)
+                            modif['int_one_sign'].append(colname)
+                            table[colname] = _MinType_col_int_pos(col)
+                        else:
+                            modif['other_int'].append(colname)
+                    else:
+                        if (col.isnull().any()):
+                            modif['float'].append(colname)
+                        else:
+                            #TODO
+                            modif['float'].append(colname)
+                except:
+                    pdb.set_trace()
+    
+    print('Object type columns have not been modified : \n ', modif['object'])
+    print('Float type columns have not been modified : \n ', modif['float'])
+    print('Integer type columns with positive AND negative values have not been modified : \n ', modif['other_int'])
+    print('There is no much distinct values for following variables : \n ', modif['probleme'])
+    print('Note that these columns are transformed into boolean : \n ', modif['boolean'])
+    print('Note also that in these cases, missing value are set to False')
+    print('Dtype have been also optimized for : \n', modif['int_one_sign'] )
+    print('Missing values were set to -1 (or +1 when only negative values)')
+
+    return table
+
+
+
