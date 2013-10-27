@@ -58,7 +58,7 @@ class Destinie(DataTil):
             BioFam.loc[BioFam['statut_mar'] == 5, 'statut_mar'] = 2
             BioFam.loc[((BioFam['statut_mar'] == 2) | BioFam['statut_mar'].isnull()) & (BioFam['conj'].isnull()| (BioFam['conj'] == 0)), 'statut_mar'] = 1
         
-        def BioEmp_in_3():
+        def _BioEmp_in_3():
             ''' Division de BioEmpen trois tables '''
             taille = len(BioEmp)/3
             BioEmp['noi'] = BioEmp.index/3
@@ -85,25 +85,12 @@ class Destinie(DataTil):
             sal = sal.rename(columns={'level_1':'period', 0:'sali'})
             sal = sal[['sali']]       
             return ind, statut, sal
-        
-        pdb.set_trace()        
+              
         _correction_fam()
         print "fin de l'importation des données"
         start_time = time.time()
-        ind, statut, sal = BioEmp_in_3()
+        ind, statut, sal = _BioEmp_in_3()
         print "temps ecoule pour BioEmp : " + str(time.time() - start_time) + "s"
-
-     
-        # 2 - Sortie de la table agrégée contenant les infos de BioEmp -> pers
-        m1 = merge(statut, sal, left_index=True, right_index=True, sort=False)  #  on ='index', sort = False)
-        m1 = m1[['noi', 'period', 'workstate', 'sali']]
-        pers = merge(m1, ind, on='noi', sort=False)
-        # print np.max(pers['noi']) -> Donne bien 71937 correpondant aux 71938 personnes de l'échantillon initiale
-        
-        # pers = pers.iloc['noi','annee','statut','sali','sexe','naiss','findet']
-        pers['period'] = pers['period'] + pers['naiss']
-        # pers.to_csv('test_carriere.csv')
-
         
         # def add_link(self):
         print "Début traitement BioFam"
@@ -112,27 +99,63 @@ class Destinie(DataTil):
         # 1 - Variable 'date de mise à jour'
     
         # Index limites pour changement de date
-        annee = BioFam[BioFam['noi'].str.contains('Fin')]  # donne tous les index limites
-        annee = annee.reset_index()
-        annee['period'] = annee.index + self.survey_year 
-        # annee.to_csv('test_fin.csv')
-        annee = annee[['index', 'period']]  # colonne 0 = index et colonne 1 = année
-        
-        # Actualisation des dates de mise à jour        
-        BioFam['period'] = self.last_year  # colonne 11 de la table
+        delimiters = BioFam['noi'].str.contains('Fin')
+        annee = BioFam[delimiters].index.tolist()  # donne tous les index limites
+        annee = [-1] + annee # to simplify loops later
+        # create a series period
+        period = []
+        for k in range(len(annee)-1):
+            period = period + [2009+k]*(annee[k+1]-1-annee[k])
 
-        BioFam.loc[:annee.loc[0, 'index'], 'period'] = annee.loc[0, 'period']
+        BioFam = BioFam[~delimiters]
+        BioFam['period'] = period
+        year_ini = self.survey_year = 2009
+        ind = merge(ind.loc[ind['naiss'] <= year_ini], BioFam[BioFam['period']==year_ini], 
+                    left_index=True, right_index=True, how='left')
+        ind.loc[ind['enf1']<0,'enf1'] = np.nan
 
-        for k in range(1, len(annee)): 
-            BioFam.loc[ 1 + annee.loc[k - 1, 'index']:annee.loc[k, 'index'], 'period'] = annee.loc[k, 'period']
+        list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
+        # changement d'indice more pythonic
+        ind[list_enf + ['pere','mere']] -= 1 
+        pere_ini = ind['pere']
+        ind['pere'] = -1 
+        mere_ini = ind['mere']
+        ind['mere'] = -1        
+        for var in list_enf:
+            pere = ind.loc[ (~ind['sexe']) & (ind[var].notnull()), var]
+            mere = ind.loc[ (ind['sexe']) & (ind[var].notnull()), var]
+            ind['pere'][pere.values] = pere.index.values
+            ind['mere'][mere.values] = mere.index.values
             
-        # Efface les lignes '*** annee annee ...'
-        to_drop = annee['index']
-        BioFam = BioFam.drop(BioFam.index[to_drop])
+        # check : ind['pere'] == pere_ini : vrai que pour les parents de la même famille -> utilisé pour les ménages !! 
+        # valeurs négatives à np.nan pour la fonction minimal_type 
+        ind.loc[ind['pere'] == -1,'pere'] = np.nan
+        ind.loc[ind['mere'] == -1,'mere'] = np.nan
+        ind = minimal_dtype(ind)
+        pdb.set_trace()
+        ## Note importante, on suppose que l'on repère parfaitement les décès avec BioEmp (on oublie du coup les valeurs négatives)
+        # on travaille sur l'annee 2009 pour éliminer les variables enfants
+
+#        # test de faire un panel
+#        BioFam = minimal_dtype(BioFam)
+#        demo = {}
+#        for k in range(1, len(annee)): 
+#            demo[self.survey_year+k-1] = BioFam.loc[(1+annee[k-1]):annee[k]]
+#                    
+#        très long : demography = pd.Panel.from_dict(demo)
         # BioFam.to_csv('test_annee.csv', sep=',')-> Toutes les années de changement sont OK
         BioFam[['noi', 'statut_mar', 'period']] = BioFam[['noi', 'statut_mar', 'period']].astype(int)
         
+        # 2 - Sortie de la table agrégée contenant les infos de BioEmp -> pers
+        m1 = merge(statut, sal, left_index=True, right_index=True, sort=False)  #  on ='index', sort = False)
+        m1 = m1[['noi', 'period', 'workstate', 'sali']]
+        pers = merge(m1, ind, on='noi', sort=False)
+    
+        # pers = pers.iloc['noi','annee','statut','sali','sexe','naiss','findet']
+        pers['period'] = pers['period'] + pers['naiss']
+
         # Traite le problème des familles très nombreuses (plus de 6 enfants)
+        #inutile ? En tout cas mettre le code qui montre d'ou bien ces gens
         BioFam['enf7'] = np.nan
         BioFam['enf8'] = np.nan
         BioFam['enf9'] = np.nan
@@ -156,7 +179,8 @@ class Destinie(DataTil):
         BioFam.loc[(BioFam['mere'] == 0) & ~BioFam['mere_sup'].isnull(), 'mere'] = BioFam.loc[(BioFam['mere'] == 0) & ~BioFam['mere_sup'].isnull(), 'mere_sup']
         
         # Identifiants cohérents avec les identifiants pere/mere/enfants
-        pers['noi'] = pers['noi'] + 1     
+        # faire plutot commencer les noi à 0 comme dans DataTil
+#        pers['noi'] = pers['noi'] + 1     
         
         # 2 - Fusion avec les informations sur déroulés des carrières
         # Informations sur BioFam qu'à partir de 2009 
@@ -236,13 +260,10 @@ class Destinie(DataTil):
                                    [3, 4, 5, 6, 7, 2, 1, 9, 8])
 
         # Bon format pour les dates
-        pers['period'] = 100 * pers['period'] + 1
+        pers['period'] = 100*pers['period'] + 1
              
         # Noms adéquates pour les variables :
         pers = pers.rename(columns={'statut_mar': 'civilstate', 'workstate': 'workstate', 'sali': 'Sali'})
-        pers_enf = pers[['pere', 'mere', 'period', 'noi', 'agem', 'age', 'sexe',
-                         'conj', 'civilstate', 'findet', 'workstate', 'Sali', 
-                         'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6', 'enf7', 'enf8', 'enf9']]
         pers = pers[['period', 'noi', 'agem', 'age', 'sexe', 'pere', 'mere',
                      'conj', 'civilstate', 'findet', 'workstate', 'Sali']]
 
@@ -258,7 +279,7 @@ class Destinie(DataTil):
     # def crea_men(self) :  
           
         # 1- creation des ménages en 2009
-        men_init = pers_enf[pers_enf['period'] == self.survey_date]  
+        men_init = pers[pers['period'] == self.survey_date]  
         print "Nombre d'individus en 2009 :" + str(len(men_init))
         # Fiabilité des déclarations : 
         decla = men_init[['noi', 'conj']][men_init['civilstate'] == 2]
@@ -275,7 +296,6 @@ class Destinie(DataTil):
         # 2- Ménages constitués de couples
         
         # 1ere étape : détermination des têtes de ménage 
-        
         # Personne en couple ayant l'identifiant le plus petit  et leur conjoint
         men.loc[(men['conj'] > men['noi']) & men['civilstate'].isin([2, 5]), 'quimen'] = 0 
         men.loc[(men['conj'] < men['noi']) & men['civilstate'].isin([2, 5]), 'quimen'] = 1         
@@ -294,14 +314,11 @@ class Destinie(DataTil):
         # a - Fille de plus de 75 ans ayant identifiants très proches de la mère
         value = [1537, 1539, 1541, 1543]
         men.loc[men['noi'].isin(value), 'quimen'] = 0
-        
         # b - Majeurs n'ayant aucun parent spécifié
         men.loc[men['pere'].isnull() & men['mere'].isnull() & (25>men['age']) & (men['age']>17), 'quimen'] = 0
-        
         # c- jeunes ayant déjà commencé à travailler
         men.loc[ (men['Sali'] != 0) & (76>men['age']) & men['quimen'].isnull(), 'quimen'] = 0
         
-
         # 2eme étape : attribution du numéro de ménage grâce à la tête de ménage 
         nb_men = len (men[men['quimen'] == 0])
         print "Le nombre de ménages constitués est :" + str(nb_men)
