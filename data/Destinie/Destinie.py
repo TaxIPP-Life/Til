@@ -49,15 +49,16 @@ class Destinie(DataTil):
         BioEmp = pd.read_table(path_data_destinie + 'BioEmp.txt', sep=';',
                                header=None, names=colnames)
         BioFam = pd.read_table(path_data_destinie + 'BioFam.txt', sep=';',
-                               header=None, names=['noi', 'pere', 'mere', 'statut_mar',
-                                                   'conj', 'enf1', "enf2",
-                                                   "enf3", 'enf4', 'enf5', 'enf6']) 
-        
+                               header=None, names=['noi', 'pere', 'mere', 'civilstate',
+                                                   'conj', 'enf1', 'enf2',
+                                                   'enf3', 'enf4', 'enf5', 'enf6']) 
+            
         def _correction_fam():
             # Ambiguité sur Pacs/marié (ex : 8669 et 8668 se déclarent en couple mais l'un en marié l'autre en pacsé)
-            BioFam.loc[BioFam['statut_mar'] == 5, 'statut_mar'] = 2
-            BioFam.loc[((BioFam['statut_mar'] == 2) | BioFam['statut_mar'].isnull()) & (BioFam['conj'].isnull()| (BioFam['conj'] == 0)), 'statut_mar'] = 1
-        
+            BioFam.loc[BioFam['civilstate'] == 5, 'civilstate'] = 2
+            BioFam.loc[((BioFam['civilstate'] == 2) | BioFam['civilstate'].isnull()) & (BioFam['conj'].isnull()| (BioFam['conj'] == 0)), 'civilstate'] = 1
+            # Indice more Pythonic
+
         def _BioEmp_in_3():
             ''' Division de BioEmpen trois tables '''
             taille = len(BioEmp)/3
@@ -109,14 +110,23 @@ class Destinie(DataTil):
 
         BioFam = BioFam[~delimiters]
         BioFam['period'] = period
-        year_ini = self.survey_year = 2009
+        list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
+        BioFam[list_enf + ['pere','mere', 'conj']] -= 1
+        print "Fin traitement BioFam"
+        #BioFam = BioFam.fillna(-1).astype(int)
+        
+        print "Début de l'initialisation des données pour 2009"
+        
+    # 1-  Sélection des individus présents en 2009 et vérifications des liens de parentés
+        year_ini = self.survey_year  = 2009 # pourquoi besoin de rajouter cette égalité?
         ind = merge(ind.loc[ind['naiss'] <= year_ini], BioFam[BioFam['period']==year_ini], 
                     left_index=True, right_index=True, how='left')
-        ind.loc[ind['enf1']<0,'enf1'] = np.nan
+        ind = ind.loc[:, :'enf6']
+        ind.loc[((ind['civilstate'] == 2) | ind['civilstate'].isnull()) & (ind['conj'].isnull()| (ind['conj'] == -1)), 'civilstate'] = 1
+        ind['noi'] = ind.index
+        ind.loc[ind['enf1']<0,'enf1'] = np.nan        
+        print "Nombre d'individus dans la base initiale de 2009 : " + str(len(ind))
 
-        list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
-        # changement d'indice more pythonic
-        ind[list_enf + ['pere','mere']] -= 1 
         pere_ini = ind['pere']
         ind['pere'] = -1 
         mere_ini = ind['mere']
@@ -126,61 +136,105 @@ class Destinie(DataTil):
             mere = ind.loc[ (ind['sexe']) & (ind[var].notnull()), var]
             ind['pere'][pere.values] = pere.index.values
             ind['mere'][mere.values] = mere.index.values
-            
-        # check : ind['pere'] == pere_ini : vrai que pour les parents de la même famille -> utilisé pour les ménages !! 
+        ind.loc[(ind['pere']== -1), 'pere'] = pere_ini
+        ind.loc[(ind['mere']== -1), 'mere'] = mere_ini
+        ind.loc[ind['conj'] < 0, 'conj'] = np.nan
+        ind.loc[ind['pere'] < 0,'pere'] = np.nan
+        ind.loc[ind['mere'] < 0,'mere'] = np.nan
+        ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct', 'noi', 'pere', 'mere', 'civilstate', 'conj']]
         # valeurs négatives à np.nan pour la fonction minimal_type 
-        ind.loc[ind['pere'] == -1,'pere'] = np.nan
-        ind.loc[ind['mere'] == -1,'mere'] = np.nan
-        ind = minimal_dtype(ind)
-        pdb.set_trace()
-        ## Note importante, on suppose que l'on repère parfaitement les décès avec BioEmp (on oublie du coup les valeurs négatives)
-        # on travaille sur l'annee 2009 pour éliminer les variables enfants
-
-#        # test de faire un panel
-#        BioFam = minimal_dtype(BioFam)
-#        demo = {}
-#        for k in range(1, len(annee)): 
-#            demo[self.survey_year+k-1] = BioFam.loc[(1+annee[k-1]):annee[k]]
-#                    
-#        très long : demography = pd.Panel.from_dict(demo)
-        # BioFam.to_csv('test_annee.csv', sep=',')-> Toutes les années de changement sont OK
-        BioFam[['noi', 'statut_mar', 'period']] = BioFam[['noi', 'statut_mar', 'period']].astype(int)
+        # ind = minimal_dtype(ind)
+    
+    # 2- Constitution des ménages de 2009
+        ind['quimen'] = -1
+        ind['men'] = -1
+        ind['age'] = year_ini - ind['naiss']
+          
         
+        # ind['pere'] == pere_ini : vrai que pour les parents de la même famille -> utilisé pour les ménages !! 
+        
+        # 1ere étape : détermination des têtes de ménage 
+        # Personne en couple ayant l'identifiant le plus petit  et leur conjoint
+        ind.loc[( ind['conj'] > ind['noi'] ) & ( ind['civilstate'] == 2 ), 'quimen'] = 0 
+        ind.loc[(ind['conj'] < ind['noi']) & ( ind['civilstate'] == 2 ), 'quimen'] = 1         
+        print len (ind[ind['quimen'] == 0])  # 9457
+        print len (ind[ind['quimen'] == 1])  # 9457
+        ind.to_csv('ind.csv')
+        
+        # Célibataires veuves ou divorcées ayant entre 22 et 75 ans pour les femmes
+        ind.loc[ind['civilstate'].isin([1, 3, 4]) & (ind['age'] < 76) & (ind['age'] > 21) & ind['sexe'], 'quimen'] = 0
+        print len (ind[ind['quimen'] == 0])  # 14 807 : +5350
+        
+        # Célibataires ou veufs ayant entre 25 et 75 ans pour les hommes
+        ind.loc[ind['civilstate'].isin([1, 3, 4]) & (ind['age'] < 76) & (ind['age'] > 24) & ~ind['sexe'], 'quimen'] = 0
+        print len (ind[ind['quimen'] == 0])  # 18 410 : + 4231
+ 
+        # Cas particuliers
+        # a - Fille de plus de 75 ans ayant identifiants très proches de la mère
+        value = [1536, 1538, 1540, 1542]
+        ind.loc[ind['noi'].isin(value), 'quimen'] = 0
+        # b - Majeurs n'ayant aucun parent spécifié
+        ind.loc[ind['pere'].isnull() & ind['mere'].isnull() & (25>ind['age']) & (ind['age']>17), 'quimen'] = 0
+        
+        # 2eme étape : attribution du numéro de ménage grâce à la tête de ménage 
+        nb_men = len (ind[ind['quimen'] == 0]) # 19 471
+        print "Le nombre de ménages constitués est :" + str(nb_men)
+        ind['men'][ind['quimen'] == 0] = range(0, nb_men)  
+
+        # 3eme étape : attribution du numéro de ménage aux conjoints
+        conj = ind.loc[ind['conj'].notnull() & (ind['quimen'] == 0), ['conj','men']].astype(int)
+        ind['men'][conj['conj'].values] = conj['men'].values
+
+        # 4eme étape : attribution du numéro de ménages aux enfants n'ayant pas déjà constitués un ménage
+        # -> enfants de moins de 21 ans si fille et de moins de 25 ans si garçon 
+        # -> Les enfants sont prioritairement attribués au ménage de leur mère
+        mere = ind.loc[ind['mere'].notnull() & (ind['men'] == -1), 'mere']
+        ind['men'][mere.index.values] = ind['men'][mere.values]
+                
+        pere = ind.loc[ind['pere'].notnull() & (ind['men'] == -1), 'pere']
+        ind['men'][pere.index.values] = ind['men'][pere.values]
+
+        # 5eme étape : attribution du numéro de ménages pour parents à charge
+        # -> On considère que les parents à charge sont ceux déclarés par leur enfant lors de l'enquête
+        # Parents vivant dans le même ménage qu'un de leurs enfants :
+        without_men = ind.loc[ind['men'] == -1,'noi']
+        care_pere = ind.loc[(ind['pere'] == pere_ini) & ind['pere'].isin(without_men), 'pere']
+        is_duplicated = care_pere.duplicated('pere')
+        care_pere = care_pere[~care_pere.duplicated('pere')]
+        ind['men'][care_pere.values] = ind['men'][care_pere.index.values]
+        
+        care_mere = ind.loc[(ind['mere'] == mere_ini) & ind['mere'].isin(without_men), 'mere']
+        is_duplicated = care_mere.duplicated('mere')
+        care_mere = care_mere[~care_mere.duplicated('mere')]
+        ind['men'][care_mere.values] = ind['men'][care_mere.index.values]
+        
+        # 6eme étape : création de deux ménages fictifs résiduels :
+        # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = -4
+        ind.loc[ ind['pere'].isnull() &  ind['mere'].isnull() & (ind['age']<18), 'men' ] = -4
+        
+        # Personnes âgées non prises en charge par l'un de leur enfant : maison de retraite = -5
+        ind.loc[ (ind['men'] == -1) & (ind['age']> 74), 'men' ] = -5
+        ind.to_csv('ind.csv')
+        print len(ind[ind['men']==-1])
+        pdb.set_trace() 
+        
+    # 3- Constitutions des foyers fiscaux de 2009
+        
+        ## Note importante, on suppose que l'on repère parfaitement les décès avec BioEmp (on oublie du coup les valeurs négatives)
+        BioFam[['noi', 'civilstate', 'period']] = BioFam[['noi', 'civilstate', 'period']].astype(int)
+        pdb.set_trace()
+        '''
         # 2 - Sortie de la table agrégée contenant les infos de BioEmp -> pers
         m1 = merge(statut, sal, left_index=True, right_index=True, sort=False)  #  on ='index', sort = False)
         m1 = m1[['noi', 'period', 'workstate', 'sali']]
         pers = merge(m1, ind, on='noi', sort=False)
-    
+        pers.to_csv('pers.csv')
+        pdb.set_trace()
         # pers = pers.iloc['noi','annee','statut','sali','sexe','naiss','findet']
         pers['period'] = pers['period'] + pers['naiss']
 
-        # Traite le problème des familles très nombreuses (plus de 6 enfants)
-        #inutile ? En tout cas mettre le code qui montre d'ou bien ces gens
-        BioFam['enf7'] = np.nan
-        BioFam['enf8'] = np.nan
-        BioFam['enf9'] = np.nan
-        BioFam.loc[BioFam['noi'].isin([18343, 18344]), ['enf7', 'enf8', 'enf9']]=[18351,18352,18353]
-        BioFam.loc[BioFam['noi'].isin([13343, 13342]), 'enf7']= 13350
-        BioFam.loc[BioFam['noi'].isin([39212, 39213]), ['enf7', 'enf8']]= [39221, 39220]
-
-        # Traite le problème des enfants morts avants leurs parents
-        pere_sup = pd.read_csv('pere_sup.csv')
-        pere_sup = pere_sup.astype(int)
-        BioFam = merge(BioFam, pere_sup, how='left', on='noi',
-                       left_index=False, right_index=False,
-                       suffixes=('', '_sup'), copy=True)
-        BioFam.loc[((BioFam['pere'] == 0) | BioFam['pere_sup'].isnull()) & ~BioFam['pere_sup'].isnull(), 'pere'] = BioFam.loc[((BioFam['pere'] == 0) | BioFam['pere_sup'].isnull()) & ~BioFam['pere_sup'].isnull(), 'pere_sup']
-        
-        mere_sup = pd.read_csv('mere_sup.csv')
-        mere_sup = mere_sup.astype(int)
-        BioFam = merge(BioFam, mere_sup, how='left', on='noi',
-                       left_index=False, right_index=False,
-                       suffixes=('', '_sup'), copy=True)
-        BioFam.loc[(BioFam['mere'] == 0) & ~BioFam['mere_sup'].isnull(), 'mere'] = BioFam.loc[(BioFam['mere'] == 0) & ~BioFam['mere_sup'].isnull(), 'mere_sup']
-        
-        # Identifiants cohérents avec les identifiants pere/mere/enfants
-        # faire plutot commencer les noi à 0 comme dans DataTil
-#        pers['noi'] = pers['noi'] + 1     
+        '''
+      
         
         # 2 - Fusion avec les informations sur déroulés des carrières
         # Informations sur BioFam qu'à partir de 2009 
@@ -192,13 +246,13 @@ class Destinie(DataTil):
         # sélection des informations d'intéret 
         pers = merge(pers, BioFam, on=['noi', 'period'], how='left') 
         pers = pers[['period', 'noi', 'sexe', 'naiss', 'findet', 'workstate', 'sali', 
-                     'pere', 'mere', 'conj', 'statut_mar', 'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6', 'enf7', 'enf8', 'enf9']]
+                     'pere', 'mere', 'conj', 'civilstate', 'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6', 'enf7', 'enf8', 'enf9']]
         # Création d'une ligne fictive 2061 pour délimiter les fillna dans la partie suivante
         index_del = range(0, pers['noi'].max() + 1)
         Delimit = pd.DataFrame(index=index_del,
                                columns=['period', 'noi', 'sexe', 'naiss', 'findet',
                                          'workstate', 'sali', 'pere', 'mere',
-                                         'conj', 'statut_mar', 'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6',
+                                         'conj', 'civilstate', 'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6',
                                          'enf7', 'enf8', 'enf9'])
         Delimit['period'] = self.last_year + 1
         Delimit['noi'] = Delimit.index + 1
@@ -231,13 +285,13 @@ class Destinie(DataTil):
         pers['age'] = pers['period'] - pers['naiss']
         pers['agem'] = 12 * pers['age']
         
-        pers.loc[(pers['age'] < pers['findet']) & (pers['period'] < self.survey_year), 'statut_mar'] = 1
+        pers.loc[(pers['age'] < pers['findet']) & (pers['period'] < self.survey_year), 'civilstate'] = 1
         pers.loc[(pers['age'] < pers['findet']) & (pers['period'] < self.survey_year), 'conj'] = np.nan 
         
         # Données inutiles et valeurs manquantes
         pers = pers.loc[pers['period'] != self.last_year + 1, :]
         pers[['conj', 'pere', 'mere']] = pers[['conj', 'pere', 'mere']].replace(0, np.nan)
-        pers.loc[((pers['statut_mar'] == 2) | pers['statut_mar'].isnull()) & (pers['conj'].isnull()), 'statut_mar'] = 1
+        pers.loc[((pers['civilstate'] == 2) | pers['civilstate'].isnull()) & (pers['conj'].isnull()), 'civilstate'] = 1
         print "Fin traitement BioFam"       
         print "temps de BioFam : " + str(time.time() - start_time) + "s"
    
@@ -263,7 +317,7 @@ class Destinie(DataTil):
         pers['period'] = 100*pers['period'] + 1
              
         # Noms adéquates pour les variables :
-        pers = pers.rename(columns={'statut_mar': 'civilstate', 'workstate': 'workstate', 'sali': 'Sali'})
+        pers = pers.rename(columns={ 'workstate': 'workstate', 'sali': 'Sali'})
         pers = pers[['period', 'noi', 'agem', 'age', 'sexe', 'pere', 'mere',
                      'conj', 'civilstate', 'findet', 'workstate', 'Sali']]
 
