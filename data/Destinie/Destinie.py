@@ -118,13 +118,11 @@ class Destinie(DataTil):
         print "Début de l'initialisation des données pour 2009"
         
     # 1-  Sélection des individus présents en 2009 et vérifications des liens de parentés
-        year_ini = self.survey_year  = 2009 # pourquoi besoin de rajouter cette égalité?
+        year_ini = self.survey_year # = 2009 
         ind = merge(ind.loc[ind['naiss'] <= year_ini], BioFam[BioFam['period']==year_ini], 
                     left_index=True, right_index=True, how='left')
-        ind = ind.loc[:, :'enf6']
-        ind.loc[((ind['civilstate'] == 2) | ind['civilstate'].isnull()) & (ind['conj'].isnull()| (ind['conj'] == -1)), 'civilstate'] = 1
-        ind['noi'] = ind.index
-        ind.loc[ind['enf1']<0,'enf1'] = np.nan        
+        ind = ind.loc[:, :'enf6'] # c'est vraiment pas beau : préferer des choses plus explicites (ce qu'on retire ou tout ce qu'on garde
+        ind.loc[((ind['civilstate'] == 2) | ind['civilstate'].isnull()) & (ind['conj'].isnull()| (ind['conj'] == -1)), 'civilstate'] = 1  
         print "Nombre d'individus dans la base initiale de 2009 : " + str(len(ind))
 
         pere_ini = ind['pere']
@@ -132,42 +130,47 @@ class Destinie(DataTil):
         mere_ini = ind['mere']
         ind['mere'] = -1        
         for var in list_enf:
-            pere = ind.loc[ (~ind['sexe']) & (ind[var].notnull()), var]
+            ind.loc[ind[var]<0,var] = np.nan   
+            pere = ind.loc[ (~ind['sexe']) & (ind[var].notnull()), var] 
             mere = ind.loc[ (ind['sexe']) & (ind[var].notnull()), var]
+            init = pere_ini[~ind['sexe']][pere.values]
+            assert (init[init>=0] == pere.index.values[init>=0]).all()
+            init = mere_ini[ind['sexe']][mere.values]
+            assert (init[init>=0] == mere.index.values[init>=0]).all()
             ind['pere'][pere.values] = pere.index.values
             ind['mere'][mere.values] = mere.index.values
-        ind.loc[(ind['pere']== -1), 'pere'] = pere_ini
-        ind.loc[(ind['mere']== -1), 'mere'] = mere_ini
+
+        ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct', 'pere', 'mere', 'civilstate', 'conj']]
+        
+        # valeurs négatives à np.nan pour la fonction minimal_type     
         ind.loc[ind['conj'] < 0, 'conj'] = np.nan
         ind.loc[ind['pere'] < 0,'pere'] = np.nan
         ind.loc[ind['mere'] < 0,'mere'] = np.nan
-        ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct', 'noi', 'pere', 'mere', 'civilstate', 'conj']]
-        # valeurs négatives à np.nan pour la fonction minimal_type 
-        # ind = minimal_dtype(ind)
+        ind = minimal_dtype(ind)
     
     # 2- Constitution des ménages de 2009
         ind['quimen'] = -1
         ind['men'] = -1
         ind['age'] = year_ini - ind['naiss']
           
-        
-        # ind['pere'] == pere_ini : vrai que pour les parents de la même famille -> utilisé pour les ménages !! 
+        # On utilise pere_ini : vrai que pour les parents de la même famille -> utilisé pour les ménages !! 
         
         # 1ere étape : détermination des têtes de ménage 
         # Personne en couple ayant l'identifiant le plus petit  et leur conjoint
+        ind['noi'] = ind.index 
         ind.loc[( ind['conj'] > ind['noi'] ) & ( ind['civilstate'] == 2 ), 'quimen'] = 0 
         ind.loc[(ind['conj'] < ind['noi']) & ( ind['civilstate'] == 2 ), 'quimen'] = 1         
         print len (ind[ind['quimen'] == 0])  # 9457
         print len (ind[ind['quimen'] == 1])  # 9457
-        ind.to_csv('ind.csv')
+#        ind.to_csv('ind.csv')
         
         # Célibataires veuves ou divorcées ayant entre 22 et 75 ans pour les femmes
         ind.loc[ind['civilstate'].isin([1, 3, 4]) & (ind['age'] < 76) & (ind['age'] > 21) & ind['sexe'], 'quimen'] = 0
-        print len (ind[ind['quimen'] == 0])  # 14 807 : +5350
+        print sum(ind['quimen'] == 0)  # 14 807 : +5350
         
         # Célibataires ou veufs ayant entre 25 et 75 ans pour les hommes
         ind.loc[ind['civilstate'].isin([1, 3, 4]) & (ind['age'] < 76) & (ind['age'] > 24) & ~ind['sexe'], 'quimen'] = 0
-        print len (ind[ind['quimen'] == 0])  # 18 410 : + 4231
+        print sum(ind['quimen'] == 0)  # 18 410 : + 4231
  
         # Cas particuliers
         # a - Fille de plus de 75 ans ayant identifiants très proches de la mère
@@ -188,9 +191,10 @@ class Destinie(DataTil):
         # 4eme étape : attribution du numéro de ménages aux enfants n'ayant pas déjà constitués un ménage
         # -> enfants de moins de 21 ans si fille et de moins de 25 ans si garçon 
         # -> Les enfants sont prioritairement attribués au ménage de leur mère
+        pdb.set_trace()
         mere = ind.loc[ind['mere'].notnull() & (ind['men'] == -1), 'mere']
         ind['men'][mere.index.values] = ind['men'][mere.values]
-                
+        
         pere = ind.loc[ind['pere'].notnull() & (ind['men'] == -1), 'pere']
         ind['men'][pere.index.values] = ind['men'][pere.values]
 

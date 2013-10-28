@@ -94,13 +94,15 @@ def new_link_with_men(table, table_exp, link_name):
 def _MinType_col_int_pos(col):
     '''
     retourne le type minimal d'une serie d'entier positif
-    on notera le -2 car on a deux valeurs prises par 0 et -1
+    on notera le -2 car on a deux valeurs prises par 0 et -1 
+    cela dit, on retire une puissance de deux pour tenir compte des négatifs
+    je ne sais pas si on peut préciser qu'on code que des positifs.
     '''
-    if max(abs(col)) < 2**8-2:
+    if max(abs(col)) < 2**7-2:
         return col.astype(np.int8)
-    elif max(abs(col)) < 2**16-2:
+    elif max(abs(col)) < 2**15-2:
         return col.astype(np.int16)
-    elif max(abs(col)) < 2**32-2:
+    elif max(abs(col)) < 2**31-2:
         return col.astype(np.int32)
     else:
         return col.astype(np.int64)
