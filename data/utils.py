@@ -154,17 +154,47 @@ def minimal_dtype(table):
                             modif['float'].append(colname)
                 except:
                     pdb.set_trace()
-    
-    print('Object type columns have not been modified : \n ', modif['object'])
-    print('Float type columns have not been modified : \n ', modif['float'])
-    print('Integer type columns with positive AND negative values have not been modified : \n ', modif['other_int'])
-    print('There is no much distinct values for following variables : \n ', modif['probleme'])
-    print('Note that these columns are transformed into boolean : \n ', modif['boolean'])
-    print('Note also that in these cases, missing value are set to False')
-    print('Dtype have been also optimized for : \n', modif['int_one_sign'] )
+    if modif['object'] != [] :
+        print('Object type columns have not been modified : \n ', modif['object'])
+    if modif['float'] != [] :
+        print('Float type columns have not been modified : \n ', modif['float'])
+    if modif['other_int'] != [] :
+        print('Integer type columns with positive AND negative values have not been modified : \n ', modif['other_int'])
+    if modif['probleme'] != [] :
+        print('There is no much distinct values for following variables : \n ', modif['probleme'])
+    if modif['boolean'] != [] :
+        print('Note that these columns are transformed into boolean : \n ', modif['boolean'])
+        print('Note also that in these cases, missing value are set to False')
+    if modif['int_one_sign'] != [] :
+        print('Dtype have been also optimized for : \n', modif['int_one_sign'] )
     print('Missing values were set to -1 (or +1 when only negative values)')
 
     return table
 
 
-
+    
+def drop_simult_row(data, var_dup): 
+    '''
+    Création indicatrice qui vaut 1 si la ligne est la même que la pécédente
+    var_dup = ['var1', 'var2'... 'vark'] : variables à tester d'une ligne à l'autre
+     Version 0 : trop longue
+    data['dup'] = 0
+    def def_row(i):
+        row = list(data.loc[i,var_dup])
+        return row
+    
+    row = def_row(0)
+    for i in xrange(1,len (data)):
+        test = def_row(i)
+        if test != row : 
+            row = test
+        else:
+            data['dup'][i] = 1
+    data = data[data['dup'] != 1]
+    return data
+    '''
+    data['id'] = data.index
+    data = data.join(data.groupby(var_dup)['id'].sum(), on=var_dup, rsuffix='_dup')
+    data = data.loc[data['id_dup'].shift(1) != data['id_dup']]
+    data = data.drop(['id', 'id_dup'],1)
+    return data

@@ -50,7 +50,9 @@ class DataTil(object):
         raise NotImplementedError()
         print "fin de l'importation des données"
 
-                
+    #def rename_var(self, [pe1e, me1e]):
+        # To DO : fonction qui renomme les variables pour qu'elles soirent au format liam
+        # period, id, agem, age, sexe, men, quimen, foy quifoy pere, mere, conj, dur_in_couple, civilstate, workstate, sali, findet
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
         - Si on dict_to_drop is not None, il doit avoir la forme table: [liste de variables],
@@ -67,7 +69,7 @@ class DataTil(object):
             self.men = self.men.drop(dict_to_drop['men'], axis=1)
         if 'foy' in dict_to_drop.keys():
             self.foy = self.foy.drop(dict_to_drop['foy'], axis=1)            
-            
+
         
     def format_initial(self):
         raise NotImplementedError()
@@ -87,14 +89,100 @@ class DataTil(object):
         '''    
         raise NotImplementedError()
 
-
+    
+    def correction_civilstate(self):
+        '''
+        verification que les états civils sont déclarer réciproquement et corrections quand ce n'est pas le cas
+        '''
+        BioFam = self.BioFam
+        BioFam = BioFam.fillna(-1)
+        # Corrections préliminaires
+        BioFam.loc[ (BioFam['civilstate'].isin([2,5]) | (BioFam['civilstate'] == -1))  & (BioFam['conj'] == -1), 'civilstate'] = 1
+        for year in xrange(self.survey_year, self.survey_year): 
+            # Rq : A terme, faire une fonction qui s'adapte à BioFam pour check si les unions/désunions sont signifiés 
+            # pour les deux personnses concernées
+            corr = BioFam[BioFam['period'] == year]
+            # Réciprocité des déclarations
+            test_spouse = corr.ix[(corr['civilstate'].isin([2,5])),['conj','id','civilstate']]
+            test_spouse = merge(test_spouse,test_spouse,
+                                 left_on='id',right_on='conj',how='outer')
+            prob_spouse = test_spouse['id_x'] != test_spouse['conj_y']
+            if sum(prob_spouse) != 0 :
+                print "Le nombre d'époux non réciproques est : " + str(sum(prob_spouse)) + " en " + str(year) + " mais on corrige"
+                
+            
+            # Confusion pacs/marriage
+            test = corr.ix[(corr['conj'] != -1) & (corr['conj']>corr['id']), ['conj','id','civilstate']]
+            test2 = merge(test, test, left_on='id', right_on='conj', suffixes=('','_conj'))
+            test2 = test2[(test2['civilstate']==2) & (test2['civilstate_conj']==5)]['conj', 'id']
+            if sum(test2) != 0:
+                   print str(sum((test2['civilstate']==2) & (test2['civilstate_conj']==5))) + " confusions mariages/pacs en " + str(year) + " mais on corrige"
+                   #Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont 
+                   coor['civilstate'][test2['conj'].values] = coor['civilstate'][test2['id'].values]
+            BioFam[BioFam['period'] == year] = corr
+        self.BioFam = BioFam
+        
     def creation_foy(self):
         '''
         Créer les déclarations fiscale. Il s'agit principalement de regrouper certains individus entre eux.
         Ce n'est qu'ici qu'on s'occupe de verifier que les individus mariés ou pacsé ont le même statut matrimonial
         que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
         '''
-        raise NotImplementedError()
+        ind = self.ind             
+        ind[['conj', 'pere']] = ind[['conj', 'pere']].fillna(-1).astype(int)
+        ind.to_csv('tetstt.csv')
+        print ("creation des declaration")
+
+        # Identification des personnes en couple
+        spouse = (ind['conj'] != -1) & ind['civilstate'].isin([2,5]) 
+        print len(spouse)
+        # selection du conjoint qui va être le declarant : pas d'incidence en théorie
+        decl = spouse & ( ind['conj'] > ind['id'])
+        conj = spouse & ~decl
+        
+        #Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
+        # attention, on ne peut être à charge que si on n'est pas soi-même parent
+        pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) |  (ind['age']<21) ) 
+        print len(pac)
+        # idendifiant foyer, d'abord les déclarants puis rattachement des autres personnes
+        ind['quifoy'] = 0
+        ind['quifoy'][conj] = 1
+        ind['quifoy'][pac] = 2
+        vous = (ind['quifoy'] == 0)
+        print sum(vous)
+        print sum(ind['quifoy'] == 1)
+        ind['foy'] = -1
+        ind.loc[vous,'foy']= range(sum(vous))
+        ind.loc[conj,'foy'] = ind.ix[ind['conj'][conj],'foy']
+        
+        # Enfants à charge en priorité sur la décla du père
+        pac_pere = pac & (ind['pere'] != -1)
+        ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],'foy']
+
+        pac_mere = pac & (ind['foy'] == -1)   
+        ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],'foy'] 
+        print sum(ind['foy']==-1)
+        assert sum(ind['foy']==-1) == 0
+        
+        foy = DataFrame({'id':range(sum(vous)), 'vous': ind['id'][vous], 'men':ind['men'][vous] })
+        #repartition des revenus du ménage par déclaration
+        # var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
+        # foy_men = men[var_to_declar]
+        # hypothèse réparartition des élements à égalité entre les déclarations : discutable
+        # nb_foy_men = ind[vous].groupby('men').size()
+        # foy_men = foy_men.div(nb_foy_men,axis=0) 
+        
+        # foy = merge(foy,foy_men, left_on='men', right_index=True)
+        foy['period'] = self.survey_date
+        foy['vous'] = ind['id'][vous]
+        foy = foy.reset_index(range(len(foy)))
+        foy['id'] = foy.index
+
+        #### fin de declar
+        self.ind = ind
+        self.foy = foy
+        
+        print("fin de la creation des declarations")
         
     def creation_par_look_enf(self):
         '''

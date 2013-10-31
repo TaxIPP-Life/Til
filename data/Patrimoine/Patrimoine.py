@@ -67,7 +67,7 @@ class Patrimoine(DataTil):
 
         def _correction_carriere(ind):
             '''
-            Fait des corrections sur le déroulé des caarrières(à partir de vérif écrit en R)
+            Fait des corrections sur le déroulé des carrières(à partir de vérif écrit en R)
             ''' 
             # Note faire attention à la numérotation à partir de 0
             #TODO: verifier que c'est bien pris en compte malgré le fait qu'on ne passe pas par .loc 
@@ -480,9 +480,6 @@ class Patrimoine(DataTil):
         self.ind = ind
         self.foy = foy
         
-
-
-
         print("fin de la creation des declarations")
 #         pdb.set_trace() 
                 
