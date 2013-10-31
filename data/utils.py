@@ -154,18 +154,18 @@ def minimal_dtype(table):
                             modif['float'].append(colname)
                 except:
                     pdb.set_trace()
-    if modif['object'] != [] :
+    if modif['object']:
         print('Object type columns have not been modified : \n ', modif['object'])
-    if modif['float'] != [] :
+    if modif['float']:
         print('Float type columns have not been modified : \n ', modif['float'])
-    if modif['other_int'] != [] :
+    if modif['other_int']:
         print('Integer type columns with positive AND negative values have not been modified : \n ', modif['other_int'])
-    if modif['probleme'] != [] :
+    if modif['probleme']:
         print('There is no much distinct values for following variables : \n ', modif['probleme'])
-    if modif['boolean'] != [] :
+    if modif['boolean']:
         print('Note that these columns are transformed into boolean : \n ', modif['boolean'])
         print('Note also that in these cases, missing value are set to False')
-    if modif['int_one_sign'] != [] :
+    if modif['int_one_sign']:
         print('Dtype have been also optimized for : \n', modif['int_one_sign'] )
     print('Missing values were set to -1 (or +1 when only negative values)')
 
