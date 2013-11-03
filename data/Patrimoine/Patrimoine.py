@@ -41,8 +41,10 @@ class Patrimoine(DataTil):
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
         self.methods_order = ['load','drop_variable','format_initial','conjoint','enfants',
-                      'creation_par_look_enf','expand_data','matching_par_enf','matching_couple_hdom'
-                      'creation_foy','mise_au_format']
+                      'creation_par_look_enf','expand_data','matching_par_enf','matching_couple_hdom',
+                      'creation_foy','mise_au_format','var_sup','store_to_liam']
+    
+# drop_variable() doit tourner avant format_initial() car on aurait un problème avec les variables qui sont renommées.
 # explication de l'ordre en partant de la fin, besoin des couples pour et des liens parents enfants pour les mariages.
 # Ces liens ne peuvent se faire qu'après la dupplication pour pouvoir avoir le bon nombre de parents et de bons matchs
 # La dupplication, c'est mieux si elle se fait après la création de par_look_enf, plutôt que de chercher à créer par_look_enf à partir de la base étendue
@@ -626,7 +628,7 @@ class Patrimoine(DataTil):
         self.ind = ind
         self.drop_variable({'ind':['enf','per1e','mer1e','gpar'] + ['jepnais','jemnais','jemprof']})
     
-    def match_couple_hdom(self):
+    def matching_couple_hdom(self):
         '''
         Certaines personnes se déclarent en couple avec quelqu'un ne vivant pas au domicile, on les reconstruit ici. 
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
@@ -694,6 +696,7 @@ if __name__ == '__main__':
     import time
     start = time.clock()
     data = Patrimoine()
+    pdb.set_trace()
     data.load()
     data.drop_variable()
     # drop_variable() doit tourner avant format_initial() car on fait comme si diplome par exemple n'existait pas

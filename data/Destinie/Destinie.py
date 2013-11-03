@@ -324,16 +324,17 @@ class Destinie(DataTil):
         self.ind = ind
         print "Fin de l'actualisation des changements jusqu'en 2060"
     
-data = Destinie()
-# Importation des données et corrections préliminaires
-data.lecture_BioEmp()
-data.lecture_BioFam()
-data.correction_civilstate()
-# Création de la table ind de 2009 (infos de BioFam + BioEmp pour les personnes présentes en 2009) et men en 2009
-data.Tables_ini()
-# Constitutions des foyers fiscaux de 2009
-data.creation_foy()
-# Actualisations des changements : Une ligne par changement
+if __name__ == '__main__':
+    data = Destinie()
+    # Importation des données et corrections préliminaires
+    data.lecture_BioEmp()
+    data.lecture_BioFam()
+    data.correction_civilstate()
+    # Création de la table ind de 2009 (infos de BioFam + BioEmp pour les personnes présentes en 2009) et men en 2009
+    data.Tables_ini()
+    # Constitutions des foyers fiscaux de 2009
+    data.creation_foy()
+    # Actualisations des changements : Une ligne par changement
 
         
 pdb.set_trace() 

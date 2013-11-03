@@ -429,8 +429,12 @@ class DataTil(object):
                 table.flush()  
         h5file.close()
             
-
     def store(self):
         self.men.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/men')
         self.ind.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/ind')
         self.foy.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/foy')
+
+    def run_all(self):
+        for method in self.methods_order:
+            eval('self.'+ method + '()')        
+            
