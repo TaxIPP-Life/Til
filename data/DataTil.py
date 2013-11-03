@@ -45,14 +45,15 @@ class DataTil(object):
         self.done = []
         self.order = []
         
-    def lecture(self):
+    def load(self):
         print "début de l'importation des données"
         raise NotImplementedError()
         print "fin de l'importation des données"
 
     #def rename_var(self, [pe1e, me1e]):
-        # To DO : fonction qui renomme les variables pour qu'elles soirent au format liam
+        # TODO : fonction qui renomme les variables pour qu'elles soient au format liam
         # period, id, agem, age, sexe, men, quimen, foy quifoy pere, mere, conj, dur_in_couple, civilstate, workstate, sali, findet
+        
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
         - Si on dict_to_drop is not None, il doit avoir la forme table: [liste de variables],
@@ -92,7 +93,8 @@ class DataTil(object):
     
     def correction_civilstate(self):
         '''
-        verification que les états civils sont déclarer réciproquement et corrections quand ce n'est pas le cas
+        verification que les états civils des deux membres d'un couple correspondent
+        et corrections quand ce n'est pas le cas
         '''
         BioFam = self.BioFam
         BioFam = BioFam.fillna(-1)
@@ -116,9 +118,9 @@ class DataTil(object):
             test2 = merge(test, test, left_on='id', right_on='conj', suffixes=('','_conj'))
             test2 = test2[(test2['civilstate']==2) & (test2['civilstate_conj']==5)]['conj', 'id']
             if sum(test2) != 0:
-                   print str(sum((test2['civilstate']==2) & (test2['civilstate_conj']==5))) + " confusions mariages/pacs en " + str(year) + " mais on corrige"
-                   #Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont 
-                   coor['civilstate'][test2['conj'].values] = coor['civilstate'][test2['id'].values]
+                print str(sum((test2['civilstate']==2) & (test2['civilstate_conj']==5))) + " confusions mariages/pacs en " + str(year) + " mais on corrige"
+                # Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont 
+                coor['civilstate'][test2['conj'].values] = coor['civilstate'][test2['id'].values]
             BioFam[BioFam['period'] == year] = corr
         self.BioFam = BioFam
         

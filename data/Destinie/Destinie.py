@@ -37,7 +37,7 @@ class Destinie(DataTil):
         # TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         # TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
-        self.methods_order = ['lecture']
+        self.methods_order = ['load']
        
     def lecture_BioEmp(self):
         longueur_carriere = 106 #self.max_dur

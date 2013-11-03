@@ -40,7 +40,7 @@ class Patrimoine(DataTil):
         #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
-        self.methods_order = ['lecture','drop_variable','format_initial','conjoint','enfants',
+        self.methods_order = ['load','drop_variable','format_initial','conjoint','enfants',
                       'creation_par_look_enf','expand_data','matching_par_enf','matching_couple_hdom'
                       'creation_foy','mise_au_format']
 # explication de l'ordre en partant de la fin, besoin des couples pour et des liens parents enfants pour les mariages.
@@ -50,7 +50,7 @@ class Patrimoine(DataTil):
 # Ensuite, c'est assez évident que le format initial et le drop_variable doivent se faire le plus tôt possible
 # on choisit de faire le drop avant le format intitial, on pourrait faire l'inverse en étant vigilant sur les noms
         
-    def lecture(self):
+    def load(self):
         print "début de l'importation des données"
 #fonctionne mais est trop long
 #         ind = pd.read_stata(path_data_patr + 'individu.dta')
@@ -323,7 +323,7 @@ class Patrimoine(DataTil):
             if len(potential) == 1:
                 conj.loc[ conj['id_x']==id, 'id_y'] = potential['id_y']
             else:
-               pdb.set_trace()
+                pdb.set_trace()
         # TODO: pas de probleme, bizarre
         conj = conj.rename(columns={'id_x': 'id', 'id_y':'conj'})
         ind = merge(ind,conj[['id','conj']], on='id', how='left')
@@ -336,9 +336,6 @@ class Patrimoine(DataTil):
 
         print ("fin du travail sur les conjoints")
 
-    
-
-     
 
     def enfants(self):   
         '''
@@ -697,7 +694,7 @@ if __name__ == '__main__':
     import time
     start = time.clock()
     data = Patrimoine()
-    data.lecture()
+    data.load()
     data.drop_variable()
     # drop_variable() doit tourner avant format_initial() car on fait comme si diplome par exemple n'existait pas
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
