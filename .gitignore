@@ -23,14 +23,16 @@ local.properties
 *.gzip
 
 data/Destinie/Import
-data/Patrimoine/Archives/
-data/Patrimoine/*.xls
-data/Patrimoine/*.csv
-data/Patrimoine/*.h5
+data/archives_R/Patrimoine/Archives/
+data/Patrimoine/archives_R/*.xls
+data/Patrimoine/archives_R/*.csv
+data/Patrimoine/archives_R/*.h5
 data/Destinie/*.csv
-!data/Patrimoine/subset.Rdata
+data/archives_R/Patrimoine/subset.Rdata
 data/Patrimoine/lien_parent_enfant/*.csv
 data/Patrimoine/lien_parent_enfant/*.h5
+data/Patrimoine/archives_R/lien_parent_enfant/*.csv
+data/Patrimoine/archives_R/lien_parent_enfant/*.h5
 model/*.csv
 model/*.h5
 model/*.csv
