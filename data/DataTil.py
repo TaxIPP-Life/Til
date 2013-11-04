@@ -77,12 +77,37 @@ class DataTil(object):
         
     def conjoint(self):
         '''
-        Calcule l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
+        Vérifications de la réciprocité des conjoints déclarés + des états civils
+        Correction si nécessaires
         '''     
+        data = self.BioFam
         print ("travail sur les conjoints")
-        raise NotImplementedError()
-        print ("fin du travail sur les conjoints")
+        # 1 - Corrections préliminaires
+        data.loc[ (data['civilstate'].isin([2,5]) | (data['civilstate'] == -1))  & (data['conj'] == -1), 'civilstate'] = 1
         
+        for year in xrange(self.survey_year, self.survey_year): 
+            # Rq : A terme, faire une fonction qui s'adapte à data pour check si les unions/désunions sont bien signifiées 
+            # pour les deux personnses concernées
+        #2 -Calcule l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
+            corr = data[data['period'] == year]
+            # Réciprocité des déclarations
+            test1 = corr.ix[(corr['civilstate'].isin([2,5])),['conj','id','civilstate']]
+            test1 = merge(test1,test1,
+                                 left_on='id',right_on='conj',how='outer')
+            prob_spouse = test1['id_x'] != test1['conj_y']
+            if sum(prob_spouse) != 0 :
+                print "Le nombre d'époux non réciproques est : " + str(sum(prob_spouse)) + " en " + str(year) + " mais on corrige"
+        #3 - Vérifications des états civils
+            test = corr.ix[(corr['conj'] != -1) & (corr['conj']>corr['id']), ['conj','id','civilstate']]
+            test = merge(test, test, left_on='id', right_on='conj', suffixes=('','_conj'))
+            test = test[(test['civilstate']==2) & (test['civilstate_conj']==5)]['conj', 'id']
+            if sum(test) != 0:
+                print str(sum((test['civilstate']==2) & (test['civilstate_conj']==5))) + " confusions mariages/pacs en " + str(year) + " mais on corrige"
+                # Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont 
+                coor['civilstate'][test['conj'].values] = coor['civilstate'][test2['id'].values]
+                data[data['period'] == year] = corr
+        self.BioFam = data
+        print ("fin du travail sur les conjoints")
 
     def enfants(self):   
         '''
@@ -90,39 +115,6 @@ class DataTil(object):
         '''    
         raise NotImplementedError()
 
-    
-    def correction_civilstate(self):
-        '''
-        verification que les états civils des deux membres d'un couple correspondent
-        et corrections quand ce n'est pas le cas
-        '''
-        BioFam = self.BioFam
-        BioFam = BioFam.fillna(-1)
-        # Corrections préliminaires
-        BioFam.loc[ (BioFam['civilstate'].isin([2,5]) | (BioFam['civilstate'] == -1))  & (BioFam['conj'] == -1), 'civilstate'] = 1
-        for year in xrange(self.survey_year, self.survey_year): 
-            # Rq : A terme, faire une fonction qui s'adapte à BioFam pour check si les unions/désunions sont signifiés 
-            # pour les deux personnses concernées
-            corr = BioFam[BioFam['period'] == year]
-            # Réciprocité des déclarations
-            test_spouse = corr.ix[(corr['civilstate'].isin([2,5])),['conj','id','civilstate']]
-            test_spouse = merge(test_spouse,test_spouse,
-                                 left_on='id',right_on='conj',how='outer')
-            prob_spouse = test_spouse['id_x'] != test_spouse['conj_y']
-            if sum(prob_spouse) != 0 :
-                print "Le nombre d'époux non réciproques est : " + str(sum(prob_spouse)) + " en " + str(year) + " mais on corrige"
-                
-            
-            # Confusion pacs/marriage
-            test = corr.ix[(corr['conj'] != -1) & (corr['conj']>corr['id']), ['conj','id','civilstate']]
-            test2 = merge(test, test, left_on='id', right_on='conj', suffixes=('','_conj'))
-            test2 = test2[(test2['civilstate']==2) & (test2['civilstate_conj']==5)]['conj', 'id']
-            if sum(test2) != 0:
-                print str(sum((test2['civilstate']==2) & (test2['civilstate_conj']==5))) + " confusions mariages/pacs en " + str(year) + " mais on corrige"
-                # Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont 
-                coor['civilstate'][test2['conj'].values] = coor['civilstate'][test2['id'].values]
-            BioFam[BioFam['period'] == year] = corr
-        self.BioFam = BioFam
         
     def creation_foy(self):
         '''
@@ -130,60 +122,66 @@ class DataTil(object):
         Ce n'est qu'ici qu'on s'occupe de verifier que les individus mariés ou pacsé ont le même statut matrimonial
         que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
         '''
-        ind = self.ind             
+        ind = self.ind    
+        men = self.men         
         ind[['conj', 'pere']] = ind[['conj', 'pere']].fillna(-1).astype(int)
-        ind.to_csv('tetstt.csv')
         print ("creation des declaration")
-
-        # Identification des personnes en couple
+        
+        # 1ere étape : Identification des personnes en couple
         spouse = (ind['conj'] != -1) & ind['civilstate'].isin([2,5]) 
-        print len(spouse)
-        # selection du conjoint qui va être le declarant : pas d'incidence en théorie
+        print str(sum(spouse)) + " personnes en couples"
+        
+        # 2eme étape : rôles au sein du foyer fiscal
+        # selection du conjoint qui va être le vousrant : pas d'incidence en théorie
         decl = spouse & ( ind['conj'] > ind['id'])
         conj = spouse & ~decl
-        
-        #Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
+        # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) |  (ind['age']<21) ) 
-        print len(pac)
-        # idendifiant foyer, d'abord les déclarants puis rattachement des autres personnes
+        print str(sum(pac)) + ' personnes prises en charge'
+        # Identifiants associés
         ind['quifoy'] = 0
         ind['quifoy'][conj] = 1
         ind['quifoy'][pac] = 2
-        vous = (ind['quifoy'] == 0)
-        print sum(vous)
-        print sum(ind['quifoy'] == 1)
-        ind['foy'] = -1
-        ind.loc[vous,'foy']= range(sum(vous))
-        ind.loc[conj,'foy'] = ind.ix[ind['conj'][conj],'foy']
-        
-        # Enfants à charge en priorité sur la décla du père
-        pac_pere = pac & (ind['pere'] != -1)
-        ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],'foy']
 
-        pac_mere = pac & (ind['foy'] == -1)   
-        ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],'foy'] 
-        print sum(ind['foy']==-1)
+        # 3eme étape : attribution des identifiants des foyers fiscaux
+        vous = (ind['quifoy'] == 0)
+        print str(sum(vous)) + " déclarations fiscales créées"
+        ind['foy'] = -1
+        # (a) têtes de foyers fiscaux et leurs conjoints
+        ind.loc[vous,'foy']= range(sum(vous))
+        conj = ind.loc[(ind['conj'] != -1) & (ind['quifoy'] == 1), 'conj'].astype(int)
+        ind['foy'][conj.index.values] = ind['foy'][conj.values]
+        # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
+        for par in ['pere', 'mere']:
+            pac_par = ind.loc[ pac & (ind[par] != -1) & (ind['foy'] == -1), par].astype(int)
+            ind['foy'][pac_par.index.values] = ind['foy'][pac_par.values]
+            print str(len(pac_par)) + " enfants sur la déclaration de leur " + par
+        # (c) Cas particuliers des enfants ne spécifiant pas de parents 
+        # -> création d'une décla fiscale lorsque les informations les concernant apparaissent dans BioFam
+        ind.loc[ind['men'] == -4, 'foy'] = -4
         assert sum(ind['foy']==-1) == 0
         
+        # 4eme étape : création de la table foy
         foy = DataFrame({'id':range(sum(vous)), 'vous': ind['id'][vous], 'men':ind['men'][vous] })
-        #repartition des revenus du ménage par déclaration
-        # var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
-        # foy_men = men[var_to_declar]
+        var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
+        foy_men = men[var_to_declar]
         # hypothèse réparartition des élements à égalité entre les déclarations : discutable
-        # nb_foy_men = ind[vous].groupby('men').size()
-        # foy_men = foy_men.div(nb_foy_men,axis=0) 
+        nb_foy_men = ind[vous].groupby('men').size()
+        foy_men = foy_men.div(nb_foy_men,axis=0) 
         
-        # foy = merge(foy,foy_men, left_on='men', right_index=True)
-        foy['period'] = self.survey_date
+        foy = merge(foy,foy_men, left_on='men', right_index=True)
         foy['vous'] = ind['id'][vous]
         foy = foy.reset_index(range(len(foy)))
         foy['id'] = foy.index
 
+        for table in [men, foy, ind]:
+            table['period'] = self.survey_date
+            
         #### fin de declar
         self.ind = ind
         self.foy = foy
-        
+        self.men = men
         print("fin de la creation des declarations")
         
     def creation_par_look_enf(self):

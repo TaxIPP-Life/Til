@@ -173,28 +173,15 @@ def minimal_dtype(table):
 
 
     
-def drop_simult_row(data, var_dup): 
-    '''
-    Création indicatrice qui vaut 1 si la ligne est la même que la pécédente
-    var_dup = ['var1', 'var2'... 'vark'] : variables à tester d'une ligne à l'autre
-     Version 0 : trop longue
-    data['dup'] = 0
-    def def_row(i):
-        row = list(data.loc[i,var_dup])
-        return row
-    
-    row = def_row(0)
-    for i in xrange(1,len (data)):
-        test = def_row(i)
-        if test != row : 
-            row = test
-        else:
-            data['dup'][i] = 1
-    data = data[data['dup'] != 1]
-    return data
-    '''
-    data['id'] = data.index
-    data = data.join(data.groupby(var_dup)['id'].sum(), on=var_dup, rsuffix='_dup')
-    data = data.loc[data['id_dup'].shift(1) != data['id_dup']]
-    data = data.drop(['id', 'id_dup'],1)
+def drop_consecutiv_row(data, var_dup, var_sort= None): 
+    if var_sort:
+        data = data.sort(var_sort)
+        
+    to_drop = False
+    for var in var_dup:
+        to_drop = to_drop | (data[var].shift(1) != data[var])
+
+    data['block'] = (to_drop).astype(int).cumsum()
+    data = data.drop_duplicates('block')
+    data = data.drop('block', axis = 1)
     return data
