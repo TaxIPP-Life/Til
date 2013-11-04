@@ -301,6 +301,7 @@ class Destinie(DataTil):
         ind = ind.replace('-1', np.nan)
         ind = ind.replace(-1, np.nan)
         ind = ind.fillna(np.nan)
+        pdb.set_trace()
         self.ind = minimal_dtype(ind)
         self.men = men
     

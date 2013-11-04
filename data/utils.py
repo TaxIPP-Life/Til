@@ -139,7 +139,7 @@ def minimal_dtype(table):
                 try:
                     if (col[col.notnull()].astype(int) == col[col.notnull()]).all():
                         col[col.notnull()] = col[col.notnull()].astype(int)
-                        if col.min() > 0 or col.max() < 0 : # un seul signe pour les valeurs
+                        if col.min() >= 0 or col.max() <= 0 : # un seul signe pour les valeurs 
                             sign =1-2*(max(col) < 0)
                             col = col.fillna(value=-1*sign)
                             modif['int_one_sign'].append(colname)
@@ -173,10 +173,11 @@ def minimal_dtype(table):
 
 
     
-def drop_consecutiv_row(data, var_dup, var_sort= None): 
-    if var_sort:
-        data = data.sort(var_sort)
-        
+def drop_consecutive_row(data, var_dup): 
+    '''
+    Remove a row if it's the same than the previous one for all 
+    variables in var_dup
+    '''
     to_drop = False
     for var in var_dup:
         to_drop = to_drop | (data[var].shift(1) != data[var])
