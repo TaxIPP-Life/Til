@@ -17,7 +17,7 @@ Output :
  
 from data.DataTil import DataTil
 from data.matching import Matching
-from data.utils import recode, index_repeated, replicate, new_link_with_men
+from data.utils import recode, index_repeated, replicate, new_link_with_men, minimal_dtype
 from pgm.CONFIG import path_data_patr, path_til
 
 import pandas as pd
@@ -35,16 +35,18 @@ class Patrimoine(DataTil):
     def __init__(self):
         DataTil.__init__(self)
         self.name = 'Patrimoine'
-        self.survey_date = 200901
+        self.survey_year = 2009
+        self.last_year = 2060
+        self.survey_date = 100*self.survey_year + 1
          
         #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
-        self.methods_order = ['load','drop_variable','format_initial','conjoint','enfants',
+        self.methods_order = ['load','format_initial','drop_variable','table_initial','conjoint','enfants',
                       'creation_par_look_enf','expand_data','matching_par_enf','matching_couple_hdom',
                       'creation_foy','mise_au_format','var_sup','store_to_liam']
     
-# drop_variable() doit tourner avant format_initial() car on aurait un problème avec les variables qui sont renommées.
+# drop_variable() doit tourner avant table_initial() car on aurait un problème avec les variables qui sont renommées.
 # explication de l'ordre en partant de la fin, besoin des couples pour et des liens parents enfants pour les mariages.
 # Ces liens ne peuvent se faire qu'après la dupplication pour pouvoir avoir le bon nombre de parents et de bons matchs
 # La dupplication, c'est mieux si elle se fait après la création de par_look_enf, plutôt que de chercher à créer par_look_enf à partir de la base étendue
@@ -54,19 +56,22 @@ class Patrimoine(DataTil):
         
     def load(self):
         print "début de l'importation des données"
-#fonctionne mais est trop long
-#         ind = pd.read_stata(path_data_patr + 'individu.dta')
-#         men = pd.read_stata(path_data_patr + 'menage.dta')
         ind = pd.read_csv(path_data_patr + 'individu.csv')
-        ind.to_csv('testcsv_ind.csv', sep=';')
         men = pd.read_csv(path_data_patr + 'menage.csv')
-        men.to_csv('testcsv_men.csv', sep=';')
         print "fin de l'importation des données"
               
         #check parce qu'on a un probleme dans l'import au niveau de identmen(pas au format numérique)
+        #men = minimal_dtype(men)
+        #ind = minimal_dtype(ind)
         men['identmen'] = men['identmen'].apply(int)
         ind['identmen'] = ind['identmen'].apply(int)
-
+        
+        self.men = men
+        self.ind = ind
+        
+    def format_initial(self):
+        ind = self.ind
+        men = self.men
         def _correction_carriere(ind):
             '''
             Fait des corrections sur le déroulé des carrières(à partir de vérif écrit en R)
@@ -153,6 +158,7 @@ class Patrimoine(DataTil):
             assert sum(~pref31.isin(pref2)) == 0          
             manque_conj = pref2[~pref2.isin(pref31)]
             ind.ix[manque_conj.index,'couple'] = 2
+            ind = ind.rename(columns={'etamatri': 'civilstate'})
             return ind
             
         def _champ_metro(ind,men):
@@ -171,6 +177,7 @@ class Patrimoine(DataTil):
         # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
         ind = _correction_etamatri(ind)
         ind, men = _champ_metro(ind, men)
+
         self.men = men
         self.ind = ind 
         all = self.ind.columns.tolist()
@@ -186,12 +193,12 @@ class Patrimoine(DataTil):
              - passer par la liste blanche ce que l'on recommande pour l'instant 
              - passer par  liste noire. 
         '''
-        
+        men = self.men
         if dict_to_drop is None:
             dict_to_drop={}
             
         # travail sur men 
-            all = self.men.columns.tolist()
+            all = men.columns.tolist()
             #liste noire
             pr_or_cj = [x for x in all if (x[-2:]=='pr' or x[-2:]=='cj') and x not in ['indepr','r_dcpr','r_detpr']]
             detention = [x for x in all if len(x)==6 and x[0]=='p' and x[1] in ['0','1']]
@@ -218,7 +225,7 @@ class Patrimoine(DataTil):
             black_list = jeunesse_grave + parent_prop  + diplom
             #liste blanche
             info_pers = ['anais','mnais','sexe','dip14']
-            famille = ['couple','lienpref','enf','etamatri','pacs','gpar','per1e','mer1e']
+            famille = ['couple','lienpref','enf','civilstate','pacs','gpar','per1e','mer1e']
             jobmarket = ['statut','situa','preret','classif']
             info_parent = ['jepnais','jemnais','jemprof']
             carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
@@ -233,8 +240,8 @@ class Patrimoine(DataTil):
                 dict_to_drop['ind'] = black_list            
             
         DataTil.drop_variable(self, dict_to_drop, option)
-        
-    def format_initial(self):
+    
+    def table_initial(self):
         
         men = self.men      
         ind = self.ind 
@@ -400,88 +407,7 @@ class Patrimoine(DataTil):
         ind = merge(ind,enf[['id','pere','mere']], on='id', how='left')
         self.ind = ind
 
-
-    def creation_foy(self):
-        '''
-        Créer les déclarations fiscale. Il s'agit principalement de regrouper certains individus entre eux.
-        Ce n'est qu'ici qu'on s'occupe de verifier que les individus mariés ou pacsé ont le même statut matrimonial
-        que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
-        '''
-        men = self.men      
-        ind = self.ind
-        print ("creation des declaration")
-        
-        
-        def _correction_etamatri(ind):
-            '''
-            verification et correction que les etamatri sont reciproque
-            '''
-            spouse = ind['conj'].notnull() & (ind['etamatri'].isin([2,5]))
-            test_spouse = ind.ix[spouse,['conj','id','etamatri']]
-            test_spouse = merge(test_spouse,test_spouse,
-                                 left_on='id',right_on='conj',how='outer')
-            prob_spouse = test_spouse['id_x'] != test_spouse['conj_y']
-#             print "Le nombre d'époux non réciproque est: ", sum(prob_spouse), "mais on corrige"
-            test_spouse2 = ind.ix[notnull(ind['conj']), ['conj','id','etamatri']]
-            test_spouse2 = merge(test_spouse2, test_spouse2, left_on='id', right_on='conj', suffixes=('','_conj'))
-            assert sum((test_spouse2['etamatri']==2) & (test_spouse2['etamatri_conj']==5))==0
-#             test_spouse2.groupby(['etamatri','etamatri_conj']).size()
-            # Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont
-            out_sin = test_spouse2.ix[test_spouse2['etamatri_conj'].isin([2,5]),['id','etamatri']]
-            ind.ix[out_sin['id'],'etamatri'] = test_spouse2.ix[out_sin.index,'etamatri_conj'].values
-            return ind['etamatri']
-                        
-        ind['etamatri'] = _correction_etamatri(ind)
-        spouse = (notnull(ind['conj'])) & (ind['etamatri'].isin([2,5])) 
-        # selection du conjoint qui va être le declarant : pas d'incidence en théorie
-        decl = spouse & ( ind['conj'] > ind['id'])
-        conj = spouse & ~decl
-        #personne à charge (moins de 21 ans sauf si étudiant, moins de 25 ans
-        # attention, on ne peut être à charque que si on n'est pas soi-même parent
-        pac = (notnull(ind['pere']) | notnull(ind['mere'])) & \
-            (ind['etamatri']==1) & (ind['nb_enf']==0) & \
-            (((2009-ind['anais']<25) & ~notnull(ind['workstate'])) |  (2009-ind['anais']<21)) 
-
-        # idendifiant foyer, on fait les déclarants puis on rattache qui doit être rattaché
-        ind['quifoy'] = 0
-        ind['quifoy'][conj] = 1
-        ind['quifoy'][pac] = 2
-        vous = (ind['quifoy'] == 0)
-        
-        ind['foy'] = Series()
-        ind.loc[vous,'foy']= range(sum(vous))
-        ind.loc[conj,'foy'] = ind.ix[ind['conj'][conj],['foy']]
-        pac_pere = pac & notnull(ind['pere'])
-        ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]       
-        pac_mere = pac & ~notnull(ind['foy'])
-        ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']] 
-        assert sum(~notnull(ind['foy'])) == 0
-        
-        foy = DataFrame({'id':range(sum(vous)), 'vous': ind['id'][vous], 'men':ind['men'][vous] })
-        #repartition des revenus du ménage par déclaration
-        var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
-        foy_men = men[var_to_declar]
-        # hypothèse réparartition des élements à égalité entre les déclarations : discutable
-        nb_foy_men = ind[vous].groupby('men').size()
-        foy_men = foy_men.div(nb_foy_men,axis=0) 
-        
-        foy = merge(foy,foy_men, left_on='men', right_index=True)
-        foy['period'] = self.survey_date
-        foy['vous'] = ind['id'][vous]
-        foy = foy.reset_index(range(len(foy)))
-        foy['id'] = foy.index
-        
-     
-
-
-        #### fin de declar
-        self.men = men
-        self.ind = ind
-        self.foy = foy
-        
-        print("fin de la creation des declarations")
-#         pdb.set_trace() 
-                
+          
     def creation_par_look_enf(self):
         '''
         Travail sur les liens parents-enfants. 
@@ -628,7 +554,7 @@ class Patrimoine(DataTil):
         self.ind = ind
         self.drop_variable({'ind':['enf','per1e','mer1e','gpar'] + ['jepnais','jemnais','jemprof']})
     
-    def matching_couple_hdom(self):
+    def match_couple_hdom(self):
         '''
         Certaines personnes se déclarent en couple avec quelqu'un ne vivant pas au domicile, on les reconstruit ici. 
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
@@ -641,7 +567,7 @@ class Patrimoine(DataTil):
         couple_hdom = ind['couple']==2
         # ind[couple_hdom].groupby(['etamatri','sexe'])
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
-        ind.ix[(couple_hdom) & (ind['etamatri']==5),  'etamatri'] = 2
+        ind.ix[(couple_hdom) & (ind['civilstate']==5),  'civilstate'] = 2
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
         # ne gère pas les couples homosexuels
         
@@ -658,10 +584,10 @@ class Patrimoine(DataTil):
         ind['nb_enf'] = enf_tot
         ind['nb_enf'] = ind['nb_enf'].fillna(0)
         
-        men_contrat = couple_hdom & (ind['etamatri'].isin([2,5])) & (ind['sexe']==1)
-        women_contrat = couple_hdom & (ind['etamatri'].isin([2,5])) & (ind['sexe']==2)
-        men_libre = couple_hdom & (~ind['etamatri'].isin([2,5])) & (ind['sexe']==1)
-        women_libre = couple_hdom & (~ind['etamatri'].isin([2,5])) & (ind['sexe']==2)   
+        men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
+        women_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==2)
+        men_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
+        women_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==2)   
         
        
         var_match = ['age','findet','nb_enf'] #,'classif','dip6'
@@ -680,48 +606,46 @@ class Patrimoine(DataTil):
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.ix[match_found.values,'conj'] =  match_found.index
         ind.ix[match_found.index,'conj'] =  match_found.values
-        ind.ix[men_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [1,3]
-        ind.ix[women_libre & ~notnull(ind['conj']),['etamatri','couple']] =  [1,3]  
+        ind.ix[men_libre & ~notnull(ind['conj']),['civilstate','couple']] =  [1,3]
+        ind.ix[women_libre & ~notnull(ind['conj']),['civilstate','couple']] =  [1,3]  
     
         #on corrige là, les innocents qui se disent mariés et pas en couple.  
-        ind.ix[ind['etamatri'].isin([2,5]) & ~notnull(ind['conj']),['etamatri','couple']] =  [3,3] 
+        ind.ix[ind['civilstate'].isin([2,5]) & ~notnull(ind['conj']),['civilstate','couple']] =  [3,3] 
            
         self.ind = ind   
-        self.drop_variable({'ind':['couple','age']})        
+        self.drop_variable({'ind':['couple']})        
     
         
 
 if __name__ == '__main__':
     
     import time
-    start = time.clock()
+    start_t = time.time()
     data = Patrimoine()
-    pdb.set_trace()
+
     data.load()
-    data.drop_variable()
-    # drop_variable() doit tourner avant format_initial() car on fait comme si diplome par exemple n'existait pas
-    # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.format_initial()
+    data.drop_variable()
+    # drop_variable() doit tourner avant table_initial() car on fait comme si diplome par exemple n'existait pas
+    # plus généralement, on aurait un problème avec les variables qui sont renommées.
+    data.table_initial()
     data.conjoint()
     data.enfants()
     data.creation_par_look_enf()
-    data.expand_data(seuil=200)
+    data.expand_data(seuil=900)
     data.matching_par_enf() 
     data.match_couple_hdom()
     data.creation_foy()   
     data.mise_au_format()
     data.var_sup()  
     data.store_to_liam()
-    print "temps de calcul : ", time.clock() - start, 's'
+    print "temps de calcul : ", time.clock() - start_t, 's'
     print "nombre d'individus : ", len(data.ind) 
+
 
     # des petites verifs.
     ind = data.ind
     ind['en_couple'] = ind['conj']>-1 
     test = ind['conj']>-1   
     print ind.groupby(['civilstate','en_couple']).size()
-    
-    pdb.set_trace()
-    
-
     

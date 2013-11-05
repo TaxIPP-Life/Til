@@ -13,7 +13,7 @@ Output :
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de Destinie -> Recup des infos dans Patrimoine
 
 from data.DataTil import DataTil
-from data.utils import minimal_dtype, drop_consecutiv_row
+from data.utils import minimal_dtype, drop_consecutive_row
 from pgm.CONFIG import path_data_destinie
 
 import pandas as pd
@@ -118,10 +118,10 @@ class Destinie(DataTil):
             list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
             BioFam[list_enf + ['pere','mere', 'conj']] -= 1
             BioFam['id'] = BioFam['id'].astype(int) - 1
-            for var in ['pere','mere', 'conj'] :
-                BioFam.loc[BioFam[var] < 0 , var] = -1
-            BioFam = BioFam.fillna(-1)
-            self.BioFam = BioFam
+            for var in ['pere','mere', 'conj'] + list_enf:
+                BioFam.loc[BioFam[var] < 0 , var] = np.nan
+            BioFam = BioFam.fillna(np.nan)
+            self.BioFam = minimal_dtype(BioFam)
              
         def _Emp_format(statut, sal, ind):
             ''' Mise en forme des données sur carrières'''
@@ -131,35 +131,34 @@ class Destinie(DataTil):
             emp_tot['period'] = emp_tot['period'] + emp_tot['naiss']
             emp_tot =  emp_tot[['id','period', 'workstate', 'sali']]
             # Mise au format minimal
-            # emp_tot = emp_tot.fillna(np.nan).replace(-1, np.nan)
-            # emp_tot = minimal_dtype(emp_tot)
+            emp_tot = emp_tot.fillna(np.nan).replace(-1, np.nan)
+            emp_tot = minimal_dtype(emp_tot)
             return emp_tot
 
         print "Début de la mise en forme initiale"
         start_time = time.time()
         _Bio_format()
         self.emp_tot = _Emp_format(self.statut, self.sal, self.ind)
-        emp_tot_mini = drop_consecutiv_row(self.emp_tot, ['id', 'workstate','sali'])
+        emp_tot_mini = drop_consecutive_row(self.emp_tot, ['id', 'workstate','sali'])
         self.emp_tot_mini = emp_tot_mini
         print "Temps de la mise en forme initiale : " + str(time.time() - start_time) + "s" 
         print "Fin de la mise en forme initiale"
 
-    def Tables_ini(self):
+    def Table_initial(self):
         ind = self.ind
         BioFam = self.BioFam
         emp_tot = self.emp_tot
         print "Début de l'initialisation des données pour 2009"
-        
+
     # 1-  Sélection des individus présents en 2009 et vérifications des liens de parentés
         year_ini = self.survey_year # = 2009 
         ind = merge(ind.loc[ind['naiss'] <= year_ini], BioFam[BioFam['period']==year_ini], 
-                    left_index=True, right_index=True, how='left')
+                    left_index=True, right_index=True, how='left').fillna(-1)
         
         print "Nombre d'individus dans la base initiale de 2009 : " + str(len(ind))
-        #ind = ind.replace(-1, np.nan)
         #Déclarations initiales des enfants
-        pere_ini = ind[['pere']].fillna(-1)
-        mere_ini = ind[['mere']].fillna(-1)
+        pere_ini = ind[['pere']]
+        mere_ini = ind[['mere']]
         list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
         # Comparaison avec les déclarations initiales des parents      
         for par in ['pere', 'mere'] :   
@@ -201,18 +200,12 @@ class Destinie(DataTil):
             print str(sum((ind[par].notnull() & (ind[par] != -1 )))) + " enfants connaissent leur " + par
 
         ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct', 'pere', 'mere', 'civilstate', 'conj', 'men_pere', 'men_mere']]
-        # valeurs négatives à np.nan pour la fonction minimal_type  
-        ind.fillna(np.nan)   
-        ind.loc[ind['conj'] < 0, 'conj'] = np.nan
-        ind.loc[ind['pere'] < 0,'pere'] = np.nan
-        ind.loc[ind['mere'] < 0,'mere'] = np.nan
-        ind = minimal_dtype(ind)
         
     # 2- Constitution des ménages de 2009
         ind['quimen'] = -1
         ind['men'] = -1
         ind['age'] = year_ini - ind['naiss']
-    
+
         # 1ere étape : Détermination des têtes de ménages
         ind['id'] = ind.index 
         
@@ -251,7 +244,7 @@ class Destinie(DataTil):
         
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
-        conj = ind.loc[ind['conj'].notnull() & (ind['quimen'] == 0), ['conj','men']].astype(int)
+        conj = ind.loc[(ind['conj'] != -1) & (ind['quimen'] == 0), ['conj','men']].astype(int)
         ind['men'][conj['conj'].values] = conj['men'].values
         # (b) - Rattachements de leurs enfants (d'abord ménage de la mère, puis celui du père)
         for par in ['mere', 'pere']:
@@ -297,12 +290,7 @@ class Destinie(DataTil):
         ind['nb_enf'] = enf_tot
         ind['nb_enf'] = ind['nb_enf'].fillna(0)
         
-        # Optimisation du format
-        ind = ind.replace('-1', np.nan)
-        ind = ind.replace(-1, np.nan)
-        ind = ind.fillna(np.nan)
-        pdb.set_trace()
-        self.ind = minimal_dtype(ind)
+        self.ind = ind.fillna(-1)
         self.men = men
     
     def add_change(self):
@@ -314,41 +302,34 @@ class Destinie(DataTil):
         # On ne garde pour l'instant que les informations sur l'emploi postérieures à 2009
         emp = emp_tot_mini[emp_tot_mini['period'] > self.survey_year]
         # On merge (changements familiaux (postérieurs à 2009 par défaut))
-        Bio = BioFam[['id', 'period', 'pere', 'mere', 'civilstate', 'conj']].astype(int)
-        Bio = drop_consecutiv_row(Bio, ['id', 'pere', 'mere', 'civilstate', 'conj'], ['id', 'period'])
+        Bio = BioFam[['id', 'period', 'pere', 'mere', 'civilstate', 'conj']]
+        Bio = drop_consecutive_row(Bio.sort(['id', 'period']), ['id', 'pere', 'mere', 'civilstate', 'conj'])
         Bio = Bio[Bio['period'] > self.survey_year]
         actu = merge(emp, Bio, on = ['id', 'period'], how = 'outer').fillna(-1)
         actu['period'] = actu['period']*100 + 1
         
         # On ajoute ces données aux informations de 2009
         ind = ind.append(actu, ignore_index = True)
-        ind = ind.fillna(-1)
-    
+        ind = ind.replace(-1, np.nan)
         
         # On sort la table au format minimal
-        # for var in ['age', 'conj',  'id', 'nb_enf', 'pere', 'quifoy', 'quimen', 'sali', 'workstate'] :
-        #     ind.loc[(ind[var]<0) | ind[var].isnull(), var] = np.nan
-        #ind = minimal_dtype(ind)
-        #ind.sort(['id', 'period']).to_csv('lalala.csv')
+        ind = minimal_dtype(ind)
+        ind = ind.fillna(-1)
         self.ind = ind
         print "Fin de l'actualisation des changements jusqu'en 2060"
     
 if __name__ == '__main__':
+    
     data = Destinie()
-    # Importation des données et corrections préliminaires
     start_t = time.time()
-
-        
+    # Importation des données et corrections préliminaires
     data.load()
     data.format_initial()
     data.conjoint()
-    
-    # Création de la table ind de 2009 (infos de BioFam + BioEmp pour les personnes présentes en 2009) et men en 2009
-    data.Tables_ini()
-    print "Fin de l'initialisation des données"
-    # Constitutions des foyers fiscaux de 2009
+    data.Table_initial()
     data.creation_foy()    
-    print "Temps Destiny.py : " + str(time.time() - start_t) + "s" 
-    # Actualisations des changements : Une ligne par changement
+    data.var_sup()
     data.add_change()
+    data.store_to_liam()
 
+    print "Temps Destiny.py : " + str(time.time() - start_t) + "s" 

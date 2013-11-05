@@ -80,32 +80,62 @@ class DataTil(object):
         Vérifications de la réciprocité des conjoints déclarés + des états civils
         Correction si nécessaires
         '''     
-        data = self.BioFam
-        print ("travail sur les conjoints")
-        # 1 - Corrections préliminaires
-        data.loc[ (data['civilstate'].isin([2,5]) | (data['civilstate'] == -1))  & (data['conj'] == -1), 'civilstate'] = 1
+        if self.ind:
+            data = self.ind
+            start_year = self.survey_year
+            final_year =  self.survey_year +1 
+        if self.BioFam: 
+            data = self.BioFam
+            start_year = self.survey_year
+            final_year = self.survey_year + 1
+        print ("Début du travail sur les conjoints")
+
         
-        for year in xrange(self.survey_year, self.survey_year): 
+        for year in xrange(start_year, final_year): 
             # Rq : A terme, faire une fonction qui s'adapte à data pour check si les unions/désunions sont bien signifiées 
             # pour les deux personnses concernées
-        #2 -Calcule l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
+        #1 -Vérifie que les conjoints sont bien reciproques 
             corr = data[data['period'] == year]
             # Réciprocité des déclarations
-            test1 = corr.ix[(corr['civilstate'].isin([2,5])),['conj','id','civilstate']]
-            test1 = merge(test1,test1,
-                                 left_on='id',right_on='conj',how='outer')
-            prob_spouse = test1['id_x'] != test1['conj_y']
-            if sum(prob_spouse) != 0 :
-                print "Le nombre d'époux non réciproques est : " + str(sum(prob_spouse)) + " en " + str(year) + " mais on corrige"
+            test = corr.loc[(corr['conj'] != -1) | corr['civilstate'].isin([2,5]),['id', 'conj', 'civilstate']]
+            test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
+            test.to_csv('testformat.csv')
+            test = test[ (test['conj_x'] != test['id_y'])]
+            if len(test) != 0 :
+                print "Le nombre d'époux non réciproques (avant corrections) est : " + str(len(test)) + " en " + str(year) 
+                # (a) - l'un des deux se déclare célibataire -> le second le devient
+                celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
+                                            ['id_x', 'civilstate_y']]
+                if len(celib_y) != 0:
+                    corr['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
+                    corr['conj'][celib_y['id_x'].values] = np.nan
+
+                celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
+                                            ['id_y','civilstate_x']]
+                if len(celib_x) != 0:
+                    corr['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
+                    corr['conj'][celib_x['id_y'].values] = np.nan
+
+                # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
+                # -> Conjoint réattribué à qui de droit
+                no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
+                if len(no_conj) != 0:
+                    corr['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
+                
+                # (c) - Célibats lorsque conjoint non spécifié ni non retrouvé
+                no_conj = (corr['civilstate'].isin([2,5]) | (corr['civilstate'] == -1))  & (corr['conj'] == -1)
+                print str(len(corr[no_conj])) + " personnes ne spécifiant pas de conjoint ou d'état civil deviennent célibataires"
+                corr.loc[no_conj, 'civilstate'] = 1
+            
         #3 - Vérifications des états civils
-            test = corr.ix[(corr['conj'] != -1) & (corr['conj']>corr['id']), ['conj','id','civilstate']]
-            test = merge(test, test, left_on='id', right_on='conj', suffixes=('','_conj'))
-            test = test[(test['civilstate']==2) & (test['civilstate_conj']==5)]['conj', 'id']
-            if sum(test) != 0:
-                print str(sum((test['civilstate']==2) & (test['civilstate_conj']==5))) + " confusions mariages/pacs en " + str(year) + " mais on corrige"
+            test = corr.ix[corr['civilstate'].isin([2,5]), ['conj','id','civilstate']]
+            test = merge(test, test, left_on='id', right_on='conj', suffixes=('_ref','_notref'))
+            test = test.loc[(test['civilstate_ref']==2) & (test['civilstate_notref']==5),['id_notref', 'id_ref']]
+            if len(test) != 0:
+                print str(len(test)) + " confusions mariages/pacs en " + str(year) + " corrigées"
                 # Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont 
-                coor['civilstate'][test['conj'].values] = coor['civilstate'][test2['id'].values]
-                data[data['period'] == year] = corr
+                corr['civilstate'][test['id_notref'].values] = corr['civilstate'][test['id_ref'].values]
+            data[data['period'] == year] = corr
         self.BioFam = data
         print ("fin du travail sur les conjoints")
 
@@ -114,7 +144,9 @@ class DataTil(object):
         Calcule l'identifiant des parents 
         '''    
         raise NotImplementedError()
-
+    
+    def Table_initial(self):
+        raise NotImplementedError()
         
     def creation_foy(self):
         '''
@@ -122,9 +154,8 @@ class DataTil(object):
         Ce n'est qu'ici qu'on s'occupe de verifier que les individus mariés ou pacsé ont le même statut matrimonial
         que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
         '''
-        ind = self.ind    
+        ind = self.ind 
         men = self.men         
-        ind[['conj', 'pere']] = ind[['conj', 'pere']].fillna(-1).astype(int)
         print ("creation des declaration")
         
         # 1ere étape : Identification des personnes en couple
@@ -154,7 +185,7 @@ class DataTil(object):
         ind['foy'][conj.index.values] = ind['foy'][conj.values]
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for par in ['pere', 'mere']:
-            pac_par = ind.loc[ pac & (ind[par] != -1) & (ind['foy'] == -1), par].astype(int)
+            pac_par = ind.loc[ pac & (ind[par] != -1) & (ind['foy'] == -1), par]
             ind['foy'][pac_par.index.values] = ind['foy'][pac_par.values]
             print str(len(pac_par)) + " enfants sur la déclaration de leur " + par
         # (c) Cas particuliers des enfants ne spécifiant pas de parents 
@@ -251,7 +282,6 @@ class DataTil(object):
                 
         # 3- Nouvelles pondérations (qui seront celles associées aux individus après réplication)
         men['pond'] = men['pond'].div(men['nb_rep'])
-        men.to_csv('testcsv2.csv', sep=';')
         men_exp = replicate(men) 
        
         if foy is not None:
@@ -372,8 +402,11 @@ class DataTil(object):
         Appelle des fonctions de Liam2
         Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
         '''
-        
-        path = path_til +'model\\' + self.name + '_' + str(self.seuil) +'.h5' # + syrvey_date
+        if self.seuil:
+            seuil = self.seuil
+        else:
+            seuil = 0
+        path = path_til +'model\\' + self.name + '_' + str(seuil) +'.h5' # + syrvey_date
         h5file = tables.openFile( path, mode="w")
         # 1 - on met d'abord les global en recopiant le code de liam2
         globals_def = {'periodic': {'path': 'param\\globals.csv'}}
@@ -404,11 +437,11 @@ class DataTil(object):
         # 2 - ensuite on s'occupe des entities
         ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name in ['ind','foy','men']:
-            entity = eval('self.'+ent_name)
-            entity = entity.fillna(0)
-            
+            entity = eval('self.'+ ent_name)
+            entity = entity.fillna(-1)
             ent_table = entity.to_records(index=False)
-            dtypes = ent_table.dtype         
+            dtypes = ent_table.dtype   
+            print dtypes      
             table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
             table.append(ent_table)
             table.flush()    
