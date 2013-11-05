@@ -41,6 +41,7 @@ class Destinie(DataTil):
        
     def load(self):
         def _BioEmp_in_3():
+            ''' Division de BioEmpen trois tables '''
             longueur_carriere = 106 #self.max_dur
             start_time = time.time()
             # TODO: revoir le colnames de BioEmp : le retirer ?
@@ -48,8 +49,7 @@ class Destinie(DataTil):
     
             BioEmp = pd.read_table(path_data_destinie + 'BioEmp.txt', sep=';',
                                    header=None, names=colnames)
-        
-            ''' Division de BioEmpen trois tables '''
+    
             taille = len(BioEmp)/3
             BioEmp['id'] = BioEmp.index/3
             
@@ -84,16 +84,20 @@ class Destinie(DataTil):
                                    header=None, names=['id', 'pere', 'mere', 'civilstate',
                                                        'conj', 'enf1', 'enf2',
                                                        'enf3', 'enf4', 'enf5', 'enf6']) 
-            self.BioFam = BioFam
+            
+            #TODO: remonter ici le code de _Bio_Format? 
+            
+            return BioFam_ini, BioFam
                   
         print "Début de l'importation des données"
         start_time = time.time()
         #BioEmp = _lecture_BioEmp()
         ind, statut, sal = _BioEmp_in_3()
+        BioFam = _lecture_BioFam()
+        
         self.ind = ind
         self.statut = statut
         self.sal = sal
-        _lecture_BioFam()
         print "Temps d'importation des données : " + str(time.time() - start_time) + "s" 
         print "fin de l'importation des données"
 
@@ -105,7 +109,7 @@ class Destinie(DataTil):
             # Index limites pour changement de date
             delimiters = BioFam['id'].str.contains('Fin')
             annee = BioFam[delimiters].index.tolist()  # donne tous les index limites
-            annee = [-1] + annee # to simplify loops later
+            annee = [-1] + annee # in order to simplify loops later
             # create a series period
             period = []
             for k in range(len(annee)-1):
@@ -144,7 +148,7 @@ class Destinie(DataTil):
         print "Temps de la mise en forme initiale : " + str(time.time() - start_time) + "s" 
         print "Fin de la mise en forme initiale"
 
-    def Table_initial(self):
+    def table_initial(self):
         ind = self.ind
         BioFam = self.BioFam
         emp_tot = self.emp_tot
@@ -157,8 +161,8 @@ class Destinie(DataTil):
         
         print "Nombre d'individus dans la base initiale de 2009 : " + str(len(ind))
         #Déclarations initiales des enfants
-        pere_ini = ind[['pere']]
-        mere_ini = ind[['mere']]
+        pere_ini = ind['pere']
+        mere_ini = ind['mere']
         list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
         # Comparaison avec les déclarations initiales des parents      
         for par in ['pere', 'mere'] :   
@@ -326,7 +330,7 @@ if __name__ == '__main__':
     data.load()
     data.format_initial()
     data.conjoint()
-    data.Table_initial()
+    data.table_initial()
     data.creation_foy()    
     data.var_sup()
     data.add_change()

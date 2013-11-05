@@ -61,11 +61,8 @@ class Patrimoine(DataTil):
         print "fin de l'importation des données"
               
         #check parce qu'on a un probleme dans l'import au niveau de identmen(pas au format numérique)
-        #men = minimal_dtype(men)
-        #ind = minimal_dtype(ind)
         men['identmen'] = men['identmen'].apply(int)
         ind['identmen'] = ind['identmen'].apply(int)
-        
         self.men = men
         self.ind = ind
         
@@ -126,7 +123,7 @@ class Patrimoine(DataTil):
             
         def _correction_etamatri(ind):
             '''
-            Cohérence entre le statut maritale et le fait d'être en couple ou non
+            Cohérence entre le statut marital et le fait d'être en couple ou non
             Utile pour le lien mais aussi pour la création des foyers
             Noter que l'on recode le pacs comme un modalité de l'union
             '''
@@ -154,7 +151,7 @@ class Patrimoine(DataTil):
             ind.ix[manque_conj.index,'couple'] = 2
             
             pref2 = conj.ix[conj['lienpref']==2,'identmen']
-            pref31 = conj.ix[conj['lienpref']==31,'identmen']  
+            pref31 = conj.ix[conj['lienpref']==31,'identmen'] 
             assert sum(~pref31.isin(pref2)) == 0          
             manque_conj = pref2[~pref2.isin(pref31)]
             ind.ix[manque_conj.index,'couple'] = 2
@@ -308,6 +305,8 @@ class Patrimoine(DataTil):
         self.men = men
         self.ind = ind 
         self.drop_variable({'men':['identmen','paje','complfam','allocpar','asf'], 'ind':['identmen','preret']})       
+        self.men = minimal_dtype(self.men)
+        self.ind = minimal_dtype(self.ind)
         
     def conjoint(self):
         '''
@@ -336,7 +335,6 @@ class Patrimoine(DataTil):
         # TODO: pas de probleme, bizarre
         conj = conj.rename(columns={'id_x': 'id', 'id_y':'conj'})
         ind = merge(ind,conj[['id','conj']], on='id', how='left')
-
         
         test_conj = merge(ind[['conj','id']],ind[['conj','id']],
                              left_on='id',right_on='conj')
@@ -597,11 +595,9 @@ class Patrimoine(DataTil):
          
         match_contrat = Matching(ind.ix[women_contrat, var_match], ind.ix[men_contrat, var_match], score)
         match_found = match_contrat.evaluate(orderby=None, method='cells')
-
         ind.ix[match_found.values,'conj'] =  match_found.index
         ind.ix[match_found.index,'conj'] =  match_found.values
 
-                   
         match_libre = Matching(ind.ix[women_libre, var_match], ind.ix[men_libre, var_match], score)
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.ix[match_found.values,'conj'] =  match_found.index

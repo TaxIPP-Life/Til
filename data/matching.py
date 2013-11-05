@@ -76,8 +76,9 @@ class Matching(object):
             table1 = self.table1.loc[np.random.permutation(index_init)]
         index_init = table1.index
         
-        table2 = self.table2.fillna(0)
-        table1 = self.table1.fillna(0)
+        #TODO: interdire les na
+        table2 = table2.fillna(0)
+        table1 = table1.fillna(0)
              
         if len(table1)>len(table2):
             print ("WARNING : La table de gauche doit être la plus petite, "\
@@ -86,7 +87,6 @@ class Matching(object):
             table1 = table1[:len(table2)]
         index_modif = table1.index    
         
-
         score_str, vars = _rewrite_score(self.score_str, 'temp', 'table2', table1.columns.tolist(), table2.columns.tolist())    
         n = len(table1)       
         
@@ -100,6 +100,8 @@ class Matching(object):
             cells_ini = cells_ini.merge(size, left_on=vars, right_index=True, how='left')
             cells_ini['id'] = cells_ini.index
             # conversion en numpy
+            #NOTE: initially dtype were np.int32 but sometime it's not enought
+            # however, it's not very important.
             table1 = np.array(table1, dtype=np.int32)
             cells = np.array(cells_ini, dtype=np.int32) 
             #definition de la boucle
@@ -132,7 +134,7 @@ class Matching(object):
 #             match[k] = idx2 
 #             table2 = np.delete(table2, idx, 0)
 
-        match = np.empty(n, dtype=int)
+        match = np.empty(n, dtype=np.int32)
         percent = 0
         start = time.clock()
         #check
@@ -187,7 +189,7 @@ class Matching(object):
                         offset += 10
                     sys.stdout.write(''.join(chars_to_write))
                 percent = percent_done                              
-        
+
         match = pd.Series(match, index = index_modif).sort_index()
         if method == 'cells':
             match_ini = match.copy()
@@ -197,6 +199,9 @@ class Matching(object):
                 keys_group = cells_ini.loc[group,vars].tolist()
                 try: 
                     match[match_ini==group] = groups2.groups[tuple(keys_group)][:nb_selected]
+                    if nb_selected == 1 : 
+                        value = groups2.groups[tuple(keys_group)][:nb_selected][0]
+                        match[match_ini==group] = int(value)
                 except:
                     pdb.set_trace()
         print 'temps dédié au real_matching :', time.clock() - start  

@@ -99,9 +99,9 @@ class DataTil(object):
             # Réciprocité des déclarations
             test = corr.loc[(corr['conj'] != -1) | corr['civilstate'].isin([2,5]),['id', 'conj', 'civilstate']]
             test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
-            test.to_csv('testformat.csv')
+#            test.to_csv('testformat.csv')
             test = test[ (test['conj_x'] != test['id_y'])]
-            if len(test) != 0 :
+            if test :
                 print "Le nombre d'époux non réciproques (avant corrections) est : " + str(len(test)) + " en " + str(year) 
                 # (a) - l'un des deux se déclare célibataire -> le second le devient
                 celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
@@ -145,7 +145,7 @@ class DataTil(object):
         '''    
         raise NotImplementedError()
     
-    def Table_initial(self):
+    def table_initial(self):
         raise NotImplementedError()
         
     def creation_foy(self):
@@ -168,8 +168,9 @@ class DataTil(object):
         conj = spouse & ~decl
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) |  (ind['age']<21) ) 
-        print str(sum(pac)) + ' personnes prises en charge'
+        pac_condition = (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) |  (ind['age']<21) )
+        pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
+        print str(sum(pac)) + ' personnes prise en charge'
         # Identifiants associés
         ind['quifoy'] = 0
         ind['quifoy'][conj] = 1
@@ -180,14 +181,21 @@ class DataTil(object):
         print str(sum(vous)) + " déclarations fiscales créées"
         ind['foy'] = -1
         # (a) têtes de foyers fiscaux et leurs conjoints
-        ind.loc[vous,'foy']= range(sum(vous))
-        conj = ind.loc[(ind['conj'] != -1) & (ind['quifoy'] == 1), 'conj'].astype(int)
-        ind['foy'][conj.index.values] = ind['foy'][conj.values]
+        ind['foy'][vous] = range(sum(vous))
+        foy_of_conjoint = ind.loc[ind['conj'][conj],'foy']
+        assert(foy_of_conjoint.min() > -1)
+        ind['foy'][conj] = foy_of_conjoint
+        # voir ce qui ne va pas ind[conj].index[foy_of_conjoint==-1]
+        #le problème vient du matching des couples
+        #TODO: voir si on a pas un problème entre ce matching et le supprimer le cas échéant.
+        
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
-        for par in ['pere', 'mere']:
-            pac_par = ind.loc[ pac & (ind[par] != -1) & (ind['foy'] == -1), par]
-            ind['foy'][pac_par.index.values] = ind['foy'][pac_par.values]
-            print str(len(pac_par)) + " enfants sur la déclaration de leur " + par
+        for parent in ['mere', 'pere']:
+            pac_parent = (ind[parent] != -1) & pac_condition
+            foy_of_pac = ind.loc[ind[parent][pac_parent],'foy']
+            ind['foy'][pac_parent] = foy_of_pac 
+            print str(len(pac_parent)) + " enfants sur la déclaration de leur " + parent
+        
         # (c) Cas particuliers des enfants ne spécifiant pas de parents 
         # -> création d'une décla fiscale lorsque les informations les concernant apparaissent dans BioFam
         ind.loc[ind['men'] == -4, 'foy'] = -4
@@ -245,7 +253,7 @@ class DataTil(object):
         Cependant par_look_enfant doit déjà avoir été créé car on s'en sert pour la réplication
         '''
         self.seuil = seuil
-        if seuil!=0 and nb_ligne is not None:
+        if seuil != 0 and nb_ligne is not None:
             raise Exception("On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur" \
             "qui va determiner le nombre de ligne")
         #TODO: on peut prendre le min des deux quand même...
@@ -402,11 +410,10 @@ class DataTil(object):
         Appelle des fonctions de Liam2
         Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
         '''
-        if self.seuil:
-            seuil = self.seuil
-        else:
-            seuil = 0
-        path = path_til +'model\\' + self.name + '_' + str(seuil) +'.h5' # + syrvey_date
+        if self.seuil is None:
+            path = path_til +'model\\' + self.name + '_' + '0' +'.h5' # + survey_date
+        else: 
+            path = path_til +'model\\' + self.name + '_' + str(self.seuil) +'.h5' # + survey_date
         h5file = tables.openFile( path, mode="w")
         # 1 - on met d'abord les global en recopiant le code de liam2
         globals_def = {'periodic': {'path': 'param\\globals.csv'}}
