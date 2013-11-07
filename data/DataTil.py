@@ -80,28 +80,24 @@ class DataTil(object):
         Vérifications de la réciprocité des conjoints déclarés + des états civils
         Correction si nécessaires
         '''     
-        if self.ind:
-            data = self.ind
-            start_year = self.survey_year
-            final_year =  self.survey_year +1 
-        if self.BioFam: 
-            data = self.BioFam
-            start_year = self.survey_year
-            final_year = self.survey_year + 1
+        ind = self.ind
+        start_year = self.survey_year
+        final_year = self.survey_year +1 
+        
         print ("Début du travail sur les conjoints")
 
         
         for year in xrange(start_year, final_year): 
-            # Rq : A terme, faire une fonction qui s'adapte à data pour check si les unions/désunions sont bien signifiées 
+            # Rq : A terme, faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
             # pour les deux personnses concernées
         #1 -Vérifie que les conjoints sont bien reciproques 
-            corr = data[data['period'] == year]
+            corr = ind[ind['period'] == year].reset_index()
+            corr.to_csv('testcorr0.csv')
             # Réciprocité des déclarations
             test = corr.loc[(corr['conj'] != -1) | corr['civilstate'].isin([2,5]),['id', 'conj', 'civilstate']]
             test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
-#            test.to_csv('testformat.csv')
             test = test[ (test['conj_x'] != test['id_y'])]
-            if test :
+            if test:
                 print "Le nombre d'époux non réciproques (avant corrections) est : " + str(len(test)) + " en " + str(year) 
                 # (a) - l'un des deux se déclare célibataire -> le second le devient
                 celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
@@ -128,15 +124,18 @@ class DataTil(object):
                 corr.loc[no_conj, 'civilstate'] = 1
             
         #3 - Vérifications des états civils
-            test = corr.ix[corr['civilstate'].isin([2,5]), ['conj','id','civilstate']]
-            test = merge(test, test, left_on='id', right_on='conj', suffixes=('_ref','_notref'))
-            test = test.loc[(test['civilstate_ref']==2) & (test['civilstate_notref']==5),['id_notref', 'id_ref']]
+            corr.to_csv('testcorr.csv')
+            test = corr.loc[corr['civilstate'].isin([2,5]), ['conj','id','civilstate', 'sexe']]
+            test = merge(test, test, left_on='id', right_on='conj')
+            confusion = test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['civilstate_y']!= test['civilstate_x'])
+            test = test.loc[confusion & (test['id_x'] < test['id_y']),
+                            ['id_x', 'id_y', 'civilstate_x', 'civilstate_y']]
             if len(test) != 0:
                 print str(len(test)) + " confusions mariages/pacs en " + str(year) + " corrigées"
-                # Hypothese: Si un des deux dit mariés ou pacsés alors les deux le sont 
-                corr['civilstate'][test['id_notref'].values] = corr['civilstate'][test['id_ref'].values]
-            data[data['period'] == year] = corr
-        self.BioFam = data
+                # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
+                corr['civilstate'][test['id_y'].values] = corr['civilstate'][test['id_x'].values]
+            ind[ind['period'] == year] = corr
+        self.ind = ind
         print ("fin du travail sur les conjoints")
 
     def enfants(self):   
@@ -155,9 +154,19 @@ class DataTil(object):
         que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
         '''
         ind = self.ind 
-        men = self.men         
+        men = self.men   
+        ind.to_csv('indfoy.csv')      
         print ("creation des declaration")
-        
+        # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas
+        if 'nb_enf' not in list(ind.columns):
+            nb_enf_mere= ind.groupby('mere').size()
+            nb_enf_pere = ind.groupby('pere').size()
+            enf_tot = pd.concat([nb_enf_mere, nb_enf_pere], axis=1)
+            enf_tot = enf_tot.sum(axis=1)
+            # Comme enf_tot a le bon index on fait
+            ind['nb_enf'] = enf_tot
+            ind['nb_enf'] = ind['nb_enf'].fillna(0)
+            
         # 1ere étape : Identification des personnes en couple
         spouse = (ind['conj'] != -1) & ind['civilstate'].isin([2,5]) 
         print str(sum(spouse)) + " personnes en couples"
@@ -168,41 +177,37 @@ class DataTil(object):
         conj = spouse & ~decl
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac_condition = (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) |  (ind['age']<21) )
+        pac_condition = (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) & (ind['men'] != -4) 
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
-        print str(sum(pac)) + ' personnes prise en charge'
+        print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
         ind['quifoy'] = 0
         ind['quifoy'][conj] = 1
         ind['quifoy'][pac] = 2
+        ind['quifoy'][ind['men'] == -4] = -4
+        
 
         # 3eme étape : attribution des identifiants des foyers fiscaux
-        vous = (ind['quifoy'] == 0)
-        print str(sum(vous)) + " déclarations fiscales créées"
         ind['foy'] = -1
-        # (a) têtes de foyers fiscaux et leurs conjoints
-        ind['foy'][vous] = range(sum(vous))
-        foy_of_conjoint = ind.loc[ind['conj'][conj],'foy']
-        assert(foy_of_conjoint.min() > -1)
-        ind['foy'][conj] = foy_of_conjoint
-        # voir ce qui ne va pas ind[conj].index[foy_of_conjoint==-1]
-        #le problème vient du matching des couples
-        #TODO: voir si on a pas un problème entre ce matching et le supprimer le cas échéant.
+        ind['foy'][ind['men'] == -4] = -4
+        nb_foy = len(ind[ind['quifoy'] == 0]) 
+        print "Le nombre de foyers créés est : " + str(nb_foy)
+        ind['foy'][ind['quifoy'] == 0] = range(0, nb_foy)
+        
+        # 3eme étape : Rattachement des autres membres du ménage
+        # (a) - Rattachements des conjoints des personnes en couples 
+        conj = ind.loc[(ind['conj'] != -1) & (ind['quifoy'] == 0), ['conj','foy']].astype(int)
+        ind['foy'][conj['conj'].values] = conj['foy'].values
         
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
-        for parent in ['mere', 'pere']:
-            pac_parent = (ind[parent] != -1) & pac_condition
-            foy_of_pac = ind.loc[ind[parent][pac_parent],'foy']
-            ind['foy'][pac_parent] = foy_of_pac 
-            print str(len(pac_parent)) + " enfants sur la déclaration de leur " + parent
-        
-        # (c) Cas particuliers des enfants ne spécifiant pas de parents 
-        # -> création d'une décla fiscale lorsque les informations les concernant apparaissent dans BioFam
-        ind.loc[ind['men'] == -4, 'foy'] = -4
-        assert sum(ind['foy']==-1) == 0
-        
+        for parent in  ['pere', 'mere']:
+           pac_par = ind.loc[ pac_condition & (ind[parent] != -1) & (ind['foy'] == -1), parent]
+           ind['foy'][pac_par.index.values] = ind['foy'][pac_par.values]
+           print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
+
         # 4eme étape : création de la table foy
-        foy = DataFrame({'id':range(sum(vous)), 'vous': ind['id'][vous], 'men':ind['men'][vous] })
+        vous = (ind['quifoy'] == 0)
+        foy = DataFrame({'id':range(nb_foy), 'vous': ind['id'][vous], 'men':ind['men'][vous] })
         var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
         foy_men = men[var_to_declar]
         # hypothèse réparartition des élements à égalité entre les déclarations : discutable
@@ -211,16 +216,14 @@ class DataTil(object):
         
         foy = merge(foy,foy_men, left_on='men', right_index=True)
         foy['vous'] = ind['id'][vous]
-        foy = foy.reset_index(range(len(foy)))
+        foy = DataFrame(foy, index = xrange(0,len(foy)))
         foy['id'] = foy.index
-
         for table in [men, foy, ind]:
             table['period'] = self.survey_date
             
         #### fin de declar
         self.ind = ind
         self.foy = foy
-        self.men = men
         print("fin de la creation des declarations")
         
     def creation_par_look_enf(self):
@@ -400,6 +403,8 @@ class DataTil(object):
         ind = ind.set_index('foy')
         ind['nb_foy'] = h.size() 
         ind=ind.reset_index()
+        
+        ind['agem'] = ind['age']*12
         
         self.ind=ind 
         

@@ -3,8 +3,6 @@
 Created on 11 septembre 2013
 
 Ce programme :
-- 
-
 Input : 
 Output :
 
@@ -59,6 +57,7 @@ class Destinie(DataTil):
             ind = ind.reset_index()
             ind = ind.rename(columns={1:'sexe', 2:'naiss', 3:'findet', 4:'tx_prime_fct'})
             ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct']]
+            ind['id'] = ind.index
             ind = minimal_dtype(ind)
             
             # selection1 : information sur les statuts d'emploi
@@ -67,7 +66,6 @@ class Destinie(DataTil):
             statut = statut.set_index('id').stack().reset_index()
             statut = statut.rename(columns={'level_1':'period', 0:'workstate'})
             statut = statut[['id', 'period', 'workstate']] #.fillna(np.nan)
-            #statut.loc[statut['workstate']<0, 'workstate'] = np.nan
             statut = minimal_dtype(statut)
             
             # selection2 : informations sur les salaires
@@ -87,15 +85,14 @@ class Destinie(DataTil):
             
             #TODO: remonter ici le code de _Bio_Format? 
             
-            return BioFam_ini, BioFam
+            return BioFam #,BioFam_ini
                   
         print "Début de l'importation des données"
         start_time = time.time()
-        #BioEmp = _lecture_BioEmp()
         ind, statut, sal = _BioEmp_in_3()
-        BioFam = _lecture_BioFam()
-        
+        self.BioFam = _lecture_BioFam()
         self.ind = ind
+        self.ind_ini = ind
         self.statut = statut
         self.sal = sal
         print "Temps d'importation des données : " + str(time.time() - start_time) + "s" 
@@ -103,6 +100,11 @@ class Destinie(DataTil):
 
         
     def format_initial(self): 
+        '''
+        Ensemble des informations dans deux bases : 
+            - ind : démographiques + caractéristiques indiv
+            - emp_tot : déroulés de carrières et salaires associés
+        '''
         def _Bio_format() :  
             BioFam = self.BioFam
             # 1 - Variable 'date de mise à jour'
@@ -118,14 +120,14 @@ class Destinie(DataTil):
             BioFam = BioFam[~delimiters]
             
             BioFam['period'] = period
-            #BioFam[['id', 'pere']] = BioFam[['id', 'pere']].fillna(0).astype(int)
             list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
             BioFam[list_enf + ['pere','mere', 'conj']] -= 1
             BioFam['id'] = BioFam['id'].astype(int) - 1
             for var in ['pere','mere', 'conj'] + list_enf:
                 BioFam.loc[BioFam[var] < 0 , var] = np.nan
             BioFam = BioFam.fillna(np.nan)
-            self.BioFam = minimal_dtype(BioFam)
+            BioFam = minimal_dtype(BioFam)
+            return BioFam
              
         def _Emp_format(statut, sal, ind):
             ''' Mise en forme des données sur carrières'''
@@ -138,31 +140,47 @@ class Destinie(DataTil):
             emp_tot = emp_tot.fillna(np.nan).replace(-1, np.nan)
             emp_tot = minimal_dtype(emp_tot)
             return emp_tot
+        
+        def _ind_merge(BioFam, ind, emp_tot):
+            ''' fusion : BioFam + ind +Emp_tot -> ind
+            Rq : pour l'instant on ne garde que les données postérieures à 2009'''
+            survey_year = self.survey_year
+            to_ind = merge(emp_tot, BioFam, on = ['id', 'period'], how = 'outer', 
+                           right_index = False, left_index= False)
+            ind = merge(to_ind, ind, on='id', how ='outer', right_index = False, left_index = False)
+            #ind = ind.sort('id')
+            #ind = DataFrame(ind, index = ind.id.values)
+            # L'index donne l'identifiant de l'individu
+            ind = ind.loc[ind['period']>=survey_year].fillna(-1).reset_index()
+            # Informations atemporelles ne doivent apparaitre que l'année où l'individu apparait dans la base
+            ind.loc[ ind.sort(['id', 'period']).duplicated('id') == True, ['sexe', 'naiss', 'findet', 'tx_prime_fct']] = -1
+            return ind
 
         print "Début de la mise en forme initiale"
         start_time = time.time()
-        _Bio_format()
-        self.emp_tot = _Emp_format(self.statut, self.sal, self.ind)
-        emp_tot_mini = drop_consecutive_row(self.emp_tot, ['id', 'workstate','sali'])
-        self.emp_tot_mini = emp_tot_mini
+        emp_tot = _Emp_format(self.statut, self.sal, self.ind)
+        BioFam = _Bio_format()
+        ind = _ind_merge(BioFam, self.ind, emp_tot)
+        self.ind = ind
+        ind_add = ind[ind['period'] > self.survey_date]
+        list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
+        ind_add = ind_add.drop(list_enf + ['index'],axis = 1)
+        self.ind_add = ind_add
         print "Temps de la mise en forme initiale : " + str(time.time() - start_time) + "s" 
         print "Fin de la mise en forme initiale"
 
     def table_initial(self):
         ind = self.ind
-        BioFam = self.BioFam
-        emp_tot = self.emp_tot
-        print "Début de l'initialisation des données pour 2009"
-
-    # 1-  Sélection des individus présents en 2009 et vérifications des liens de parentés
+        ind = ind.set_index('id')
+        ind['id'] = ind.index
         year_ini = self.survey_year # = 2009 
-        ind = merge(ind.loc[ind['naiss'] <= year_ini], BioFam[BioFam['period']==year_ini], 
-                    left_index=True, right_index=True, how='left').fillna(-1)
-        
-        print "Nombre d'individus dans la base initiale de 2009 : " + str(len(ind))
+        print "Début de l'initialisation des données pour " + str(year_ini)
+    # 1-  Sélection des individus présents en 2009 et vérifications des liens de parentés
+        ind= ind[ind['period'] == year_ini]
+        print "Nombre d'individus dans la base initiale de " + str(year_ini) +" : " + str(len(ind))
         #Déclarations initiales des enfants
-        pere_ini = ind['pere']
-        mere_ini = ind['mere']
+        pere_ini = ind[['id', 'pere']]
+        mere_ini = ind[['id', 'mere']]
         list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
         # Comparaison avec les déclarations initiales des parents      
         for par in ['pere', 'mere'] :   
@@ -176,34 +194,34 @@ class Destinie(DataTil):
             # b -> construction d'une table a trois entrées : 
             #     par_decla = identifiant du parent déclarant l'enfant
             #     par_ini = identifiant du parent déclaré par l'enfant
-            #     enf = identifiant de l'enfant (déclaré ou déclarant)
+            #     id = identifiant de l'enfant (déclaré ou déclarant)
             par_ini = par_ini[par_ini[par] != -1]
             link = ind.loc[(ind['enf1'] != -1 )& (ind['sexe'] == sexe),  list_enf]
-            link = link.stack().reset_index().rename(columns={'level_0': par, 'level_1': 'link', 0 :'enf'})[[par,'enf']].astype(int)
-            link = link[link['enf'] != -1]
-            link = merge(link, par_ini, left_on = 'enf', right_on = par_ini.index, 
-                                suffixes=('_decla', '_ini'), how = 'outer').fillna(-1)
-            link = link[ (link[ par + '_decla'] != -1 ) | (link[par + '_ini'] != -1)]
+            link = link.stack().reset_index().rename(columns={'id': par, 'level_1': 'link', 0 :'id'})[[par,'id']].astype(int)
+            link = link[link['id'] != -1]
+            link = merge(link, par_ini, on = 'id', suffixes=('_decla', '_ini'), 
+                         how = 'outer').fillna(-1)
+            link = link[(link[ par + '_decla'] != -1 ) | (link[par + '_ini'] != -1)]
             ind['men_' + par] = 0
             
             # c- Comparaisons et détermination des liens
             # Cas 1 : enfants et parents déclarent le même lien : ils vivent ensembles
-            parents = link[link[par +'_decla'] == link[par + '_ini'] ] ['enf']
+            parents = link.loc[(link[par + '_decla'] == link[ par + '_ini']), 'id']
             ind['men_' + par][parents.values] = 1
-
+            
             # Cas 2 : enfants déclarant un parent mais ce parent ne les déclare pas (rattachés au ménage du parent)
-            # Remarques : 9 cas pour les pères, 10 pour les mères
-            parents = link[(link[par + '_decla'] != link[ par +'_ini']) & (link[par +'_decla'] == -1) ] ['enf']
+            # Remarques : 8 cas pour les pères, 10 pour les mères
+            parents = link[(link[par + '_decla'] != link[ par +'_ini']) & (link[par +'_decla'] == -1) ] ['id']
             ind['men_'+ par][parents.values] = 1
             print str(sum(ind['men_' + par]==1)) + " vivent avec leur " + par
             
             # Cas 3 : parent déclarant un enfant mais non déclaré par l'enfant (car hors ménage)
             # Aucune utilisation pour l'instant (men_par = 0) mais pourra servir pour la dépendance
-            parents = link[(link[par +'_decla'] != link[par +'_ini']) & (link[par +'_ini'] == -1) ] [['enf', par +'_decla']]
-            ind[par][parents['enf'].values] = parents[par + '_decla'].values
+            parents = link.loc[(link[par +'_decla'] != link[par +'_ini']) & (link[par +'_ini'] == -1), ['id', par +'_decla']].astype(int)
+            ind[par][parents['id'].values] = parents[par + '_decla'].values
             print str(sum((ind[par].notnull() & (ind[par] != -1 )))) + " enfants connaissent leur " + par
 
-        ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct', 'pere', 'mere', 'civilstate', 'conj', 'men_pere', 'men_mere']]
+        ind = ind.drop(list_enf + ['index'],axis = 1)
         
     # 2- Constitution des ménages de 2009
         ind['quimen'] = -1
@@ -211,7 +229,6 @@ class Destinie(DataTil):
         ind['age'] = year_ini - ind['naiss']
 
         # 1ere étape : Détermination des têtes de ménages
-        ind['id'] = ind.index 
         
         # (a) - Majeurs ne déclarant ni père, ni mère dans le même ménage (+ un cas de 17 ans indep.financièrement)
         maj = ind.loc[(ind['men_pere'] == 0)&(ind['men_mere'] == 0) & (ind['age']>16)].index
@@ -281,45 +298,24 @@ class Destinie(DataTil):
         assert sum(ind['men']==-1) == 0 # Tout le monde a un ménage : on est content!
     
     # 3- Opérations préalables à la création des foyers
-        # Ajouts des information sur les statuts + salaires sur le marché du travail (tjs sur table 2009)
-        ind = merge(ind, emp_tot[emp_tot['period'] == self.survey_year],  on='id', how ='left', sort=False)
-
-        # Création de la variable 'nb_enf'
-        ## nb d'enfant
-        nb_enf_mere= ind.groupby('mere').size()
-        nb_enf_pere = ind.groupby('pere').size()
-        enf_tot = pd.concat([nb_enf_mere, nb_enf_pere], axis=1)
-        enf_tot = enf_tot.sum(axis=1)
-        # Comme enf_tot a le bon index on fait
-        ind['nb_enf'] = enf_tot
-        ind['nb_enf'] = ind['nb_enf'].fillna(0)
-        
         self.ind = ind.fillna(-1)
         self.men = men
     
     def add_change(self):
         print "Début de l'actualisation des changements jusqu'en 2060"
         ind = self.ind
-        emp_tot_mini = self.emp_tot_mini
-        BioFam = self.BioFam
-        
-        # On ne garde pour l'instant que les informations sur l'emploi postérieures à 2009
-        emp = emp_tot_mini[emp_tot_mini['period'] > self.survey_year]
-        # On merge (changements familiaux (postérieurs à 2009 par défaut))
-        Bio = BioFam[['id', 'period', 'pere', 'mere', 'civilstate', 'conj']]
-        Bio = drop_consecutive_row(Bio.sort(['id', 'period']), ['id', 'pere', 'mere', 'civilstate', 'conj'])
-        Bio = Bio[Bio['period'] > self.survey_year]
-        actu = merge(emp, Bio, on = ['id', 'period'], how = 'outer').fillna(-1)
-        actu['period'] = actu['period']*100 + 1
+        self.ind_ini = ind
+        ind_add = self.ind_add
         
         # On ajoute ces données aux informations de 2009
-        ind = ind.append(actu, ignore_index = True)
+        ind = ind.append(ind_add, ignore_index = True)
         ind = ind.replace(-1, np.nan)
         
         # On sort la table au format minimal
         ind = minimal_dtype(ind)
         ind = ind.fillna(-1)
         self.ind = ind
+        ind.to_csv('indfinal.csv')
         print "Fin de l'actualisation des changements jusqu'en 2060"
     
 if __name__ == '__main__':
@@ -334,6 +330,7 @@ if __name__ == '__main__':
     data.creation_foy()    
     data.var_sup()
     data.add_change()
-    data.store_to_liam()
+    
+    #data.store_to_liam()
 
     print "Temps Destiny.py : " + str(time.time() - start_t) + "s" 
