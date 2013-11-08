@@ -8,6 +8,5 @@ The development of TaxIPP-Life is a FLOSS project wich code is distributed
 under the GPL licence version 3 or later (see license.txt). 
 The source code is freely available and still undergoes heavy development.
 Feel free to join the TaxIPP-Life developpment team on GitHub 
-(https://github.com/AlexisEidelman/til) or to contact us at
+(https://github.com/TaxIPP-Life/Til/) or to contact us at
 alexis.eidelman.pro@gmail.com
-
