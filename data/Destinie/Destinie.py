@@ -79,22 +79,46 @@ class Destinie(DataTil):
         
         def _lecture_BioFam():
             BioFam = pd.read_table(path_data_destinie + 'BioFam.txt', sep=';',
-                                   header=None, names=['id', 'pere', 'mere', 'civilstate',
-                                                       'conj', 'enf1', 'enf2',
-                                                       'enf3', 'enf4', 'enf5', 'enf6']) 
-            
-            #TODO: remonter ici le code de _Bio_Format? 
-            
-            return BioFam #,BioFam_ini
+                                   header=None, names=['id','pere','mere','civilstate','conj',
+                                                       'enf1','enf2','enf3','enf4','enf5','enf6'])   
+            # Index limites pour changement de date
+            delimiters = BioFam['id'].str.contains('Fin')
+            annee = BioFam[delimiters].index.tolist()  # donne tous les index limites
+            annee = [-1] + annee # in order to simplify loops later
+            # create a series period
+            year0 = self.survey_year
+            period = []
+            for k in range(len(annee)-1):
+                period = period + [year0 + k]*(annee[k + 1] - 1 - annee[k])
+                
+            BioFam = BioFam[~delimiters]
+            BioFam['period'] = period
+            list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
+            BioFam[list_enf + ['pere','mere', 'conj']] -= 1
+            BioFam['id'] = BioFam['id'].astype(int) - 1
+            for var in ['pere','mere', 'conj'] + list_enf:
+                BioFam.loc[BioFam[var] < 0 , var] = np.nan
+            BioFam = BioFam.fillna(np.nan)
+            BioFam = minimal_dtype(BioFam)
+            return BioFam[BioFam['period']== year0], BioFam[BioFam['period'] != year0]
+                 
+        def _Emp_format(statut, sal, ind):
+            ''' Mise en forme des données sur carrières'''
+            emp_tot = merge(emp_tot, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
+            emp_tot['period'] = emp_tot['period'] + emp_tot['naiss']
+            emp_tot =  emp_tot[['id','period','workstate','sali']]
+            # Mise au format minimal
+            emp_tot = emp_tot.fillna(np.nan).replace(-1, np.nan)
+            emp_tot = minimal_dtype(emp_tot)
+            return emp_tot
                   
         print "Début de l'importation des données"
         start_time = time.time()
         ind, statut, sal = _BioEmp_in_3()
-        self.BioFam = _lecture_BioFam()
-        self.ind = ind
-        self.ind_ini = ind
-        self.statut = statut
-        self.sal = sal
+        pdb.set_trace()
+        BioFam0, BioFam = _lecture_BioFam()
+        self.ind = ind.merge(BioFam0)
+        self.futur = statut.join(sal)
         print "Temps d'importation des données : " + str(time.time() - start_time) + "s" 
         print "fin de l'importation des données"
 
@@ -105,49 +129,15 @@ class Destinie(DataTil):
             - ind : démographiques + caractéristiques indiv
             - emp_tot : déroulés de carrières et salaires associés
         '''
-        def _Bio_format() :  
-            BioFam = self.BioFam
-            # 1 - Variable 'date de mise à jour'
-            # Index limites pour changement de date
-            delimiters = BioFam['id'].str.contains('Fin')
-            annee = BioFam[delimiters].index.tolist()  # donne tous les index limites
-            annee = [-1] + annee # in order to simplify loops later
-            # create a series period
-            period = []
-            for k in range(len(annee)-1):
-                period = period + [2009+k]*(annee[k+1]-1-annee[k])
-    
-            BioFam = BioFam[~delimiters]
-            
-            BioFam['period'] = period
-            list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
-            BioFam[list_enf + ['pere','mere', 'conj']] -= 1
-            BioFam['id'] = BioFam['id'].astype(int) - 1
-            for var in ['pere','mere', 'conj'] + list_enf:
-                BioFam.loc[BioFam[var] < 0 , var] = np.nan
-            BioFam = BioFam.fillna(np.nan)
-            BioFam = minimal_dtype(BioFam)
-            return BioFam
-             
-        def _Emp_format(statut, sal, ind):
-            ''' Mise en forme des données sur carrières'''
-            emp_tot = merge(statut, sal, left_index=True, right_index=True, sort=False)  
-            emp_tot = emp_tot[['id', 'period', 'workstate', 'sali']]
-            emp_tot = merge(emp_tot, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
-            emp_tot['period'] = emp_tot['period'] + emp_tot['naiss']
-            emp_tot =  emp_tot[['id','period', 'workstate', 'sali']]
-            # Mise au format minimal
-            emp_tot = emp_tot.fillna(np.nan).replace(-1, np.nan)
-            emp_tot = minimal_dtype(emp_tot)
-            return emp_tot
-        
+
         def _ind_merge(BioFam, ind, emp_tot):
-            ''' fusion : BioFam + ind +Emp_tot -> ind
+            ''' fusiempon : BioFam + ind + Emp_tot -> ind
             Rq : pour l'instant on ne garde que les données postérieures à 2009'''
+            #TODO: faire past
             survey_year = self.survey_year
-            to_ind = merge(emp_tot, BioFam, on = ['id', 'period'], how = 'outer', 
-                           right_index = False, left_index= False)
-            ind = merge(to_ind, ind, on='id', how ='outer', right_index = False, left_index = False)
+            to_ind = merge(emp_tot, BioFam, on=['id','period'], how ='outer', 
+                           right_index=False, left_index=False)
+            ind = merge(to_ind, ind, on='id', how ='outer', right_index=False, left_index=False)
             #ind = ind.sort('id')
             #ind = DataFrame(ind, index = ind.id.values)
             # L'index donne l'identifiant de l'individu
@@ -155,7 +145,20 @@ class Destinie(DataTil):
             # Informations atemporelles ne doivent apparaitre que l'année où l'individu apparait dans la base
             ind.loc[ ind.sort(['id', 'period']).duplicated('id') == True, ['sexe', 'naiss', 'findet', 'tx_prime_fct']] = -1
             return ind
-
+            
+            print "Début du travail initial sur BioFam"
+            start_time = time.time()
+            emp_tot = _Emp_format(self.statut, self.sal, self.ind)
+            ind = _ind_merge(BioFam, self.ind, emp_tot)
+            self.ind = ind
+            ind_add = ind[ind['period'] > self.survey_date]
+            list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
+            ind_add = ind_add.drop(list_enf + ['index'],axis = 1)
+            self.ind_add = ind_add
+            print "Temps de la mise en forme initiale : " + str(time.time() - start_time) + "s" 
+            print "Fin de la mise en forme initiale"
+            return BioFam 
+        
         print "Début de la mise en forme initiale"
         start_time = time.time()
         emp_tot = _Emp_format(self.statut, self.sal, self.ind)

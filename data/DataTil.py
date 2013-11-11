@@ -7,7 +7,7 @@ Alexis Eidelman
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
 from matching import Matching
-from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til
+from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype
 from pgm.CONFIG import path_data_patr, path_til, path_til_liam
 
 import pandas as pd
@@ -19,7 +19,6 @@ from numpy.lib.stride_tricks import as_strided
 
 import pdb
 import gc
-
 
 import sys 
 sys.path.append(path_til_liam)
@@ -38,6 +37,8 @@ class DataTil(object):
         self.ind = None
         self.men = None
         self.foy = None
+        self.futur = None
+        self.past = None
         self.par_look_enf = None
         self.seuil= None
         
@@ -82,59 +83,57 @@ class DataTil(object):
         '''     
         ind = self.ind
         start_year = self.survey_year
-        final_year = self.survey_year +1 
-        
+        final_year = self.survey_year +1        
         print ("Début du travail sur les conjoints")
 
-        
         for year in xrange(start_year, final_year): 
-            # Rq : A terme, faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
+            # TODO: faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
             # pour les deux personnses concernées
         #1 -Vérifie que les conjoints sont bien reciproques 
-            corr = ind[ind['period'] == year].reset_index()
-            corr.to_csv('testcorr0.csv')
-            # Réciprocité des déclarations
-            test = corr.loc[(corr['conj'] != -1) | corr['civilstate'].isin([2,5]),['id', 'conj', 'civilstate']]
+            tab = ind[ind['period'] == year].reset_index()
+#            tab.to_csv('testtab0.csv')
+            test = tab.loc[(tab['conj'] != -1) | tab['civilstate'].isin([2,5]),['id','conj','civilstate']]
             test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
-            test = test[ (test['conj_x'] != test['id_y'])]
-            if test:
-                print "Le nombre d'époux non réciproques (avant corrections) est : " + str(len(test)) + " en " + str(year) 
+            try: 
+                assert((test['conj_x'] == test['id_y']).all())
+            except :
+                test = test[test['conj_x'] != test['id_y']]
+                print "Le nombre d'époux non réciproques pour l'année" + str(year) + " est : " + str(len(test)) 
                 # (a) - l'un des deux se déclare célibataire -> le second le devient
                 celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
                                             ['id_x', 'civilstate_y']]
-                if len(celib_y) != 0:
-                    corr['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
-                    corr['conj'][celib_y['id_x'].values] = np.nan
+                if celib_y:
+                    tab['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
+                    tab['conj'][celib_y['id_x'].values] = np.nan
 
                 celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
                                             ['id_y','civilstate_x']]
                 if len(celib_x) != 0:
-                    corr['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
-                    corr['conj'][celib_x['id_y'].values] = np.nan
+                    tab['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
+                    tab['conj'][celib_x['id_y'].values] = np.nan
 
                 # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
                 # -> Conjoint réattribué à qui de droit
                 no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
-                if len(no_conj) != 0:
-                    corr['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
+                if no_conj:
+                    tab['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
                 
                 # (c) - Célibats lorsque conjoint non spécifié ni non retrouvé
-                no_conj = (corr['civilstate'].isin([2,5]) | (corr['civilstate'] == -1))  & (corr['conj'] == -1)
-                print str(len(corr[no_conj])) + " personnes ne spécifiant pas de conjoint ou d'état civil deviennent célibataires"
-                corr.loc[no_conj, 'civilstate'] = 1
+                no_conj = (tab['civilstate'].isin([2,5]) | (tab['civilstate'] == -1))  & (tab['conj'] == -1)
+                print str(len(tab[no_conj])) + " personnes ne spécifiant pas de conjoint ou d'état civil deviennent célibataires"
+                tab.loc[no_conj, 'civilstate'] = 1
             
         #3 - Vérifications des états civils
-            corr.to_csv('testcorr.csv')
-            test = corr.loc[corr['civilstate'].isin([2,5]), ['conj','id','civilstate', 'sexe']]
+            test = tab.loc[tab['civilstate'].isin([2,5]), ['conj','id','civilstate', 'sexe']]
             test = merge(test, test, left_on='id', right_on='conj')
             confusion = test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['civilstate_y']!= test['civilstate_x'])
             test = test.loc[confusion & (test['id_x'] < test['id_y']),
                             ['id_x', 'id_y', 'civilstate_x', 'civilstate_y']]
-            if len(test) != 0:
+            if test:
                 print str(len(test)) + " confusions mariages/pacs en " + str(year) + " corrigées"
                 # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
-                corr['civilstate'][test['id_y'].values] = corr['civilstate'][test['id_x'].values]
-            ind[ind['period'] == year] = corr
+                tab['civilstate'][test['id_y'].values] = tab['civilstate'][test['id_x'].values]
+            ind[ind['period'] == year] = tab
         self.ind = ind
         print ("fin du travail sur les conjoints")
 
@@ -154,8 +153,7 @@ class DataTil(object):
         que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
         '''
         ind = self.ind 
-        men = self.men   
-        ind.to_csv('indfoy.csv')      
+        men = self.men      
         print ("creation des declaration")
         # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas
         if 'nb_enf' not in list(ind.columns):
@@ -201,9 +199,9 @@ class DataTil(object):
         
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for parent in  ['pere', 'mere']:
-           pac_par = ind.loc[ pac_condition & (ind[parent] != -1) & (ind['foy'] == -1), parent]
-           ind['foy'][pac_par.index.values] = ind['foy'][pac_par.values]
-           print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
+            pac_par = ind.loc[ pac_condition & (ind[parent] != -1) & (ind['foy'] == -1), parent]
+            ind['foy'][pac_par.index.values] = ind['foy'][pac_par.values]
+            print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
 
         # 4eme étape : création de la table foy
         vous = (ind['quifoy'] == 0)
@@ -251,6 +249,7 @@ class DataTil(object):
         raise NotImplementedError()
         
     def expand_data(self, seuil=150, nb_ligne=None):
+        #TODO: add future and past
         '''
         Note: ne doit pas tourner après lien parent_enfant
         Cependant par_look_enfant doit déjà avoir été créé car on s'en sert pour la réplication
@@ -284,33 +283,30 @@ class DataTil(object):
 
         # 1 - Réhaussement des pondérations inférieures à la pondération cible
         men['pond'] [men ['pond']<target_pond] = target_pond 
-        
         # 2 - Calcul du nombre de réplications à effectuer
         men['nb_rep'] = men['pond'].div(target_pond)
         men['nb_rep'] = men['nb_rep'].round()
         men['nb_rep'] = men['nb_rep'].astype(int)
 
-                
         # 3- Nouvelles pondérations (qui seront celles associées aux individus après réplication)
         men['pond'] = men['pond'].div(men['nb_rep'])
         men_exp = replicate(men) 
        
         if foy is not None:
-            foy = merge(men.ix[:,['id','nb_rep']],foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
+            foy = merge(men[['id','nb_rep']],foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
             foy_exp= replicate(foy)
             foy_exp['men'] = new_link_with_men(foy, men_exp, 'men')
         else: 
             foy_exp = None
 
         if par is not None:
-            par = merge(men.ix[:,['id','nb_rep']], par, left_on='id', right_on='men', how='right', suffixes=('_men',''))
-            par_exp= replicate(par)
+            par = merge(men[['id','nb_rep']], par, left_on='id', right_on='men', how='right', suffixes=('_men',''))
+            par_exp = replicate(par)
             par_exp['men'] = new_link_with_men(par, men_exp, 'men')         
         else: 
             par_exp = None
                         
-                        
-        ind = merge(men.ix[:,['id','nb_rep']],ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
+        ind = merge(men[['id','nb_rep']], ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
         ind_exp= replicate(ind)
         
         # liens entre individus
@@ -381,8 +377,8 @@ class DataTil(object):
         ind[var_to_float] = ind[var_to_float].astype(float)
         ind = ind.rename(columns={'etamatri':'civilstate'})
         
-        self.men = men
-        self.ind = ind
+        self.men = minimal_dtype(men)
+        self.ind = minimal_dtype(ind)
         self.drop_variable({'ind':['lienpref','age','anais','mnais']})  
         
     def var_sup(self):
@@ -393,19 +389,15 @@ class DataTil(object):
         #ind['nb_men'] = ind.groupby('men').size()
         #ind['nb_foy'] = ind.groupby('foy').size()
         
-
-        g = ind.groupby('men')       
-        ind= ind.set_index('men')
-        ind['nb_men'] = g.size() 
+        ind_men = ind.groupby('men')       
+        ind = ind.set_index('men')
+        ind['nb_men'] = ind_men.size() 
         ind=ind.reset_index()
 
-        h=ind.groupby('foy')
+        ind_foy = ind.groupby('foy')
         ind = ind.set_index('foy')
-        ind['nb_foy'] = h.size() 
+        ind['nb_foy'] = ind_foy.size() 
         ind=ind.reset_index()
-        
-        ind['agem'] = ind['age']*12
-        
         self.ind=ind 
         
         

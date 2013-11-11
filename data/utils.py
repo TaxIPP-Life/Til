@@ -59,7 +59,6 @@ def replicate(table):
         columns_ini = table.columns   
         dtypes_ini = table.dtypes
         nb_rep_table = np.asarray(table['nb_rep'], dtype=np.int64)   
-        table.to_csv('testcsv.csv', sep=';')
         
         table_exp = np.asarray(table).repeat(nb_rep_table, axis=0)
         table_exp = DataFrame(table_exp,  columns = columns_ini, dtype = float)
