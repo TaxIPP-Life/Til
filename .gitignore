@@ -28,6 +28,7 @@ data/Patrimoine/archives_R/*.xls
 data/Patrimoine/archives_R/*.csv
 data/Patrimoine/archives_R/*.h5
 data/Destinie/*.csv
+data/Destinie/*.txt
 data/Patrimoine/*.csv
 data/archives_R/Patrimoine/subset.Rdata
 data/Patrimoine/lien_parent_enfant/*.csv
