@@ -76,7 +76,7 @@ class DataTil(object):
     def format_initial(self):
         raise NotImplementedError()
         
-    def conjoint(self):
+    def check_conjoint(self):
         '''
         Vérifications de la réciprocité des conjoints déclarés + des états civils
         Correction si nécessaires
@@ -371,11 +371,10 @@ class DataTil(object):
         
         #TODO: comprendre pourquoi le type n'est pas bon plus haut, et le changer le plus tôt possible
         #souvent c'est à cause des NA
-        var_to_int = ['anc','conj','findet','foy','mere','pere','workstate','xpr']
-        var_to_float = ['choi','rsti','sali']
-        ind[var_to_int] = ind[var_to_int].astype(int)
-        ind[var_to_float] = ind[var_to_float].astype(float)
-        ind = ind.rename(columns={'etamatri':'civilstate'})
+#         var_to_int = ['anc','conj','findet','foy','mere','pere','workstate','xpr']
+#         var_to_float = ['choi','rsti','sali']
+#         ind[var_to_int] = ind[var_to_int].astype(int)
+#         ind[var_to_float] = ind[var_to_float].astype(float)
         
         self.men = minimal_dtype(men)
         self.ind = minimal_dtype(ind)

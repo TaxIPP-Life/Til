@@ -47,7 +47,7 @@ class Destinie(DataTil):
     
             BioEmp = pd.read_table(path_data_destinie + 'BioEmp.txt', sep=';',
                                    header=None, names=colnames)
-    
+            
             taille = len(BioEmp)/3
             BioEmp['id'] = BioEmp.index/3
             
@@ -100,24 +100,15 @@ class Destinie(DataTil):
                 BioFam.loc[BioFam[var] < 0 , var] = np.nan
             BioFam = BioFam.fillna(np.nan)
             BioFam = minimal_dtype(BioFam)
-            return BioFam[BioFam['period']== year0], BioFam[BioFam['period'] != year0]
-                 
-        def _Emp_format(statut, sal, ind):
-            ''' Mise en forme des données sur carrières'''
-            emp_tot = merge(emp_tot, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
-            emp_tot['period'] = emp_tot['period'] + emp_tot['naiss']
-            emp_tot =  emp_tot[['id','period','workstate','sali']]
-            # Mise au format minimal
-            emp_tot = emp_tot.fillna(np.nan).replace(-1, np.nan)
-            emp_tot = minimal_dtype(emp_tot)
-            return emp_tot
+            return BioFam 
                   
         print "Début de l'importation des données"
         start_time = time.time()
         ind, statut, sal = _BioEmp_in_3()
         pdb.set_trace()
-        BioFam0, BioFam = _lecture_BioFam()
-        self.ind = ind.merge(BioFam0)
+        self.BioFam = _lecture_BioFam()
+        self.ind = ind
+        #TODO: join BioFam
         self.futur = statut.join(sal)
         print "Temps d'importation des données : " + str(time.time() - start_time) + "s" 
         print "fin de l'importation des données"
@@ -159,6 +150,16 @@ class Destinie(DataTil):
             print "Fin de la mise en forme initiale"
             return BioFam 
         
+        #         def _Emp_format(statut, sal, ind):
+#             ''' Mise en forme des données sur carrières'''
+#             emp_tot = merge(emp_tot, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
+#             emp_tot['period'] = emp_tot['period'] + emp_tot['naiss']
+#             emp_tot =  emp_tot[['id','period','workstate','sali']]
+#             # Mise au format minimal
+#             emp_tot = emp_tot.fillna(np.nan).replace(-1, np.nan)
+#             emp_tot = minimal_dtype(emp_tot)
+#             return emp_tot
+        
         print "Début de la mise en forme initiale"
         start_time = time.time()
         emp_tot = _Emp_format(self.statut, self.sal, self.ind)
@@ -172,61 +173,66 @@ class Destinie(DataTil):
         print "Temps de la mise en forme initiale : " + str(time.time() - start_time) + "s" 
         print "Fin de la mise en forme initiale"
 
-    def table_initial(self):
+    def format_initial(self):
+        '''Sélection des individus présents en 2009 et vérifications des liens de parentés '''
+        
         ind = self.ind
         ind = ind.set_index('id')
         ind['id'] = ind.index
         year_ini = self.survey_year # = 2009 
         print "Début de l'initialisation des données pour " + str(year_ini)
-    # 1-  Sélection des individus présents en 2009 et vérifications des liens de parentés
-        ind= ind[ind['period'] == year_ini]
-        print "Nombre d'individus dans la base initiale de " + str(year_ini) +" : " + str(len(ind))
-        #Déclarations initiales des enfants
-        pere_ini = ind[['id', 'pere']]
-        mere_ini = ind[['id', 'mere']]
-        list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
-        # Comparaison avec les déclarations initiales des parents      
-        for par in ['pere', 'mere'] :   
-            #a -Définition des tables initiales:  
-            if par == 'pere':
-                par_ini = pere_ini
-                sexe = 0
-            else :
-                par_ini = mere_ini
-                sexe = 1    
-            # b -> construction d'une table a trois entrées : 
-            #     par_decla = identifiant du parent déclarant l'enfant
-            #     par_ini = identifiant du parent déclaré par l'enfant
-            #     id = identifiant de l'enfant (déclaré ou déclarant)
-            par_ini = par_ini[par_ini[par] != -1]
-            link = ind.loc[(ind['enf1'] != -1 )& (ind['sexe'] == sexe),  list_enf]
-            link = link.stack().reset_index().rename(columns={'id': par, 'level_1': 'link', 0 :'id'})[[par,'id']].astype(int)
-            link = link[link['id'] != -1]
-            link = merge(link, par_ini, on = 'id', suffixes=('_decla', '_ini'), 
-                         how = 'outer').fillna(-1)
-            link = link[(link[ par + '_decla'] != -1 ) | (link[par + '_ini'] != -1)]
-            ind['men_' + par] = 0
-            
-            # c- Comparaisons et détermination des liens
-            # Cas 1 : enfants et parents déclarent le même lien : ils vivent ensembles
-            parents = link.loc[(link[par + '_decla'] == link[ par + '_ini']), 'id']
-            ind['men_' + par][parents.values] = 1
-            
-            # Cas 2 : enfants déclarant un parent mais ce parent ne les déclare pas (rattachés au ménage du parent)
-            # Remarques : 8 cas pour les pères, 10 pour les mères
-            parents = link[(link[par + '_decla'] != link[ par +'_ini']) & (link[par +'_decla'] == -1) ] ['id']
-            ind['men_'+ par][parents.values] = 1
-            print str(sum(ind['men_' + par]==1)) + " vivent avec leur " + par
-            
-            # Cas 3 : parent déclarant un enfant mais non déclaré par l'enfant (car hors ménage)
-            # Aucune utilisation pour l'instant (men_par = 0) mais pourra servir pour la dépendance
-            parents = link.loc[(link[par +'_decla'] != link[par +'_ini']) & (link[par +'_ini'] == -1), ['id', par +'_decla']].astype(int)
-            ind[par][parents['id'].values] = parents[par + '_decla'].values
-            print str(sum((ind[par].notnull() & (ind[par] != -1 )))) + " enfants connaissent leur " + par
-
-        ind = ind.drop(list_enf + ['index'],axis = 1)
         
-    # 2- Constitution des ménages de 2009
+        def _enf_to_par(ind):
+            ind= ind[ind['period'] == year_ini]
+            print "Nombre d'individus dans la base initiale de " + str(year_ini) +" : " + str(len(ind))
+            #Déclarations initiales des enfants
+            pere_ini = ind[['id', 'pere']]
+            mere_ini = ind[['id', 'mere']]
+            list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
+            # Comparaison avec les déclarations initiales des parents      
+            for par in ['pere', 'mere'] :   
+                #a -Définition des tables initiales:  
+                if par == 'pere':
+                    par_ini = pere_ini
+                    sexe = 0
+                else :
+                    par_ini = mere_ini
+                    sexe = 1    
+                # b -> construction d'une table a trois entrées : 
+                #     par_decla = identifiant du parent déclarant l'enfant
+                #     par_ini = identifiant du parent déclaré par l'enfant
+                #     id = identifiant de l'enfant (déclaré ou déclarant)
+                par_ini = par_ini[par_ini[par] != -1]
+                link = ind.loc[(ind['enf1'] != -1 )& (ind['sexe'] == sexe),  list_enf]
+                link = link.stack().reset_index().rename(columns={'id': par, 'level_1': 'link', 0 :'id'})[[par,'id']].astype(int)
+                link = link[link['id'] != -1]
+                link = merge(link, par_ini, on = 'id', suffixes=('_decla', '_ini'), 
+                             how = 'outer').fillna(-1)
+                link = link[(link[ par + '_decla'] != -1 ) | (link[par + '_ini'] != -1)]
+                ind['men_' + par] = 0
+                
+                # c- Comparaisons et détermination des liens
+                # Cas 1 : enfants et parents déclarent le même lien : ils vivent ensembles
+                parents = link.loc[(link[par + '_decla'] == link[ par + '_ini']), 'id']
+                ind['men_' + par][parents.values] = 1
+                
+                # Cas 2 : enfants déclarant un parent mais ce parent ne les déclare pas (rattachés au ménage du parent)
+                # Remarques : 8 cas pour les pères, 10 pour les mères
+                parents = link[(link[par + '_decla'] != link[ par +'_ini']) & (link[par +'_decla'] == -1) ] ['id']
+                ind['men_'+ par][parents.values] = 1
+                print str(sum(ind['men_' + par]==1)) + " vivent avec leur " + par
+                
+                # Cas 3 : parent déclarant un enfant mais non déclaré par l'enfant (car hors ménage)
+                # Aucune utilisation pour l'instant (men_par = 0) mais pourra servir pour la dépendance
+                parents = link.loc[(link[par +'_decla'] != link[par +'_ini']) & (link[par +'_ini'] == -1), ['id', par +'_decla']].astype(int)
+                ind[par][parents['id'].values] = parents[par + '_decla'].values
+                print str(sum((ind[par].notnull() & (ind[par] != -1 )))) + " enfants connaissent leur " + par
+                return ind
+        ind = _enf_to_par(ind)        
+        self.ind = ind.drop(list_enf + ['index'],axis = 1)
+        
+    def constitution_menage(self):
+        ind = self.ind
         ind['quimen'] = -1
         ind['men'] = -1
         ind['age'] = year_ini - ind['naiss']
@@ -329,11 +335,13 @@ if __name__ == '__main__':
     data.load()
     data.format_initial()
     data.conjoint()
+#     data.check_conjoint()
+    data.constitution_menage()
     data.table_initial()
     data.creation_foy()    
     data.var_sup()
     data.add_change()
     
-    #data.store_to_liam()
+    data.store_to_liam()
 
     print "Temps Destiny.py : " + str(time.time() - start_t) + "s" 
