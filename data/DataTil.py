@@ -29,7 +29,6 @@ class DataTil(object):
     """
     La classe qui permet de lancer le travail sur les données
     La structure de classe n'est peut-être pas nécessaire pour l'instant 
-    
     """
     def __init__(self):
         self.name = None
@@ -81,59 +80,54 @@ class DataTil(object):
         Vérifications de la réciprocité des conjoints déclarés + des états civils
         Correction si nécessaires
         '''     
-        ind = self.ind
-        start_year = self.survey_year
-        final_year = self.survey_year +1        
+        ind = self.ind       
         print ("Début du travail sur les conjoints")
 
-        for year in xrange(start_year, final_year): 
-            # TODO: faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
-            # pour les deux personnses concernées
+        # TODO: faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
+        # pour les deux personnses concernées
         #1 -Vérifie que les conjoints sont bien reciproques 
-            tab = ind[ind['period'] == year].reset_index()
-#            tab.to_csv('testtab0.csv')
-            test = tab.loc[(tab['conj'] != -1) | tab['civilstate'].isin([2,5]),['id','conj','civilstate']]
-            test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
-            try: 
-                assert((test['conj_x'] == test['id_y']).all())
-            except :
-                test = test[test['conj_x'] != test['id_y']]
-                print "Le nombre d'époux non réciproques pour l'année" + str(year) + " est : " + str(len(test)) 
-                # (a) - l'un des deux se déclare célibataire -> le second le devient
-                celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
-                                            ['id_x', 'civilstate_y']]
-                if celib_y:
-                    tab['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
-                    tab['conj'][celib_y['id_x'].values] = np.nan
+        test = ind.loc[(ind['conj'] != -1) | ind['civilstate'].isin([2,5]),['id','conj','civilstate']]
+        test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
+        try: 
+            assert((test['conj_x'] == test['id_y']).all())
+        except :
+            test = test[test['conj_x'] != test['id_y']]
+            print "Nombre d'époux non réciproques pour l'année initiale : " + str(len(test)) 
+            # (a) - l'un des deux se déclare célibataire -> le second le devient
+            celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
+                                        ['id_x', 'civilstate_y']]
+            if celib_y:
+                ind['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
+                ind['conj'][celib_y['id_x'].values] = np.nan
 
-                celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
-                                            ['id_y','civilstate_x']]
-                if len(celib_x) != 0:
-                    tab['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
-                    tab['conj'][celib_x['id_y'].values] = np.nan
+            celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
+                                        ['id_y','civilstate_x']]
+            if len(celib_x) != 0:
+                ind['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
+                ind['conj'][celib_x['id_y'].values] = np.nan
 
-                # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
-                # -> Conjoint réattribué à qui de droit
-                no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
-                if no_conj:
-                    tab['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
-                
-                # (c) - Célibats lorsque conjoint non spécifié ni non retrouvé
-                no_conj = (tab['civilstate'].isin([2,5]) | (tab['civilstate'] == -1))  & (tab['conj'] == -1)
-                print str(len(tab[no_conj])) + " personnes ne spécifiant pas de conjoint ou d'état civil deviennent célibataires"
-                tab.loc[no_conj, 'civilstate'] = 1
+            # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
+            # -> Conjoint réattribué à qui de droit
+            no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
+            if no_conj:
+                ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
+            
+            # (c) - Célibats lorsque conjoint non spécifié ni non retrouvé
+            no_conj = (ind['civilstate'].isin([2,5]) | (ind['civilstate'] == -1))  & (ind['conj'] == -1)
+            print str(len(ind[no_conj])) + " personnes ne spécifiant pas de conjoint ou d'état civil deviennent célibataires"
+            ind.loc[no_conj, 'civilstate'] = 1
             
         #3 - Vérifications des états civils
-            test = tab.loc[tab['civilstate'].isin([2,5]), ['conj','id','civilstate', 'sexe']]
-            test = merge(test, test, left_on='id', right_on='conj')
-            confusion = test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['civilstate_y']!= test['civilstate_x'])
-            test = test.loc[confusion & (test['id_x'] < test['id_y']),
-                            ['id_x', 'id_y', 'civilstate_x', 'civilstate_y']]
-            if test:
-                print str(len(test)) + " confusions mariages/pacs en " + str(year) + " corrigées"
-                # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
-                tab['civilstate'][test['id_y'].values] = tab['civilstate'][test['id_x'].values]
-            ind[ind['period'] == year] = tab
+        test = ind.loc[ind['civilstate'].isin([2,5]), ['conj','id','civilstate', 'sexe']]
+        test = merge(test, test, left_on='id', right_on='conj')
+        confusion = test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['civilstate_y']!= test['civilstate_x'])
+        test = test.loc[confusion & (test['id_x'] < test['id_y']),
+                        ['id_x', 'id_y', 'civilstate_x', 'civilstate_y']]
+        if test:
+            print str(len(test)) + " confusions mariages/pacs lors de l'année initiale (corrigées)"
+            # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
+            ind['civilstate'][test['id_y'].values] = ind['civilstate'][test['id_x'].values]
+        
         self.ind = ind
         print ("fin du travail sur les conjoints")
 
@@ -153,8 +147,9 @@ class DataTil(object):
         que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
         '''
         ind = self.ind 
-        men = self.men      
-        print ("creation des declaration")
+        men = self.men 
+        survey_year = self.survey_year     
+        print ("Creation des declarations fiscales")
         # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas
         if 'nb_enf' not in list(ind.columns):
             nb_enf_mere= ind.groupby('mere').size()
@@ -191,6 +186,7 @@ class DataTil(object):
         nb_foy = len(ind[ind['quifoy'] == 0]) 
         print "Le nombre de foyers créés est : " + str(nb_foy)
         ind['foy'][ind['quifoy'] == 0] = range(0, nb_foy)
+        ind[['foy', 'quifoy']] = ind[['foy', 'quifoy']].astype(int)
         
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
@@ -216,8 +212,8 @@ class DataTil(object):
         foy['vous'] = ind['id'][vous]
         foy = DataFrame(foy, index = xrange(0,len(foy)))
         foy['id'] = foy.index
-        for table in [men, foy, ind]:
-            table['period'] = self.survey_date
+            
+        foy['period'] = survey_year
             
         #### fin de declar
         self.ind = ind
@@ -343,7 +339,7 @@ class DataTil(object):
             ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]       
             pac_mere = pac & ~notnull(ind['foy'])
             ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']]  
-            
+        
         self.par_look_enf = par
         self.men = men_exp
         self.ind = ind_exp
@@ -384,20 +380,33 @@ class DataTil(object):
         '''
         Création des variables indiquant le nombre de personnes dans le ménage et dans le foyer
         '''   
-        ind = self.ind        
-        #ind['nb_men'] = ind.groupby('men').size()
-        #ind['nb_foy'] = ind.groupby('foy').size()
+        ind = self.ind
+        men = self.men
+        foy = self.foy 
+        futur = self.futur
+        past = self.past      
+        
+        ind['agem'] = -1
+        ind.loc[ind['age'] !=-1, 'agem'] = ind.loc[ind['age'] !=-1, 'age'] * 12
+        
+        for data in [ind, men, foy, futur, past] : 
+            data['period'] = data['period']*100 + 1
         
         ind_men = ind.groupby('men')       
         ind = ind.set_index('men')
-        ind['nb_men'] = ind_men.size() 
+        ind['nb_men'] = ind_men.size().astype(int)
         ind=ind.reset_index()
 
         ind_foy = ind.groupby('foy')
         ind = ind.set_index('foy')
-        ind['nb_foy'] = ind_foy.size() 
+        ind['nb_foy'] = ind_foy.size().astype(int)
         ind=ind.reset_index()
-        self.ind=ind 
+        
+        self.ind = ind
+        self.men = men
+        self.foy = foy 
+        self.futur = futur
+        self.past = past
         
         
     def store_to_liam(self):
