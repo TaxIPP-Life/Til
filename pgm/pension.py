@@ -14,7 +14,7 @@ sys.path.append(path_til_liam)
 from src_liam.exprbases import FunctionExpression #Filtered? 
 
 
-class Pension(FunctionExpression):
+class Pension(FunctionExpression): #TODO: switch to filter ? 
     '''
     Class pour définir toutes les pensions,
     très en cours de réflexion

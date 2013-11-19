@@ -132,8 +132,8 @@ def minimal_dtype(table):
                     col = col - min
                 except:
                     pdb.set_trace()
-                modif['boolean'].append(colname)
-                table[colname] = col.astype(np.bool)
+                #modif['boolean'].append(colname)
+                #table[colname] = col.astype(np.bool)
             else:
                 try:
                     if (col[col.notnull()].astype(int) == col[col.notnull()]).all():

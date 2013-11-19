@@ -86,13 +86,14 @@ class DataTil(object):
         # TODO: faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
         # pour les deux personnses concernées
         #1 -Vérifie que les conjoints sont bien reciproques 
-        test = ind.loc[(ind['conj'] != -1) | ind['civilstate'].isin([2,5]),['id','conj','civilstate']]
+        ind = ind.fillna(-1)
+        test = ind.loc[(ind['conj'] != -1) | ind['civilstate'].isin([2,5,6]),['id','conj','civilstate']]
         test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
         try: 
             assert((test['conj_x'] == test['id_y']).all())
         except :
             test = test[test['conj_x'] != test['id_y']]
-            print "Nombre d'époux non réciproques pour l'année initiale : " + str(len(test)) 
+            print "Nombre d'époux non réciproques : " + str(len(test)) 
             # (a) - l'un des deux se déclare célibataire -> le second le devient
             celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
                                         ['id_x', 'civilstate_y']]
@@ -108,12 +109,13 @@ class DataTil(object):
 
             # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
             # -> Conjoint réattribué à qui de droit
-            no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
+            no_conj = test[test['civilstate_x'].isin([2,5,6]) & test['civilstate_y'].isin([2,5,6]) & (test['conj_x']==-1)][['id_y', 'id_x']]
             if no_conj:
+                print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
                 ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
             
             # (c) - Célibats lorsque conjoint non spécifié ni non retrouvé
-            no_conj = (ind['civilstate'].isin([2,5]) | (ind['civilstate'] == -1))  & (ind['conj'] == -1)
+            no_conj = (ind['civilstate'].isin([2,5,6]) | (ind['civilstate'] == -1))  & (ind['conj'] == -1)
             print str(len(ind[no_conj])) + " personnes ne spécifiant pas de conjoint ou d'état civil deviennent célibataires"
             ind.loc[no_conj, 'civilstate'] = 1
             
@@ -186,7 +188,7 @@ class DataTil(object):
         nb_foy = len(ind[ind['quifoy'] == 0]) 
         print "Le nombre de foyers créés est : " + str(nb_foy)
         ind['foy'][ind['quifoy'] == 0] = range(0, nb_foy)
-        ind[['foy', 'quifoy']] = ind[['foy', 'quifoy']].astype(int)
+        #ind[['foy', 'quifoy']] = ind[['foy', 'quifoy']].astype(int)
         
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
@@ -356,8 +358,7 @@ class DataTil(object):
 
         ind['quimen'] = ind['lienpref']
         ind['quimen'][ind['quimen'] >1 ] = 2
-        ind['age'] = self.survey_date/100 - ind['anais']
-        ind['agem'] = 12*ind['age'] + 11 - ind['mnais']
+        
         ind['period'] = self.survey_date
         men['period'] = self.survey_date
         # a changer avec values quand le probleme d'identifiant et résolu .values
@@ -374,7 +375,7 @@ class DataTil(object):
         
         self.men = minimal_dtype(men)
         self.ind = minimal_dtype(ind)
-        self.drop_variable({'ind':['lienpref','age','anais','mnais']})  
+        self.drop_variable({'ind':['lienpref','anais','mnais']})  
         
     def var_sup(self):
         '''
@@ -386,21 +387,36 @@ class DataTil(object):
         futur = self.futur
         past = self.past      
         
-        ind['agem'] = -1
-        ind.loc[ind['age'] !=-1, 'agem'] = ind.loc[ind['age'] !=-1, 'age'] * 12
+        if 'age' not in ind.columns :
+            ind['age'] = self.survey_date/100 - ind['anais']
+            
+        if 'agem' not in ind.columns :
+            ind['agem'] = -1
+            ind.loc[ind['age'] !=-1, 'agem'] = ind.loc[ind['age'] !=-1, 'age'] * 12
+        
+        for var in ['choi', 'xpr', 'rsti', 'anc']:
+            if var not in ind.columns:
+                ind[var] = 0
+                ind[var].dtype = np.int8
         
         for data in [ind, men, foy, futur, past] : 
-            data['period'] = data['period']*100 + 1
+            if data:
+                data['period'] = data['period']*100 + 1
         
         ind_men = ind.groupby('men')       
         ind = ind.set_index('men')
-        ind['nb_men'] = ind_men.size().astype(int)
+        ind['nb_men'] = ind_men.size().astype(np.int)
         ind=ind.reset_index()
 
         ind_foy = ind.groupby('foy')
         ind = ind.set_index('foy')
-        ind['nb_foy'] = ind_foy.size().astype(int)
+        ind['nb_foy'] = ind_foy.size().astype(np.int)
         ind=ind.reset_index()
+        
+        # Format minimal
+        ind = ind.fillna(-1)
+        ind = ind.replace(-1, np.nan)
+        ind = minimal_dtype(ind)
         
         self.ind = ind
         self.men = men
@@ -408,7 +424,15 @@ class DataTil(object):
         self.futur = futur
         self.past = past
         
-        
+    def format_to_liam(self):
+        ind = self.ind
+        to_float = ['age','agem', 'anc', 'foy', 'conj', 'men', 'pere', 'mere', 'quifoy', 'quimen', 'xpr']
+        to_int = ['sali', 'sexe']
+        ind[to_float] = ind[to_float].astype(np.float)
+        ind[to_int] = ind[to_int].astype(np.int)
+        self.ind = ind   
+        print "Bon format pour Liam"
+           
     def store_to_liam(self):
         '''
         Sauvegarde des données au format utilisé ensuite par le modèle Til
@@ -451,6 +475,10 @@ class DataTil(object):
         for ent_name in ['ind','foy','men']:
             entity = eval('self.'+ ent_name)
             entity = entity.fillna(-1)
+            if ent_name == 'ind' : 
+                for var in ['choi', 'rsti', 'sali'] :
+                    entity[var] = entity[var].astype(np.int8)
+                    print var, entity[var].dtype
             ent_table = entity.to_records(index=False)
             dtypes = ent_table.dtype   
             print dtypes      
@@ -479,5 +507,5 @@ class DataTil(object):
 
     def run_all(self):
         for method in self.methods_order:
-            eval('self.'+ method + '()')        
-            
+            eval('self.'+ method + '()')  
+                

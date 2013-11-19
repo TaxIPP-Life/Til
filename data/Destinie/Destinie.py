@@ -305,7 +305,7 @@ class Destinie(DataTil):
         # 5eme étape : mises en formes finales
         # attribution des quimen pour les personnes non référentes
         ind.loc[~ind['quimen'].isin([0,1]), 'quimen'] = 2
-        ind[['men', 'quimen']] = ind[['men', 'quimen']].astype(int)
+        #ind[['men', 'quimen']] = ind[['men', 'quimen']].astype(int)
         
         # suppressions des variables inutiles
         ind = ind.drop(['men_pere', 'men_mere'],1)
@@ -354,8 +354,9 @@ if __name__ == '__main__':
     # (c) - Ajout des informations futures et mise au format Liam
     futur_t = time.time()
     data.add_futur()
+    data.format_to_liam()
     data.store_to_liam()
 
     print ("Temps Destiny.py : " + str(time.time() - start_t) + "s, dont " +
-            str(futur_t - ini_t) + "s pour les mises en formes et corrections initiales" +
+            str(futur_t - ini_t) + "s pour les mises en formes/corrections initiales et " +
          str(time.time() - futur_t ) + "s pour l'ajout des informations futures et la mise au format Liam")
