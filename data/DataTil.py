@@ -85,9 +85,10 @@ class DataTil(object):
 
         # TODO: faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
         # pour les deux personnses concernées
+        
         #1 -Vérifie que les conjoints sont bien reciproques 
         ind = ind.fillna(-1)
-        test = ind.loc[(ind['conj'] != -1) | ind['civilstate'].isin([2,5,6]),['id','conj','civilstate']]
+        test = ind.loc[(ind['conj'] != -1),['id','conj','civilstate']] #| ind['civilstate'].isin([2,5])
         test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
         try: 
             assert((test['conj_x'] == test['id_y']).all())

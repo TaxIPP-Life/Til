@@ -175,8 +175,8 @@ class Destinie(DataTil):
         print "Début de la mise en forme initiale"
         start_time = time.time()
         emp = _Emp_clean(self.ind, self.emp)
-        ind = _ind_total(self.BioFam, self.ind, emp)
-        ind, past, futur = _ind_in_3(ind)
+        ind_total = _ind_total(self.BioFam, self.ind, emp)
+        ind, past, futur = _ind_in_3(ind_total)
         self.ind = ind
         self.past = past
         self.futur = futur
