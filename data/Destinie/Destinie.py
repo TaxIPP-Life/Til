@@ -118,7 +118,7 @@ class Destinie(DataTil):
         start_time = time.time()
         self.ind, self.emp = _BioEmp_in_2()
         self.BioFam = _lecture_BioFam()
-        
+        self.emp.to_csv('testemptot.csv')
         print "Temps d'importation des données : " + str(time.time() - start_time) + "s" 
         print "fin de l'importation des données"
 
@@ -159,7 +159,6 @@ class Destinie(DataTil):
             past = ind[ind['period'] < survey_year]
             past = past.drop(list_enf,axis = 1)
             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
-            past.to_csv('testpast.csv')
             print "Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + str(past['period'].min()) +" à " + str(past['period'].max()) + ")"
             
             # La table futur doit contenir une ligne par changement de statut
@@ -169,7 +168,6 @@ class Destinie(DataTil):
             futur = futur.fillna(-1)
             futur = drop_consecutive_row(futur.sort(['id', 'period']), ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
             print "Nombre de lignes sur le futur : " + str(len(futur)) + " (informations de " + str(futur['period'].min()) +" à " + str(futur['period'].max()) + ")"
-            futur.to_csv('testfutur.csv')
             return ind_survey, past, futur
   
         print "Début de la mise en forme initiale"
@@ -336,7 +334,6 @@ class Destinie(DataTil):
         print "Fin de l'actualisation des changements jusqu'en 2060"
     
 if __name__ == '__main__':
-    
     data = Destinie()
     start_t = time.time()
     # (a) - Importation des données et corrections préliminaires
@@ -346,7 +343,7 @@ if __name__ == '__main__':
     # (b) - Travail sur la base initiale (données à l'année de l'enquête)
     ini_t = time.time()
     data.enf_to_par()
-    data.check_conjoint()
+    data.check_conjoint(option='not_hdom')
     data.creation_menage()
     data.creation_foy()    
     data.var_sup()
@@ -356,6 +353,14 @@ if __name__ == '__main__':
     data.add_futur()
     data.format_to_liam()
     data.store_to_liam()
+    
+    # des petites verifs finales 
+    ind = data.ind
+    ind = ind[ind['period'] == 200901]
+    ind['en_couple'] = ind['conj']>-1 
+    test = ind['conj']>-1   
+    
+    print ind.groupby(['civilstate','en_couple']).size()
 
     print ("Temps Destiny.py : " + str(time.time() - start_t) + "s, dont " +
             str(futur_t - ini_t) + "s pour les mises en formes/corrections initiales et " +

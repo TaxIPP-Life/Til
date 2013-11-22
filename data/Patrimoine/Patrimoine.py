@@ -125,64 +125,10 @@ class Patrimoine(DataTil):
             
         def _correction_etamatri(ind):
             '''
-            Cohérence entre le statut marital et le fait d'être en couple ou non
-            Utile pour le lien mais aussi pour la création des foyers
-            Noter que l'on recode le pacs comme un modalité de l'union (5) 
+            Création de pacs comme un modalité de l'union (5) 
             '''
-            statu_mari = ind[['identmen','age','couple','etamatri','pacs','lienpref']].fillna(-1)
-            # Création d'un nouvelle modalités d'union
             ind.loc[ind['pacs']==1,'etamatri'] = 5 
-            
-            # Personne se déclarant mariées/pacsées mais pas en couples
-            # (a) Si deux mariés/pacsés pas en couple vivent dans le même ménage -> en couple (2)
-            prob_couple = (ind['etamatri'].isin([2,5])) & (ind['couple'] == 3) 
-            statu_marit = statu_mari[prob_couple]
-            statu_marit['identmen'] = statu_marit['identmen']/100
-            many_by_men = statu_marit['identmen'].value_counts() > 1
-            many_by_men = statu_marit['identmen'].value_counts()[many_by_men]
-            many_by_men.to_csv('manybymen.csv')
-            prob_couple_ident = statu_marit[statu_marit['identmen'].isin(many_by_men.index.values.tolist())]
-            ind.loc[prob_couple_ident.index,'couple'] = 1
-            
-            # (b) si un marié/pacsé pas en couple est conjoint de la personne de ref -> en couple (0)
-            prob_couple = (ind['etamatri'].isin([2,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 1)
-            ind.loc[prob_couple_ident.index,'couple'] = 1
-            
-            # (c) si un marié/pacsé pas en couple est ref et l'unique conjoint déclaré dans le ménage se dit en couple -> en couple (0)
-            prob_couple = (ind['etamatri'].isin([2,5])) & (ind['couple'] == 3)& (ind['lienpref'] == 0)
-            men_conj = statu_mari[prob_couple]
-            men_conj = statu_mari.loc[(statu_mari['identmen'].isin(men_conj['identmen'].values))& (statu_mari['lienpref'] == 1), 'identmen' ].value_counts() == 1
-            ind.loc[prob_couple_ident.index,'couple'] = 1
-            
-            # (d) tous les autres sont considérés divorcés
-            prob_couple2 = (ind['etamatri'].isin([2,5])) & (ind['couple'] == 3) 
-            ind[prob_couple2].to_csv('test.csv')
-            print "Nombres de personnes qui deviennent divorcées : ", sum(prob_couple2)
-            ind.loc[prob_couple2, 'etamatri'] = 4
-            
-            assert sum((ind['etamatri'].isin([2,5])) & (ind['couple'] == 3) ) == 0
-            
-            # Check présence d'un conjoint dans le ménage si couple=1 et lienpref in 0,1
-            conj = ind.loc[ind['couple']==1,['identmen','lienpref','identind']]
-#             conj['lienpref'].value_counts()
-            # pref signifie "personne de reference"
-            pref0 = conj.loc[conj['lienpref']==0,'identmen']
-            pref1 = conj.loc[conj['lienpref']==1,'identmen']
-            assert sum(~pref1.isin(pref0)) == 0
-            conj_hdom = pref0[~pref0.isin(pref1)]
-            print len(conj_hdom)
-            ind.loc[conj_hdom.index,'couple'] = 2
-            
-            # Présence du fils/fille de la personne de ref si déclaration belle-fille/beau-fils
-            pref2 = conj.loc[conj['lienpref']==2,'identmen']
-            pref31 = conj.loc[conj['lienpref']==31,'identmen'] 
-            assert sum(~pref31.isin(pref2)) == 0          
-            manque_conj = pref2[~pref2.isin(pref31)]
-            ind.loc[manque_conj.index,'couple'] = 2
-   
             ind = ind.rename(columns={'etamatri': 'civilstate', 'identind': 'id'})
-            
-            # Personnes se déclarant pas en couple même ménage mais pas avec 
             return ind
             
         def _champ_metro(ind,men):
@@ -325,9 +271,54 @@ class Patrimoine(DataTil):
             #retraite
             ind['workstate'][ (ind['anais'] < 2009-64)  & (ind['workstate']==1)] = 10
             return ind['workstate']
+        
+        def _work_on_couple(self):
+            # 1- Personne se déclarant mariées/pacsées mais pas en couples
+            statu_mari = ind[['identmen','couple','civilstate','pacs','lienpref']].fillna(-1)
+            # (a) Si deux mariés/pacsés pas en couple vivent dans le même ménage -> en couple (2)
+            prob_couple = (ind['civilstate'].isin([2,5])) & (ind['couple'] == 3) 
+            if sum(prob_couple) != 0 :
+                statu_marit = statu_mari[prob_couple]
+                statu_marit['identmen'] = statu_marit['identmen']/100
+                many_by_men = statu_marit['identmen'].value_counts() > 1
+                many_by_men = statu_marit['identmen'].value_counts()[many_by_men]
+                prob_couple_ident = statu_marit[statu_marit['identmen'].isin(many_by_men.index.values.tolist())]
+                ind.loc[prob_couple_ident.index,'couple'] = 1
+                
+            # (b) si un marié/pacsé pas en couple est conjoint de la personne de ref -> en couple (0)
+            prob_couple = (ind['civilstate'].isin([2,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 1)
+            ind.loc[prob_couple_ident.index,'couple'] = 1
+            
+            # (c) si un marié/pacsé pas en couple est ref et l'unique conjoint déclaré dans le ménage se dit en couple -> en couple (0)
+            prob_couple = (ind['civilstate'].isin([2,5])) & (ind['couple'] == 3)& (ind['lienpref'] == 0)
+            men_conj = statu_mari[prob_couple]
+            men_conj = statu_mari.loc[(statu_mari['identmen'].isin(men_conj['identmen'].values))& (statu_mari['lienpref'] == 1), 'identmen' ].value_counts() == 1
+            ind.loc[prob_couple_ident.index,'couple'] = 1
 
+            
+            # 2 - Check présence d'un conjoint dans le ménage si couple=1 et lienpref in 0,1
+            conj = ind.loc[ind['couple']==1,['identmen','lienpref','id']]
+#             conj['lienpref'].value_counts()
+            # pref signifie "personne de reference"
+            pref0 = conj.loc[conj['lienpref']==0,'identmen']
+            pref1 = conj.loc[conj['lienpref']==1,'identmen']
+            assert sum(~pref1.isin(pref0)) == 0
+            conj_hdom = pref0[~pref0.isin(pref1)]
+            print(len(conj_hdom))
+            ind.loc[conj_hdom.index,'couple'] = 2
+            
+            # Présence du fils/fille de la personne de ref si déclaration belle-fille/beau-fils
+            pref2 = conj.loc[conj['lienpref']==2,'identmen']
+            pref31 = conj.loc[conj['lienpref']==31,'identmen'] 
+            assert sum(~pref31.isin(pref2)) == 0          
+            manque_conj = pref2[~pref2.isin(pref31)]
+            ind.loc[manque_conj.index,'couple'] = 2
+   
+            return ind
+        
         ind['workstate'] = _work_on_workstate(ind)
         ind['workstate'].dtype = np.int8
+        ind = _work_on_couple(ind)
         self.men = men
         self.ind = ind 
         self.drop_variable({'men':['identmen','paje','complfam','allocpar','asf'], 'ind':['identmen','preret']})
@@ -343,7 +334,7 @@ class Patrimoine(DataTil):
         '''
         Calcul de l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
         '''     
-        print ("travail sur les conjoints")
+        print ("Travail sur les conjoints")
         ind = self.ind
         conj = ind.loc[ind['couple']==1,['men','lienpref','id', 'civilstate']]
         print "Nombre d'individus se déclarant en couple dans la table initiale : ", len(conj)
@@ -376,8 +367,8 @@ class Patrimoine(DataTil):
                              left_on='id',right_on='conj').astype(int)
         test_conj = test_conj.loc[test_conj['id_x']< test_conj['conj_x'] ]
         self.ind = ind
-        print "Nombre de couples non réciproques dans la table initiale :", sum(test_conj['id_y'] != test_conj['conj_x'])
-        print ("fin du travail sur les conjoints")
+        assert sum(test_conj['id_y'] != test_conj['conj_x']) == 0
+        print ("Fin du travail sur les conjoints")
 
     def enfants(self):   
         '''
@@ -598,13 +589,12 @@ class Patrimoine(DataTil):
         '''
         ind = self.ind  
         couple_hdom = ind['couple']==2
-        # ind[couple_hdom].groupby(['etamatri','sexe'])
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
         ind.ix[(couple_hdom) & (ind['civilstate']==5),  'civilstate'] = 2
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
         # ne gère pas les couples homosexuels
         
-        #pour avoir un age plus "continu" sans gap d'une année de naissance à l'autre
+        # Pour avoir un age plus "continu" sans gap d'une année de naissance à l'autre
         age = self.survey_date/100 - ind['anais']
         ind['age'] = (12*age + 11 - ind['mnais'])/12
                 
@@ -613,7 +603,8 @@ class Patrimoine(DataTil):
         nb_enf_pere = ind.groupby('pere').size()
         enf_tot = pd.concat([nb_enf_mere, nb_enf_pere], axis=1)
         enf_tot = enf_tot.sum(axis=1)
-        #comme enf_tot a le bon index on fait
+        
+        # Comme enf_tot a le bon index on fait
         ind['nb_enf'] = enf_tot
         ind['nb_enf'] = ind['nb_enf'].fillna(0)     
         men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
@@ -641,7 +632,6 @@ class Patrimoine(DataTil):
     
         #on corrige là, les innocents qui se disent mariés et pas en couple.  
         #ind.ix[ind['civilstate'].isin([2,5]) & ~notnull(ind['conj']),['civilstate','couple']] =  [3,3] 
-           
         self.ind = ind   
         self.drop_variable({'ind':['couple']})        
 
@@ -661,18 +651,18 @@ if __name__ == '__main__':
     data.check_conjoint()
     data.enfants()
     data.creation_par_look_enf()
-    data.expand_data(seuil=250)
+    data.expand_data(seuil=900)
     data.matching_par_enf() 
     data.match_couple_hdom()
     data.check_conjoint()
     data.creation_foy()   
-    data.mise_au_format()
     data.var_sup()  
+    data.format_to_liam()
     data.store_to_liam()
     print "Temps de calcul : ", (time.time() - start_t), 's'
     print "Nombre d'individus de la table final : ", len(data.ind) 
-
-    # des petites verifs.
+    
+    # des petites verifs finales 
     ind = data.ind
     ind['en_couple'] = ind['conj']>-1 
     test = ind['conj']>-1   

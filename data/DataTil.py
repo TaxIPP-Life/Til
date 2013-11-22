@@ -75,13 +75,15 @@ class DataTil(object):
     def format_initial(self):
         raise NotImplementedError()
         
-    def check_conjoint(self):
+    def check_conjoint(self, option=None):
         '''
-        Vérifications de la réciprocité des conjoints déclarés + des états civils
-        Correction si nécessaires
+        Vérifications/corrections de :
+            - La réciprocité des déclarations des conjoints 
+            - La concordance de la déclaration des états civils en cas de réciprocité
+            - conjoint hdom : si option= hdom, les couples ne vivant pas dans le même domicile sont envisageable, sinon non. 
         '''     
         ind = self.ind       
-        print ("Début du travail sur les conjoints")
+        print ("Début de la vérification sur les conjoints")
 
         # TODO: faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées 
         # pour les deux personnses concernées
@@ -91,10 +93,11 @@ class DataTil(object):
         test = ind.loc[(ind['conj'] != -1),['id','conj','civilstate']] #| ind['civilstate'].isin([2,5])
         test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
         try: 
-            assert((test['conj_x'] == test['id_y']).all())
+            assert(sum(test['conj_x'] == test['id_y']) == 0)
         except :
             test = test[test['conj_x'] != test['id_y']]
             print "Nombre d'époux non réciproques : " + str(len(test)) 
+            
             # (a) - l'un des deux se déclare célibataire -> le second le devient
             celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
                                         ['id_x', 'civilstate_y']]
@@ -110,29 +113,29 @@ class DataTil(object):
 
             # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
             # -> Conjoint réattribué à qui de droit
-            no_conj = test[test['civilstate_x'].isin([2,5,6]) & test['civilstate_y'].isin([2,5,6]) & (test['conj_x']==-1)][['id_y', 'id_x']]
+            no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
             if no_conj:
                 print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
                 ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
             
-            # (c) - Célibats lorsque conjoint non spécifié ni non retrouvé
-            no_conj = (ind['civilstate'].isin([2,5,6]) | (ind['civilstate'] == -1))  & (ind['conj'] == -1)
-            print str(len(ind[no_conj])) + " personnes ne spécifiant pas de conjoint ou d'état civil deviennent célibataires"
-            ind.loc[no_conj, 'civilstate'] = 1
-            
-        #3 - Vérifications des états civils
-        test = ind.loc[ind['civilstate'].isin([2,5]), ['conj','id','civilstate', 'sexe']]
+        #2 - Vérifications de la concordance des états civils déclarés pour les personnes ayant un conjoint déclaré (i.e. vivant avec lui)
+        test = ind.loc[(ind['conj']!= -1), ['conj','id','civilstate', 'sexe']]
         test = merge(test, test, left_on='id', right_on='conj')
-        confusion = test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['civilstate_y']!= test['civilstate_x'])
-        test = test.loc[confusion & (test['id_x'] < test['id_y']),
-                        ['id_x', 'id_y', 'civilstate_x', 'civilstate_y']]
-        if test:
-            print str(len(test)) + " confusions mariages/pacs lors de l'année initiale (corrigées)"
+        confusion = test[(test['id_y']> test['id_x'])& (test['civilstate_y']!= test['civilstate_x']) & ~test['civilstate_y'].isin([3,4]) &  ~test['civilstate_x'].isin([3,4])]
+        if confusion:
+            confusion.to_csv('conf.csv')
+            print "Nombre de confusion sur l'état civil (corrigées) : ", len(confusion)
             # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
-            ind['civilstate'][test['id_y'].values] = ind['civilstate'][test['id_x'].values]
-        
+            ind['civilstate'][confusion['id_y'].values] = ind['civilstate'][confusion['id_x'].values]
+            
+        #3- Nombre de personnes avec conjoint hdom
+        conj_hdom = ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]
+        print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
+        if option == 'not_hdom' : 
+            print "Ces personnes sont considérées célibataires "
+            ind.loc[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1), 'civilstate'] == 1
         self.ind = ind
-        print ("fin du travail sur les conjoints")
+        print ("Fin de la vérification sur les conjoints")
 
     def enfants(self):   
         '''
@@ -163,7 +166,7 @@ class DataTil(object):
             ind['nb_enf'] = enf_tot
             ind['nb_enf'] = ind['nb_enf'].fillna(0)
             
-        # 1ere étape : Identification des personnes en couple
+        # 1ere étape : Identification des personnes emariées/pacsées
         spouse = (ind['conj'] != -1) & ind['civilstate'].isin([2,5]) 
         print str(sum(spouse)) + " personnes en couples"
         
@@ -181,25 +184,23 @@ class DataTil(object):
         ind['quifoy'][conj] = 1
         ind['quifoy'][pac] = 2
         ind['quifoy'][ind['men'] == -4] = -4
-        
-
+    
         # 3eme étape : attribution des identifiants des foyers fiscaux
         ind['foy'] = -1
-        ind['foy'][ind['men'] == -4] = -4
+        ind.loc[(ind['men'] == -4), 'foy'] = -4
         nb_foy = len(ind[ind['quifoy'] == 0]) 
         print "Le nombre de foyers créés est : " + str(nb_foy)
-        ind['foy'][ind['quifoy'] == 0] = range(0, nb_foy)
-        #ind[['foy', 'quifoy']] = ind[['foy', 'quifoy']].astype(int)
+        ind.loc[ind['quifoy'] == 0, 'foy'] = range(0, nb_foy)
         
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
-        conj = ind.loc[(ind['conj'] != -1) & (ind['quifoy'] == 0), ['conj','foy']].astype(int)
-        ind['foy'][conj['conj'].values] = conj['foy'].values
+        conj = ind.loc[(ind['conj'] != -1) & (ind['civilstate'].isin([2,5]))& (ind['quifoy'] == 0), ['conj','foy']]
+        ind.loc[conj['conj'].values, 'foy'] = conj['foy'].values
         
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for parent in  ['pere', 'mere']:
             pac_par = ind.loc[ pac_condition & (ind[parent] != -1) & (ind['foy'] == -1), parent]
-            ind['foy'][pac_par.index.values] = ind['foy'][pac_par.values]
+            ind.loc[pac_par.index.values, 'foy'] = ind.loc[pac_par.values, 'foy']
             print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
 
         # 4eme étape : création de la table foy
@@ -349,35 +350,6 @@ class DataTil(object):
         self.foy = foy_exp
         self.drop_variable({'men':['id_rep','nb_rep','index'], 'ind':['id_rep','id_men',]})    
 
-    def mise_au_format(self):
-        '''
-        On met ici les variables avec les bons codes pour achever le travail de DataTil
-        On crée aussi les variables utiles pour la simulation
-        '''
-        men = self.men      
-        ind = self.ind 
-
-        ind['quimen'] = ind['lienpref']
-        ind['quimen'][ind['quimen'] >1 ] = 2
-        
-        ind['period'] = self.survey_date
-        men['period'] = self.survey_date
-        # a changer avec values quand le probleme d'identifiant et résolu .values
-        men['pref'] = ind.ix[ ind['lienpref']==0,'id'].values
-        
-        ind = ind.fillna(-1)
-        
-        #TODO: comprendre pourquoi le type n'est pas bon plus haut, et le changer le plus tôt possible
-        #souvent c'est à cause des NA
-#         var_to_int = ['anc','conj','findet','foy','mere','pere','workstate','xpr']
-#         var_to_float = ['choi','rsti','sali']
-#         ind[var_to_int] = ind[var_to_int].astype(int)
-#         ind[var_to_float] = ind[var_to_float].astype(float)
-        
-        self.men = minimal_dtype(men)
-        self.ind = minimal_dtype(ind)
-        self.drop_variable({'ind':['lienpref','anais','mnais']})  
-        
     def var_sup(self):
         '''
         Création des variables indiquant le nombre de personnes dans le ménage et dans le foyer
@@ -387,6 +359,9 @@ class DataTil(object):
         foy = self.foy 
         futur = self.futur
         past = self.past      
+        
+        ind['period'] = self.survey_date
+        men['period'] = self.survey_date
         
         if 'age' not in ind.columns :
             ind['age'] = self.survey_date/100 - ind['anais']
@@ -398,7 +373,7 @@ class DataTil(object):
         for var in ['choi', 'xpr', 'rsti', 'anc']:
             if var not in ind.columns:
                 ind[var] = 0
-                ind[var].dtype = np.int8
+                ind[var].dtype = np.int32
         
         for data in [ind, men, foy, futur, past] : 
             if data:
@@ -426,13 +401,46 @@ class DataTil(object):
         self.past = past
         
     def format_to_liam(self):
-        ind = self.ind
-        to_float = ['age','agem', 'anc', 'foy', 'conj', 'men', 'pere', 'mere', 'quifoy', 'quimen', 'xpr']
-        to_int = ['sali', 'sexe']
-        ind[to_float] = ind[to_float].astype(np.float)
-        ind[to_int] = ind[to_int].astype(np.int)
-        self.ind = ind   
-        print "Bon format pour Liam"
+        '''
+        On met ici les variables avec les bons codes pour achever le travail de DataTil
+        On crée aussi les variables utiles pour la simulation
+        '''
+        
+        men = self.men      
+        ind = self.ind 
+        
+        def _name_var(ind, men):
+            if 'lienpref' in ind.columns :
+                ind['quimen'] = ind['lienpref']
+                ind['quimen'][ind['quimen'] >1 ] = 2
+                # a changer avec values quand le probleme d'identifiant et résolu .values
+                men['pref'] = ind.ix[ ind['lienpref']==0,'id'].values
+                ind = ind.fillna(-1)                
+            return men, ind
+        
+        def _format_var(ind):
+            to_float = ['age','agem', 'anc', 'foy', 'conj', 'men', 'pere', 'mere',  'xpr','choi','rsti', 'civilstate']
+            to_int = ['sali','quifoy', 'quimen','sexe', 'anc','conj','findet','foy','mere','pere','workstate','xpr']
+            for var in to_float:
+                ind[var] = ind[var].astype(float)
+                ind[var].dtype = np.float
+            ind[to_int] = ind[to_int].astype(int)
+            return ind   
+            print "Bon format pour Liam"
+            
+        def _check_final(ind):
+            assert sum((ind['men']== -1) & (ind['period']== self.survey_date) ) == 0
+            assert sum((ind['men']== -1) & (ind['period']== self.survey_date) ) == 0
+        men, ind = _name_var(ind, men)
+        if 'lienpref' in ind.columns :
+            self.drop_variable({'ind':['lienpref','anais','mnais']}) 
+        self.men = minimal_dtype(men)
+        ind = minimal_dtype(ind)
+        ind = _format_var(ind)
+        _check_final(ind)
+        self.ind = ind
+         
+        
            
     def store_to_liam(self):
         '''
@@ -477,10 +485,7 @@ class DataTil(object):
             entity = eval('self.'+ ent_name)
             entity = entity.fillna(-1)
             if ent_name == 'ind' : 
-                for var in ['choi', 'rsti', 'sali'] :
-                    entity[var] = entity[var].astype(np.int8)
-                    print var, entity[var].dtype
-            ent_table = entity.to_records(index=False)
+                ent_table = entity.to_records(index=False)
             dtypes = ent_table.dtype   
             print dtypes      
             table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
