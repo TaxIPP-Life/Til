@@ -254,7 +254,7 @@ class Patrimoine(DataTil):
             #precision inactif
             ind['workstate'][ind['preret']==1]  = 9
             # precision AVPF
-            #TODO: "vous pouver bénéficier de l'AVPF si vous n'exercer aucune activité 
+            #TODO: "vous pouverz bénéficier de l'AVPF si vous n'exercez aucune activité 
             # professionnelle (ou seulement à temps partiel) et avez 
             # la charge d'une personne handicapée (enfant de moins de 20 ans ou adulte).
             # Pour l'instant, on fait ça parce que ça colle avec PensIPP mais il faudrait faire mieux.
@@ -270,6 +270,8 @@ class Patrimoine(DataTil):
             ind['workstate'][ (ind['classif']==7)  & (ind['workstate']==3)] = 4
             #retraite
             ind['workstate'][ (ind['anais'] < 2009-64)  & (ind['workstate']==1)] = 10
+            # print ind.groupby(['workstate','statut']).size()
+            # print ind.groupby(['workstate','situa']).size()
             return ind['workstate']
         
         def _work_on_couple(self):

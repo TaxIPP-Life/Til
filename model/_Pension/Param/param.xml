@@ -1,0 +1,27 @@
+<NODE description= "Retraites" code = 'pension'>
+	<NODE description="Retraites de base" code="ret_base" >
+		<NODE description="Régime général" code="RG" >
+	   		<CODE description="Age légal de départ à la retraite " code="age_legal" format = "integer">
+  				<VALUE fin="2012-12-31" deb="1974-01-01" valeur="60"/>
+  			</CODE>
+  			<CODE description="Age d'annulation de la décôte " code="age_dec" format = "integer">
+  				<VALUE fin="2012-12-31" deb="1974-01-01" valeur="60"/>
+  			</CODE>
+  			<CODE description="Age de prise en compte de la surcôte " code="age_sur" format = "integer">
+  				<VALUE fin="2012-12-31" deb="1974-01-01" valeur="60"/>
+  			</CODE>
+  			<CODE description="Age maximum de départ à la retraite " code="age_max" format = "integer">
+  				<VALUE fin="2012-12-31" deb="1974-01-01" valeur="60"/>
+  			</CODE>
+  			<CODE description=" Nombre d'années prises en compte pour le SAM" code="nb_an"  format="integer">
+  				<VALUE fin="2012-12-31" deb="1981-02-24" valeur=".04"/>
+  			</CODE>
+  			<CODE description="Taux d'annuité de base" code="taux_ann_base"  format="percent">
+  				<VALUE fin="2012-12-31" deb="1981-02-24" valeur=".04"/>
+  			</CODE>
+  			<CODE description="Nombre de trimestres exigés pour départ à taux plein" code="N_full"  format="integer">
+  				<VALUE fin="2012-12-31" deb="1981-02-24" valeur=".04"/>
+  			</CODE>
+		</NODE>
+	</NODE>	   
+</NODE>
