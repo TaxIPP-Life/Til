@@ -1,13 +1,110 @@
+<!--
+RQ : certaines subtilités de législation antérieures à 1972 n'ont pas été codées :
+- Avant 1972 : le SAM du RG était calculé sur les 10 dernières années
+- Avant 1972 : le le taux CP du RG = 120 (réhaussé brutalement à 150 par loi Boulin)
+-->
 <NODE description= "Retraites" code = 'pension'>
 	<NODE description="Retraites de base" code="ret_base" >
 		<NODE description="Régime général" code="RG" >
-	   		<CODE description="Age légal de départ à la retraite " code="age_legal" format = "integer">
+	   		<CODE description="Age légal de départ à la retraite (en mois) " code="age_min" format = "integer">
+                <GENERATION>
+                	<INI description="Valeur initiale de l'age légal de départ à la retraite">
+                    	<VALUE valeur="720" deb="1900-01-01" fin="2100-12-31"/>
+                   	</INI>
+                    <SEUIL date="1951-07-01" code="generation1">
+                    	<PAS valeur="4" deb="2011-07-01" fin="2100-12-31"/>
+                    </SEUIL> 
+                    <SEUIL date="1952" code="generation2">
+                    	<PAS valeur="5" deb="2011-07-01" fin="2100-12-31"/>
+                    </SEUIL>  
+                    <SEUIL date="1956" code="generation3">
+                    	<PAS valeur="0" deb="2011-07-01" fin="2100-12-31"/>
+                    </SEUIL>                      
+                </GENERATION>
+  			</CODE>
+  			<CODE description="Age d'annulation de la décôte (en mois) " code="age_dec" format = "integer">
+				<GENERATION>
+                	<INI description="Valeur initiale de l'age d'annulation de la décôte (en mois)">
+                    	<VALUE valeur="780" deb="1900-01-01" fin="2100-12-31"/>
+                   	</INI>
+                    <SEUIL date="1951-07-01" code="generation1">
+                    	<PAS valeur="4" deb="2011-07-01" fin="2100-12-31"/>
+                    </SEUIL> 
+                    <SEUIL date="1952" code="generation2">
+                    	<PAS valeur="5" deb="2011-07-01" fin="2100-12-31"/>
+                    </SEUIL>  
+                    <SEUIL date="1956" code="generation3">
+                    	<PAS valeur="0" deb="2011-07-01" fin="2100-12-31"/>
+                    </SEUIL>                      
+                </GENERATION>
+  			</CODE>
+  			<CODE description="Age maximum de départ à la retraite " code="age_max" format = "integer">
   				<VALUE fin="2012-12-31" deb="1974-01-01" valeur="60"/>
+  			</CODE>
+  			<CODE description=" Nombre d'années prises en compte pour le SAM" code="nb_an"  format="integer">
+                <GENERATION>
+                	<INI description="Valeur initiale du nb années SAM">
+                    	<VALUE valeur="10" deb="1900-01-01" fin="2100-12-31"/>
+                   	</INI>
+                    <SEUIL date="1934" code="generation1">
+                    	<PAS valeur="1" deb="1994-01-01" fin="2100-12-31"/>
+                    </SEUIL> 
+                    <SEUIL date="1949" code="generation1">
+                    	<PAS valeur="0" deb="1994-01-01" fin="2100-12-31"/>
+                    </SEUIL>                     
+                </GENERATION>
+  			</CODE>
+  			<CODE description="Taux d'annuité de base" code="taux_ann_base"  format="percent">
+  				<VALUE fin="2012-12-31" deb="1981-02-24" valeur=".04"/>
+  			</CODE>
+  			<CODE description="Nombre de trimestres exigés pour CP unitaire" code="N_CP"  format="integer">
+                <GENERATION>
+                	<INI description="Valeur initiale du nombre de trimestres exigés (CP)">
+                    	<VALUE valeur="150" deb="1900-01-01" fin="2100-12-31"/>
+                   	</INI>
+                    <SEUIL date="1944" code="generation1">
+                    	<PAS valeur="2" deb="2003-01-01" fin="2100-12-31"/>
+                    </SEUIL>
+                   	<SEUIL date="1949" code="generation2">
+                        <PAS valeur="1" deb="2009-01-01" fin="2100-12-31"/>
+                        <PAS valeur="0" deb="2003-01-01" fin="2008-12-31"/>
+                    </SEUIL>
+                    <SEUIL date="1954" code="generation3">
+                        <PAS valeur="0" deb="2009-01-01" fin="2100-12-31"/>
+                    </SEUIL>                     
+                </GENERATION>
+  			</CODE>
+  			<CODE description="Nombre de trimestres exigés pour départ à taux plein" code="N_tau"  format="integer">
+				<GENERATION>
+  					<INI description="Valeur initiale du nombre de trimestres exigés (tau)">
+  						<VALUE valeur="150" deb="1900-01-01" fin="2100-12-31"/>
+  					</INI>
+  					<SEUIL date="1934" code="generation0">
+	    				<PAS valeur="1" deb="1994-01-01" fin="2100-12-31"/>
+					</SEUIL>
+					<SEUIL date="1944" code="generation1">
+						<PAS valeur="0" deb="1994-01-01" fin="2100-12-31"/>
+					</SEUIL>
+  					<SEUIL date="1949" code="generation">
+	    				<PAS valeur="1" deb="2009-01-01" fin="2100-12-31"/>
+					</SEUIL>
+  					<SEUIL date="1954" code="generation">
+						<PAS valeur="0" deb="2009-01-01" fin="2100-12-31"/>
+					</SEUIL>
+					<SEUIL date="1955" code="generation">
+	    				<PAS valeur="1" deb="2009-01-01" fin="2100-12-31"/>
+					</SEUIL>
+					<SEUIL date="1957" code="generation">
+	    				<PAS valeur="0" deb="2009-01-01" fin="2100-12-31"/>
+					</SEUIL>					
+				</GENERATION> 
+  			</CODE>
+		</NODE>
+		<NODE description="Fonction Publique" code="FP" >
+	   		<CODE description="Age légal de départ à la retraite " code="age_min" format = "integer">
+  				<VALUE valeur="720" fin="2009-12-31" deb="1900-01-01" />
   			</CODE>
   			<CODE description="Age d'annulation de la décôte " code="age_dec" format = "integer">
-  				<VALUE fin="2012-12-31" deb="1974-01-01" valeur="60"/>
-  			</CODE>
-  			<CODE description="Age de prise en compte de la surcôte " code="age_sur" format = "integer">
   				<VALUE fin="2012-12-31" deb="1974-01-01" valeur="60"/>
   			</CODE>
   			<CODE description="Age maximum de départ à la retraite " code="age_max" format = "integer">
@@ -19,8 +116,10 @@
   			<CODE description="Taux d'annuité de base" code="taux_ann_base"  format="percent">
   				<VALUE fin="2012-12-31" deb="1981-02-24" valeur=".04"/>
   			</CODE>
-  			<CODE description="Nombre de trimestres exigés pour départ à taux plein" code="N_full"  format="integer">
+  			<CODE description="Nombre de trimestres exigés pour départ à taux plein" code="N_tau"  format="integer">
   				<VALUE fin="2012-12-31" deb="1981-02-24" valeur=".04"/>
+  			</CODE>
+  			<CODE description="Nombre de trimestres exigés pour CP unitaire" code="N_CP"  format="integer">
   			</CODE>
 		</NODE>
 	</NODE>	   

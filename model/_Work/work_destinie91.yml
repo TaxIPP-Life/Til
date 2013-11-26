@@ -23,4 +23,5 @@ entities:
                 - dur_rest_ARE: if(ISINWORK, 0, dur_rest_ARE)
                 
             retire: 
+                - pension: retraite()
                 - workstate: if(age>65, RETIRED, workstate)   
