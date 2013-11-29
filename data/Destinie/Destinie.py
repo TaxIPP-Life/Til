@@ -27,7 +27,6 @@ class Destinie(DataTil):
     def __init__(self):
         DataTil.__init__(self)
         self.name = 'Destinie'
-        # self.max_dur = 
         self.survey_year = 2009
         self.last_year = 2060
         self.survey_date = 100*self.survey_year + 1
@@ -134,6 +133,15 @@ class Destinie(DataTil):
              emp = merge(emp, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
              emp['period'] = emp['period'] + emp['naiss']
              emp =  emp[['id','period','workstate','sali']]
+             
+             # Recodage des modalités
+             # TO DO : A terme faire une fonction propre à cette étape -> _rename(var)
+             # inactif   <-  1  # chomeur   <-  2   # non_cadre <-  3  # cadre     <-  4
+             # fonct_a   <-  5  # fonct_s   <-  6   # indep     <-  7  # avpf      <-  8
+             # preret    <-  9
+             emp['workstate'] = emp['workstate'].replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
+                                                         [0, 3, 4, 5, 6, 7, 2, 1, 9, 8])
+             emp.to_csv('emp_Destinie.csv')
              return emp
          
         def _ind_total(BioFam, ind, emp):

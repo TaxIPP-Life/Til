@@ -46,16 +46,16 @@ On a donc : generation = "year[age_min]"
 					<CODE description="Age d'annulation de la décôte génération 07/1951 - 12/1951" code="age_dec_5107">
 						<VALUE valeur="784" deb="2011-07-01" fin="2100-12-31"/>
 					</CODE>
-					<CODE description="Age d'annulation de la décôte génération 52" code="age_dec_52">
+					<CODE description="Age d'annulation de la décôte génération 1952" code="age_dec_52">
 						<VALUE valeur="789" deb="2011-07-01" fin="2100-12-31"/>
 					</CODE>
-					<CODE description="Age d'annulation de la décôte génération 53" code="age_dec_53">
+					<CODE description="Age d'annulation de la décôte génération 1953" code="age_dec_53">
 						<VALUE valeur="794" deb="2011-07-01" fin="2100-12-31"/>
 					</CODE>
-					<CODE description="Age d'annulation de la décôte génération 54" code="age_dec_54">
+					<CODE description="Age d'annulation de la décôte génération 1954" code="age_dec_54">
 						<VALUE valeur="799" deb="2011-07-01" fin="2100-12-31"/>
 					</CODE>			
-					<CODE description="Age d'annulation de la décôte générations après 55" code="age_dec_55">
+					<CODE description="Age d'annulation de la décôte générations après 1955" code="age_dec_55">
 						<VALUE valeur="804" deb="2011-07-01" fin="2100-12-31"/>
 					</CODE>						
 	  			</GENERATION>
