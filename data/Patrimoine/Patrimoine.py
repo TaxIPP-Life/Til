@@ -219,6 +219,7 @@ class Patrimoine(DataTil):
         men = men.reset_index(range(len(men)))
         men['id'] = men.index
         
+        
         #passage de ind à men, variable ind['men']
         idmen = Series(ind['identmen'].unique())
         idmen = DataFrame(idmen)
@@ -229,6 +230,9 @@ class Patrimoine(DataTil):
         if len(ind) != verif_match:
             raise Exception("On a perdu le lien entre ind et men via identmen")
         ind['id'] = ind.index
+                # Pour avoir un age plus "continu" sans gap d'une année de naissance à l'autre
+        age = self.survey_date/100 - ind['anais']
+        ind['age'] = (12*age + 11 - ind['mnais'])/12
         
         dict_rename = {"zsalaires_i":"sali", "zchomage_i":"choi",
         "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
@@ -330,7 +334,6 @@ class Patrimoine(DataTil):
         ind = self.ind.fillna(-1).replace(-1,np.nan)
         ind = minimal_dtype(ind)
         self.ind = ind
-        self.men = men 
         
     def conjoint(self):
         '''
@@ -362,7 +365,7 @@ class Patrimoine(DataTil):
                 conj.loc[ conj['id_x']==id, 'id_y'] = potential['id_y']
             else:
                 pdb.set_trace()
-        # TODO: pas de probleme, bizarre
+                # TODO: pas de probleme, bizarre
         conj = conj.rename(columns={'id_x': 'id', 'id_y':'conj'})
         ind = merge(ind, conj[['id','conj']], on='id', how='left')
         test_conj = merge(ind[['conj','id']],ind[['conj','id']],
@@ -392,9 +395,8 @@ class Patrimoine(DataTil):
               
         # cas des petits-enfants : on cherche les enfants de la personne de référence (enf=1,2 ou 3) et on tente de les associer 
         # aux petits enfants (lienpref=31)
-        # en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le registre...
+        # TODO: en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le registre...
         # et savoir que ce sont les petites enfants (pour l'héritage par exemple)
-        
         par4 = enf[enf['enf'].isin([1,2,3])]
         par4['lienpref'] = 21
         par4 = merge(par4, ind[['men','lienpref','id']], on=['men','lienpref'], how='inner', suffixes=('_4', ''))
@@ -595,10 +597,6 @@ class Patrimoine(DataTil):
         ind.ix[(couple_hdom) & (ind['civilstate']==5),  'civilstate'] = 2
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
         # ne gère pas les couples homosexuels
-        
-        # Pour avoir un age plus "continu" sans gap d'une année de naissance à l'autre
-        age = self.survey_date/100 - ind['anais']
-        ind['age'] = (12*age + 11 - ind['mnais'])/12
                 
         ## nb d'enfant
         nb_enf_mere= ind.groupby('mere').size()

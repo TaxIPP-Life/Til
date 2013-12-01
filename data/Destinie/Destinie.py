@@ -117,7 +117,6 @@ class Destinie(DataTil):
         start_time = time.time()
         self.ind, self.emp = _BioEmp_in_2()
         self.BioFam = _lecture_BioFam()
-        self.emp.to_csv('testemptot.csv')
         print "Temps d'importation des données : " + str(time.time() - start_time) + "s" 
         print "fin de l'importation des données"
 
@@ -127,22 +126,24 @@ class Destinie(DataTil):
             - ind : démographiques + caractéristiques indiv
             - emp_tot : déroulés de carrières et salaires associés
         '''
+        print "Début de la mise en forme initiale"
+        start_time = time.time()
+                
         def _Emp_clean(ind, emp):
-             ''' Mise en forme des données sur carrières:
-             Actualisation de la variable période  '''
-             emp = merge(emp, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
-             emp['period'] = emp['period'] + emp['naiss']
-             emp =  emp[['id','period','workstate','sali']]
-             
-             # Recodage des modalités
-             # TO DO : A terme faire une fonction propre à cette étape -> _rename(var)
-             # inactif   <-  1  # chomeur   <-  2   # non_cadre <-  3  # cadre     <-  4
-             # fonct_a   <-  5  # fonct_s   <-  6   # indep     <-  7  # avpf      <-  8
-             # preret    <-  9
-             emp['workstate'] = emp['workstate'].replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
-                                                         [0, 3, 4, 5, 6, 7, 2, 1, 9, 8])
-             emp.to_csv('emp_Destinie.csv')
-             return emp
+            ''' Mise en forme des données sur carrières:
+            Actualisation de la variable période  '''
+            emp = merge(emp, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
+            emp['period'] = emp['period'] + emp['naiss']
+            emp =  emp[['id','period','workstate','sali']]
+            
+            # Recodage des modalités
+            # TO DO : A terme faire une fonction propre à cette étape -> _rename(var)
+            # inactif   <-  1  # chomeur   <-  2   # non_cadre <-  3  # cadre     <-  4
+            # fonct_a   <-  5  # fonct_s   <-  6   # indep     <-  7  # avpf      <-  8
+            # preret    <-  9
+            emp['workstate'] = emp['workstate'].replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
+                                                        [0, 3, 4, 5, 6, 7, 2, 1, 9, 8])
+            return emp
          
         def _ind_total(BioFam, ind, emp):
             ''' fusion : BioFam + ind + emp -> ind '''
@@ -178,8 +179,6 @@ class Destinie(DataTil):
             print "Nombre de lignes sur le futur : " + str(len(futur)) + " (informations de " + str(futur['period'].min()) +" à " + str(futur['period'].max()) + ")"
             return ind_survey, past, futur
   
-        print "Début de la mise en forme initiale"
-        start_time = time.time()
         emp = _Emp_clean(self.ind, self.emp)
         ind_total = _ind_total(self.BioFam, self.ind, emp)
         ind, past, futur = _ind_in_3(ind_total)
@@ -338,7 +337,6 @@ class Destinie(DataTil):
         ind = ind.fillna(-1)
         ind.sort(['period', 'id'])
         self.ind = ind
-        ind.sort('id').to_csv('indfinal.csv')
         print "Fin de l'actualisation des changements jusqu'en 2060"
     
 if __name__ == '__main__':
@@ -351,7 +349,7 @@ if __name__ == '__main__':
     # (b) - Travail sur la base initiale (données à l'année de l'enquête)
     ini_t = time.time()
     data.enf_to_par()
-    data.check_conjoint(option='not_hdom')
+    data.check_conjoint(couple_hdom=True)
     data.creation_menage()
     data.creation_foy()    
     data.var_sup()
@@ -361,14 +359,6 @@ if __name__ == '__main__':
     data.add_futur()
     data.format_to_liam()
     data.store_to_liam()
-    
-    # des petites verifs finales 
-    ind = data.ind
-    ind = ind[ind['period'] == 200901]
-    ind['en_couple'] = ind['conj']>-1 
-    test = ind['conj']>-1   
-    
-    print ind.groupby(['civilstate','en_couple']).size()
 
     print ("Temps Destiny.py : " + str(time.time() - start_t) + "s, dont " +
             str(futur_t - ini_t) + "s pour les mises en formes/corrections initiales et " +

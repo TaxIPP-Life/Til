@@ -24,6 +24,15 @@ import sys
 sys.path.append(path_til_liam)
 import src_liam.importer as imp
 
+# Dictionnaire des variables, cohérent avec les imports du modèle. 
+# il faut que ce soit à jour. Le premier éléments est la liste des
+# entiers, le second celui des floats
+variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy',
+                         'pere','mere','conj','civilstate','findet',
+                         'workstate','xpr','anc'],['sali','rsti','choi']),
+                 'men': (['pref'],[]),
+                 'foy': (['vous'],[])
+                 }
 
 class DataTil(object):
     """
@@ -63,24 +72,22 @@ class DataTil(object):
              - passer par la liste blanche ce que l'on recommande pour l'instant 
              - passer par  liste noire. 
         '''
-        
         if 'ind' in dict_to_drop.keys():
             self.ind = self.ind.drop(dict_to_drop['ind'], axis=1)
         if 'men' in dict_to_drop.keys():
             self.men = self.men.drop(dict_to_drop['men'], axis=1)
         if 'foy' in dict_to_drop.keys():
             self.foy = self.foy.drop(dict_to_drop['foy'], axis=1)            
-
         
     def format_initial(self):
         raise NotImplementedError()
         
-    def check_conjoint(self, option=None):
+    def check_conjoint(self, couple_hdom=False):
         '''
         Vérifications/corrections de :
             - La réciprocité des déclarations des conjoints 
             - La concordance de la déclaration des états civils en cas de réciprocité
-            - conjoint hdom : si option= hdom, les couples ne vivant pas dans le même domicile sont envisageable, sinon non. 
+            - conjoint hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non. 
         '''     
         ind = self.ind       
         print ("Début de la vérification sur les conjoints")
@@ -131,7 +138,7 @@ class DataTil(object):
         #3- Nombre de personnes avec conjoint hdom
         conj_hdom = ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]
         print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
-        if option == 'not_hdom' : 
+        if not couple_hdom : 
             print "Ces personnes sont considérées célibataires "
             ind.loc[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1), 'civilstate'] == 1
         self.ind = ind
@@ -188,7 +195,7 @@ class DataTil(object):
         # 3eme étape : attribution des identifiants des foyers fiscaux
         ind['foy'] = -1
         ind.loc[(ind['men'] == -4), 'foy'] = -4
-        nb_foy = len(ind[ind['quifoy'] == 0]) 
+        nb_foy = sum(ind['quifoy'] == 0) 
         print "Le nombre de foyers créés est : " + str(nb_foy)
         ind.loc[ind['quifoy'] == 0, 'foy'] = range(0, nb_foy)
         
@@ -211,14 +218,14 @@ class DataTil(object):
         # hypothèse réparartition des élements à égalité entre les déclarations : discutable
         nb_foy_men = ind[vous].groupby('men').size()
         foy_men = foy_men.div(nb_foy_men,axis=0) 
-        
-        foy = merge(foy,foy_men, left_on='men', right_index=True)
+        #TODO: faire la somme par me.
+        foy = merge(foy, foy_men, left_on='men', right_index=True)
         foy['vous'] = ind['id'][vous]
-        foy = DataFrame(foy, index = xrange(0,len(foy)))
+        foy = foy.drop('id',axis=1)
+        foy = foy.reset_index()
         foy['id'] = foy.index
-            
         foy['period'] = survey_year
-            
+           
         #### fin de declar
         self.ind = ind
         self.foy = foy
@@ -364,11 +371,12 @@ class DataTil(object):
         men['period'] = self.survey_date
         
         if 'age' not in ind.columns :
-            ind['age'] = self.survey_date/100 - ind['anais']
+            ind['age'] = self.survey_date//100 - ind['anais']
+            ind['age'] = ind['age'].astype(np.int8)
             
         if 'agem' not in ind.columns :
-            ind['agem'] = -1
-            ind.loc[ind['age'] !=-1, 'agem'] = ind.loc[ind['age'] !=-1, 'age'] * 12
+            ind['agem'] = ind['age'].astype(np.int16)
+            ind.loc[ind['agem'] !=-1, 'agem'] = ind.loc[ind['agem'] !=-1, 'agem'] * 12
         
         for var in ['choi', 'xpr', 'rsti', 'anc']:
             if var not in ind.columns:
@@ -382,12 +390,12 @@ class DataTil(object):
         ind_men = ind.groupby('men')       
         ind = ind.set_index('men')
         ind['nb_men'] = ind_men.size().astype(np.int)
-        ind=ind.reset_index()
+        ind = ind.reset_index()
 
         ind_foy = ind.groupby('foy')
         ind = ind.set_index('foy')
         ind['nb_foy'] = ind_foy.size().astype(np.int)
-        ind=ind.reset_index()
+        ind = ind.reset_index()
         
         # Format minimal
         ind = ind.fillna(-1)
@@ -405,10 +413,12 @@ class DataTil(object):
         On met ici les variables avec les bons codes pour achever le travail de DataTil
         On crée aussi les variables utiles pour la simulation
         '''
-        
         men = self.men      
-        ind = self.ind 
-        
+        ind = self.ind
+        foy = self.foy
+        futur = self.futur
+        past = self.past  
+               
         def _name_var(ind, men):
             if 'lienpref' in ind.columns :
                 ind['quimen'] = ind['lienpref']
@@ -417,31 +427,55 @@ class DataTil(object):
                 men['pref'] = ind.ix[ ind['lienpref']==0,'id'].values
                 ind = ind.fillna(-1)                
             return men, ind
-        
-        def _format_var(ind):
-            to_float = ['age','agem', 'anc', 'foy', 'conj', 'men', 'pere', 'mere',  'xpr','choi','rsti', 'civilstate']
-            to_int = ['sali','quifoy', 'quimen','sexe', 'anc','conj','findet','foy','mere','pere','workstate','xpr']
-            for var in to_float:
-                ind[var] = ind[var].astype(float)
-                ind[var].dtype = np.float
-            ind[to_int] = ind[to_int].astype(int)
-            return ind   
-            print "Bon format pour Liam"
             
         def _check_final(ind):
             assert sum((ind['men']== -1) & (ind['period']== self.survey_date) ) == 0
             assert sum((ind['men']== -1) & (ind['period']== self.survey_date) ) == 0
+            
         men, ind = _name_var(ind, men)
         if 'lienpref' in ind.columns :
             self.drop_variable({'ind':['lienpref','anais','mnais']}) 
-        self.men = minimal_dtype(men)
-        ind = minimal_dtype(ind)
-        ind = _format_var(ind)
+#        self.men = minimal_dtype(men)
+#        ind = minimal_dtype(ind)
+#        # ultime point sur les formats 
+#        # NOTE: on perd l'optimisation sur les formats mais comme
+#        # Liam ne s'en sert pas c'est pas grave.
+#        to_float = ['sali','choi','rsti']
+#        for var in ind.columns:
+#            if var in to_float:
+#                ind[var] = ind[var].astype(float)
+#            else: 
+#                ind[var] = ind[var].astype(int)
+
         _check_final(ind)
-        self.ind = ind
-         
-        
-           
+        tables = {}
+        for name in ['ind', 'foy', 'men']:
+            table = eval(name)
+            vars_int, vars_float = variables_til[name]
+            vars = ['id','period','pond'] + vars_int + vars_float
+            try: 
+                table = table[vars]
+            except: 
+                table['pond'] = 1 
+                table = table[vars]
+            for var in vars_int:
+                table[var] = table[var].astype(int)
+            for var in vars_float:
+                table[var] = table[var].astype(float)
+            tables[name] = table
+
+        self.ind = tables['ind']
+        self.men = tables['men']      
+        self.foy = tables['foy']         
+#        # In case we need to Add one to each link because liam need no 0 in index
+#        if ind['id'].min() == 0:
+#            links = ['id','pere','mere','conj','foy','men','pref','vous']
+#            for table in [ind, men, foy, futur, past]:
+#                if table is not None:
+#                    vars_link = [x for x in table.columns if x in links]
+#                    table[vars_link] += 1
+#                    table[vars_link] = table[vars_link].replace(0,-1)     
+ 
     def store_to_liam(self):
         '''
         Sauvegarde des données au format utilisé ensuite par le modèle Til
@@ -484,14 +518,12 @@ class DataTil(object):
         for ent_name in ['ind','foy','men']:
             entity = eval('self.'+ ent_name)
             entity = entity.fillna(-1)
-            if ent_name == 'ind' : 
-                ent_table = entity.to_records(index=False)
+            ent_table = entity.to_records(index=False)
             dtypes = ent_table.dtype   
-            print dtypes      
             table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
             table.append(ent_table)
             table.flush()    
-            
+
             if ent_name == 'men':
                 ent_table2 = entity[['pond','id','period']].to_records(index=False)
                 dtypes2 = ent_table2.dtype 
