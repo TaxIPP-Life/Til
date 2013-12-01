@@ -1,0 +1,636 @@
+<!--
+RQ :
+1) certaines subtilités de législation antérieures à 1972 n'ont pas été codées :
+- Avant 1972 : le SAM du RG était calculé sur les 10 dernières années
+2) Faire atttention à l'appel de GENERATION (Même fonctionnement mais la condition ne porte
+plus sur l'année de naissance) pour :
+- les durées de services de la FP : date de la liquidation (generation = "date")
+- le nombre de trimestres exigés dans FP est basé sur l'année d'ouverture des droits.
+On a donc : generation = "year[age_min]"
+-->
+<NODE code = 'root'>
+	<NODE description= "Retraites" code = 'pension'>
+		<NODE description="Retraites de base" code="ret_base" >
+			<NODE description="Régime général" code="RG" >
+				<CODE description="Taux plein" code="tx_plein"  format="percent">
+	  				<VALUE valeur=".50" deb="1945-01-01" fin="2100-12-31"/>
+	  			</CODE>
+	  			<CODE description="Age limite de départ à la retraite (en mois)" code="age_max" format = "integer">
+					<VALUE valeur="840" deb="2010-01-01" fin="2100-12-31"/>
+					<VALUE valeur="780" deb="1945-01-01" fin="2009-12-31"/>
+				</CODE>  			
+		   		<BAREME_AGEM description="Age légal de départ à la retraite (en mois)" code = "age_min" generation = "naiss" format = "integer">
+	                <TRANCHE code="tranche0">
+				       	<SEUIL>
+				       		<VALUE valeur="0" deb="1945-01-01" fin="2100-12-31"/>
+				       	</SEUIL>
+				       	<TAUX>
+				       		<VALUE valeur="720" deb="1945-01-01" fin="2100-12-31"/>
+				       	</TAUX>	                	
+	      			</TRANCHE>
+	                <TRANCHE code="tranche1">
+				       	<SEUIL>
+				       		<VALUE valeur="51*12+7" deb="2011-07-01" fin="2100-12-31"/>
+				       	</SEUIL>
+				       	<TAUX>
+				       		<VALUE valeur="724" deb="1945-01-01" fin="2100-12-31"/>
+				       	</TAUX>	                	
+	      			</TRANCHE>
+	                <TRANCHE code="tranche2">
+				       	<SEUIL>
+				       		<VALUE valeur="52*12" deb="2011-07-01" fin="2100-12-31"/>
+				       	</SEUIL>
+				       	<TAUX>
+				       		<VALUE valeur="729" deb="1945-01-01" fin="2100-12-31"/>
+				       	</TAUX>	                	
+	      			</TRANCHE>
+	                <TRANCHE code="tranche3">
+				       	<SEUIL>
+				       		<VALUE valeur="53*12" deb="2011-07-01" fin="2100-12-31"/>
+				       	</SEUIL>
+				       	<TAUX>
+				       		<VALUE valeur="734" deb="1945-01-01" fin="2100-12-31"/>
+				       	</TAUX>	                	
+	      			</TRANCHE>
+	                <TRANCHE code="tranche4">
+				       	<SEUIL>
+				       		<VALUE valeur="54*12" deb="2011-07-01" fin="2100-12-31"/>
+				       	</SEUIL>
+				       	<TAUX>
+				       		<VALUE valeur="739" deb="1945-01-01" fin="2100-12-31"/>
+				       	</TAUX>	                	
+	      			</TRANCHE>
+	                <TRANCHE code="tranche5">
+				       	<SEUIL>
+				       		<VALUE valeur="55*12" deb="2011-07-01" fin="2100-12-31"/>
+				       	</SEUIL>
+				       	<TAUX>
+				       		<VALUE valeur="744" deb="1945-01-01" fin="2100-12-31"/>
+				       	</TAUX>	                	
+	      			</TRANCHE>	
+	  			</BAREME_AGEM>
+	  			#TODO: continuer comme ça ? 
+	  			<GENERATION description="Age d'annulation de la décôte (en mois) " code="age_dec" generation = "naiss" format = "integer">
+	  				<CODE description="Age d'annulation de la décôte initial " code="age_dec_ini">
+						<VALUE valeur="780" deb="1945-01-01" fin="2100-12-31"/>
+					</CODE>
+					<CODE description="Age d'annulation de la décôte génération 07/1951 - 12/1951" code="age_dec_5107">
+						<VALUE valeur="784" deb="2011-07-01" fin="2100-12-31"/>
+					</CODE>
+					<CODE description="Age d'annulation de la décôte génération 1952" code="age_dec_52">
+						<VALUE valeur="789" deb="2011-07-01" fin="2100-12-31"/>
+					</CODE>
+					<CODE description="Age d'annulation de la décôte génération 1953" code="age_dec_53">
+						<VALUE valeur="794" deb="2011-07-01" fin="2100-12-31"/>
+					</CODE>
+					<CODE description="Age d'annulation de la décôte génération 1954" code="age_dec_54">
+						<VALUE valeur="799" deb="2011-07-01" fin="2100-12-31"/>
+					</CODE>			
+					<CODE description="Age d'annulation de la décôte générations après 1955" code="age_dec_55">
+						<VALUE valeur="804" deb="2011-07-01" fin="2100-12-31"/>
+					</CODE>						
+	  			</GENERATION>
+	  			<GENERATION description=" Nombre d'années prises en compte pour le SAM" code="nb_sam"  generation = "naiss" format="integer">
+	                <CODE description="Valeur initiale du nb d'années pour le SAM">
+	                    <VALUE valeur="10" deb="1945-01-01" fin="2100-12-31" code= 'nb_sam_ini'/>
+	                 </CODE>
+	                 <CODE description = "Nombre d'années pour SAM génération 1934" code="nb_sam_34">
+	                    <VALUE valeur="11" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1935" code="nb_sam_35">
+	                    <VALUE valeur="12" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1936" code="nb_sam_36">
+	                    <VALUE valeur="13" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE>
+	                 <CODE description = "Nombre d'années pour SAM génération 1937" code="nb_sam_37">
+	                    <VALUE valeur="14" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1938" code="nb_sam_38">
+	                    <VALUE valeur="15" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1939" code="nb_sam_39">
+	                    <VALUE valeur="16" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE>
+	               	 <CODE description = "Nombre d'années pour SAM génération 1940" code="nb_sam_40">
+	                    <VALUE valeur="17" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1941" code="nb_sam_41">
+	                    <VALUE valeur="18" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1942" code="nb_sam_42">
+	                    <VALUE valeur="19" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE>
+	                 <CODE description = "Nombre d'années pour SAM génération 1943" code="nb_sam_43">
+	                    <VALUE valeur="20" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1944" code="nb_sam_44">
+	                    <VALUE valeur="21" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1945" code="nb_sam_45">
+	                    <VALUE valeur="22" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE>
+	                 <CODE description = "Nombre d'années pour SAM génération 1946" code="nb_sam_46">
+	                    <VALUE valeur="23" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1947" code="nb_sam_47">
+	                    <VALUE valeur="24" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE> 
+	                 <CODE description = "Nombre d'années pour SAM génération 1948" code="nb_sam_48">
+	                    <VALUE valeur="25" deb="1994-01-01" fin="2100-12-31"/>
+	                 </CODE>                   
+	            </GENERATION>
+	  			<GENERATION description="Nombre de trimestres exigés pour CP unitaire" code="N_CP" generation = "naiss" format="integer">
+	            	<CODE description = "Nombre d'années CP initial" code="N_CP_ini">
+	            		<VALUE valeur="120" deb="1945-01-01" fin="1972-12-31"/>
+	              		<VALUE valeur="150"  deb="1973-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	            	<CODE description = "Nombre d'années CP génération 1944" code="N_CP_44">
+	              		<VALUE valeur="152"  deb="2003-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années CP génération 1945" code="N_CP_45">
+	              		<VALUE valeur="154"  deb="2003-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	            	<CODE description = "Nombre d'années CP génération 1946" code="N_CP_46">
+	              		<VALUE valeur="156"  deb="2003-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années CP génération 1947" code="N_CP_47">
+	              		<VALUE valeur="158"  deb="2003-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années CP génération 1948" code="N_CP_48">
+	              		<VALUE valeur="160"  deb="2003-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années CP génération 1949" code="N_CP_49">
+	              		<VALUE valeur="161"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	              	<CODE description = "Nombre d'années CP génération 1950" code="N_CP_50">
+	              		<VALUE valeur="162"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>                	 
+	              	<CODE description = "Nombre d'années CP génération 1951" code="N_CP_51">
+	              		<VALUE valeur="163"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Nombre d'années CP génération 1952" code="N_CP_52">
+	              		<VALUE valeur="164"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>                    	  
+	              	<CODE description = "Nombre d'années CP génération 1953-54" code="N_CP_53">
+	              		<VALUE valeur="165"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Nombre d'années CP génération 1954" code="N_CP_54">
+	              		<VALUE valeur="166"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>                                               
+	            </GENERATION>
+				<GENERATION description="Nombre de trimestres exigés pour départ à taux plein" code="N_tau" generation = "naiss" format="integer">
+	            	<CODE description = "Nombre d'années taux plein initial" code="N_tau_ini">
+	              		<VALUE valeur="120" deb="1945-01-01" fin="1972-12-31"/>
+	              		<VALUE valeur="150" deb="1973-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+					<CODE description = "Nombre d'années taux plein génération 1934" code="N_tau_34">
+	              		<VALUE valeur="151"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre d'années taux plein génération 1935" code="N_tau_35">
+	              		<VALUE valeur="152"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre d'années taux plein génération 1936" code="N_tau_36">
+	              		<VALUE valeur="153"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années taux plein génération 1937" code="N_tau_37">
+	              		<VALUE valeur="154"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Nombre d'années taux plein génération 1938" code="N_tau_38">
+	              		<VALUE valeur="155"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre d'années taux plein génération 1939" code="N_tau_39">
+	              		<VALUE valeur="156"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre d'années taux plein génération 1940" code="N_tau_40">
+	              		<VALUE valeur="157"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années taux plein génération 1941" code="N_tau_41">
+	              		<VALUE valeur="158"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	              	<CODE description = "Nombre d'années taux plein génération 1942" code="N_tau_42">
+	              		<VALUE valeur="159"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>   
+	              	<CODE description = "Nombre d'années taux plein générations 1943-48" code="N_tau_43">
+	              		<VALUE valeur="160"  deb="1994-01-01" fin="2100-12-31"/>
+	              	</CODE>                 	
+	            	<CODE description = "Nombre d'années taux plein génération 1949" code="N_CP_49">
+	              		<VALUE valeur="161"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années taux plein génération 1950" code="N_CP_50">
+	              		<VALUE valeur="162"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>            	
+	              	<CODE description = "Nombre d'années taux plein génération 1951" code="N_CP_51">
+	              		<VALUE valeur="163"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	             	<CODE description = "Nombre d'années taux plein génération 1952" code="N_CP_52">
+	              		<VALUE valeur="164"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre d'années taux plein génération 1953-54" code="N_CP_53">
+	              		<VALUE valeur="165"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>            	
+	              	<CODE description = "Nombre d'années taux plein génération 1955" code="N_CP_55">
+	              		<VALUE valeur="166"  deb="2009-01-01" fin="2100-12-31"/>
+	              	</CODE>                                        
+	            </GENERATION>
+	            <GENERATION description="Taux de la décôte (valeurs ramenées en trimestres)" code="dec" generation = "naiss" format="percent">
+	            	<CODE description = "Taux de la decôte initial" code="dec_ini">
+	              		<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+	              		<VALUE valeur="0.02" deb="1946-01-01" fin="1971-12-31"/>
+	              		<VALUE valeur="0.0125" deb="1972-01-01" fin="1982-03-31"/>
+	              		<VALUE valeur="0.025" deb="1972-01-01" fin="2006-12-31"/>
+	              		<VALUE valeur="0.0125" deb="2007-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Taux de la decôte génération 1944" code="dec_44">
+	              		<VALUE valeur="0.02375" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	              	<CODE description = "Taux de la decôte génération 1945" code="dec_45">
+	              		<VALUE valeur="0.0225" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>  
+	              	<CODE description = "Taux de la decôte génération 1946" code="dec_46">
+	              		<VALUE valeur="0.02125" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	              	<CODE description = "Taux de la decôte génération 1947" code="dec_47">
+	              		<VALUE valeur="0.02" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>   
+	              	<CODE description = "Taux de la decôte génération 1948" code="dec_48">
+	              		<VALUE valeur="0.01875" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	              	<CODE description = "Taux de la decôte génération 1949" code="dec_49">
+	              		<VALUE valeur="0.0175" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>   
+	              	<CODE description = "Taux de la decôte génération 1950" code="dec_50">
+	              		<VALUE valeur="0.01625" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+	              	<CODE description = "Taux de la decôte génération 1951" code="dec_51">
+	              		<VALUE valeur="0.015" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>   
+	              	<CODE description = "Taux de la decôte génération 1952" code="dec_52">
+	              		<VALUE valeur="0.01375" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>  
+	              	<CODE description = "Taux de la decôte générations après 1953" code="dec_53">
+	              		<VALUE valeur="0.0125" deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>                               
+	            </GENERATION>
+	            <CODE description="Taux de la surcote (trimestres) première année" code="sur_an1"  format="percent">
+              		<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+              		<VALUE valeur="0.02" deb="1946-01-01" fin="1972-12-31"/>
+              		<VALUE valeur="0.025" deb="1973-01-01" fin="1982-12-31"/>
+              		<VALUE valeur="0.0" deb="1983-01-01" fin="2003-12-31"/>
+              		<VALUE valeur="0.0075" deb="2004-01-01" fin="2008-12-31"/>
+              		<VALUE valeur="0.0125" deb="2009-01-01" fin="2100-12-31"/>
+	             </CODE>
+	             <CODE description="Taux de la surcote (trimestres) deuxième année" code="sur_an2"  format="percent">
+              		<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+              		<VALUE valeur="0.02" deb="1946-01-01" fin="1972-12-31"/>
+              		<VALUE valeur="0.025" deb="1973-01-01" fin="1982-12-31"/>
+              		<VALUE valeur="0.0" deb="1983-01-01" fin="2003-12-31"/>
+              		<VALUE valeur="0.0075" deb="2004-01-01" fin="2006-12-31"/>
+              		<VALUE valeur="0.01" deb="2007-01-01" fin="2008-12-31"/>
+              		<VALUE valeur="0.0125" deb="2009-01-01" fin="2100-12-31"/>
+	              </CODE>
+	             <CODE description="Taux de la surcote (trimestres) troisième année" code="sur_an3"  format="percent">
+              		<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+              		<VALUE valeur="0.02" deb="1946-01-01" fin="1972-12-31"/>
+              		<VALUE valeur="0.025" deb="1973-01-01" fin="1982-12-31"/>
+              		<VALUE valeur="0.0" deb="1983-01-01" fin="2003-12-31"/>
+              		<VALUE valeur="0.0075" deb="2004-01-01" fin="2006-12-31"/>
+              		<VALUE valeur="0.0125" deb="2007-01-01" fin="2100-12-31"/>
+	              </CODE>
+			</NODE>
+			<NODE description="Fonction Publique" code="FP" >
+				<CODE description="Taux plein" code="tx_plein"  format="percent">
+	  				<VALUE valeur=".75" deb="1945-01-01" fin="2100-12-31"/>
+	  			</CODE>
+	  			
+	  			<NODE description = "Fonctionnaire sédentaire/contractuel" code = "FPS">
+			   		<GENERATION description="Age limite de départ à la retraite (en mois)" code = "age_max" generation = "naiss" format = "integer">
+		                <CODE description="Age limite de départ à la retraite générations avant 51" code="age_max_ini">
+							<VALUE valeur="780" deb="1945-01-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 07/1951 - 12/1951" code="age_max_5107" >
+							<VALUE valeur="784" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 52" code="age_max_52" >
+							<VALUE valeur="789" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 53" code="age_max_53" >
+							<VALUE valeur="794" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 54" code="age_max_54" >
+							<VALUE valeur="799" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>			
+						<CODE description="Age limite de départ à la retraite générations après 55" code="age_max_55" >
+							<VALUE valeur="804" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+		  			</GENERATION>  			
+			   		<GENERATION description="Age légal de départ à la retraite (en mois)" code = "age_min" generation = "naiss" format = "integer">
+		                <CODE description="Age légal de départ à la retraite générations avant 51" code="age_min_ini">
+							<VALUE valeur="720" deb="1945-01-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 07/1951 - 12/1951" code="age_min_5107" >
+							<VALUE valeur="724" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 52" code="age_min_52" >
+							<VALUE valeur="729" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 53" code="age_min_53" >
+							<VALUE valeur="734" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 54" code="age_min_54" >
+							<VALUE valeur="739" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>			
+						<CODE description="Age légal de départ à la retraite générations après 55" code="age_min_55" >
+							<VALUE valeur="744" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+		  			</GENERATION>
+		  			<GENERATION description="Age d'annulation de la décôte (en mois) " code="age_dec" generation = "naiss" format = "integer">
+		  				<CODE description="Age d'annulation de la décôte initial " code="age_dec_ini">
+							<VALUE valeur="744" deb="1945-01-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1951 - 06/1951" code="age_dec_51">
+							<VALUE valeur="753" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 07/1951 - 08/1951" code="age_dec_5107">
+							<VALUE valeur="757" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 09/1951 - 12/1951" code="age_dec_5109">
+							<VALUE valeur="760" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1952 - 03/1952" code="age_dec_52">
+							<VALUE valeur="765" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 04/1952 - 12/1952" code="age_dec_5204">
+							<VALUE valeur="768" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1953 - 10/1953" code="age_dec_53">
+							<VALUE valeur="776" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 11/1953 - 12/1953" code="age_dec_5311">
+							<VALUE valeur="779" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1954 - 05/1954" code="age_dec_54">
+							<VALUE valeur="784" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 06/1954 - 12/1954" code="age_dec_5406">
+							<VALUE valeur="787" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>		
+						<CODE description="Age d'annulation de la décôte génération 1955" code="age_dec_55">
+							<VALUE valeur="795" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte générations 1956" code="age_dec_56">
+							<VALUE valeur="798" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>	
+						<CODE description="Age d'annulation de la décôte générations 1957" code="age_dec_57">
+							<VALUE valeur="801" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>	
+						<CODE description="Age d'annulation de la décôte générations 1958" code="age_dec_58">
+							<VALUE valeur="804" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>						
+		  			</GENERATION>
+		  			<GENERATION description="Age de bénéfice du montant garanti (en mois)" code = "age_mg" generation = "naiss" format = "integer">
+		                <CODE description="Age bénéficiare MG initial " code="age_dec_ini">
+							<VALUE valeur="720" deb="1945-01-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 01/1951 - 06/1951" code="age_dec_51">
+							<VALUE valeur="726" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 07/1951 - 08/1951" code="age_dec_5107">
+							<VALUE valeur="730" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 09/1951 - 12/1951" code="age_dec_5109">
+							<VALUE valeur="739" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 01/1952 - 04/1952" code="age_dec_52">
+							<VALUE valeur="743" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 05/1952 - 12/1952" code="age_dec_5205">
+							<VALUE valeur="752" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 1953" code="age_dec_53">
+							<VALUE valeur="765" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 01/1954 - 08/1954" code="age_dec_54">
+							<VALUE valeur="778" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG génération 09/1954 - 12/1954" code="age_dec_5406">
+							<VALUE valeur="784" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>		
+						<CODE description="Age bénéficiare MG génération 1955" code="age_dec_55">
+							<VALUE valeur="789" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age bénéficiare MG générations 1956" code="age_dec_56">
+							<VALUE valeur="798" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>	
+						<CODE description="Age bénéficiare MG générations 1957" code="age_dec_57">
+							<VALUE valeur="801" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>	
+						<CODE description="Age bénéficiare MG générations 1958" code="age_dec_58">
+							<VALUE valeur="804" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>	
+					</GENERATION>
+					<CODE description="Durée de service minimale (en mois)" code = "ser_min" format = "integer">
+						<VALUE valeur="180" deb="1945-01-01" fin="2010-12-31"/>
+						<VALUE valeur="24" deb="2011-01-01" fin="2100-12-31"/>
+					</CODE>			
+		  		</NODE>
+		  		<NODE description = "Fonctionnaire actif" code = "FPA">
+			   		<GENERATION description="Age limite de départ à la retraite (en mois)" code = "age_max" generation = "naiss" format = "integer">
+		                <CODE description="Age limite de départ à la retraite générations avant 51" code="age_max_ini">
+							<VALUE valeur="720" deb="1945-01-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 07/1956 - 12/1956" code="age_max_5607" >
+							<VALUE valeur="724" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 57" code="age_max_57" >
+							<VALUE valeur="729" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 58" code="age_max_58" >
+							<VALUE valeur="734" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age limite de départ à la retraite génération 59" code="age_max_59" >
+							<VALUE valeur="739" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>			
+						<CODE description="Age limite de départ à la retraite générations après 60" code="age_max_60" >
+							<VALUE valeur="744" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+		  			</GENERATION>			
+			   		<GENERATION description="Age légal de départ à la retraite (en mois)" code = "age_min" generation = "naiss" format = "integer">
+		                <CODE description="Age légal de départ à la retraite générations avant 51" code="age_min_ini">
+							<VALUE valeur="660" deb="1945-01-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 07/1951 - 12/1951" code="age_min_5107" >
+							<VALUE valeur="664" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 52" code="age_min_52" >
+							<VALUE valeur="669" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 53" code="age_min_53" >
+							<VALUE valeur="674" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age légal de départ à la retraite génération 54" code="age_min_54" >
+							<VALUE valeur="679" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>			
+						<CODE description="Age légal de départ à la retraite générations après 55" code="age_min_55" >
+							<VALUE valeur="684" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+		  			</GENERATION>
+		  			<GENERATION description="Age d'annulation de la décôte (en mois) " code="age_dec" generation = "naiss" format = "integer">
+		  				<CODE description="Age d'annulation de la décôte initial " code="age_dec_ini">
+							<VALUE valeur="684" deb="1945-01-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1951 - 06/1951" code="age_dec_51">
+							<VALUE valeur="693" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 07/1951 - 08/1951" code="age_dec_5107">
+							<VALUE valeur="697" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 09/1951 - 12/1951" code="age_dec_5109">
+							<VALUE valeur="700" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1952 - 03/1952" code="age_dec_52">
+							<VALUE valeur="705" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 04/1952 - 12/1952" code="age_dec_5204">
+							<VALUE valeur="708" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1953 - 10/1953" code="age_dec_53">
+							<VALUE valeur="716" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 11/1953 - 12/1953" code="age_dec_5311">
+							<VALUE valeur="719" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 01/1954 - 05/1954" code="age_dec_54">
+							<VALUE valeur="724" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte génération 06/1954 - 12/1954" code="age_dec_5406">
+							<VALUE valeur="727" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>		
+						<CODE description="Age d'annulation de la décôte génération 1955" code="age_dec_55">
+							<VALUE valeur="735" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Age d'annulation de la décôte générations 1956" code="age_dec_56">
+							<VALUE valeur="738" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>	
+						<CODE description="Age d'annulation de la décôte générations 1957" code="age_dec_57">
+							<VALUE valeur="741" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>	
+						<CODE description="Age d'annulation de la décôte générations 1958" code="age_dec_58">
+							<VALUE valeur="744" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>						
+		  			</GENERATION>
+		  			<GENERATION description="Durée de service minimale (en mois)" code = "ser_min" generation = "date" format = "integer">
+		                <CODE description="Durée de service minimale pour départ avant 07/2011 " code="ser_min_ini">
+							<VALUE valeur="180" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+		                <CODE description="Durée de service minimale pour départ entre 07/2011 et 12/2011 " code="ser_min_1107">
+							<VALUE valeur="184" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Durée de service minimale pour départ en 2012 " code="ser_min_12">
+							<VALUE valeur="189" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Durée de service minimale pour départ en 2013 " code="ser_min_13">
+							<VALUE valeur="194" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Durée de service minimale pour départ en 2014 " code="ser_min_14">
+							<VALUE valeur="199" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+						<CODE description="Durée de service minimale pour départ après 2015 " code="ser_min_15">
+							<VALUE valeur="2" deb="2011-07-01" fin="2100-12-31"/>
+						</CODE>
+		  			</GENERATION>	
+		  		</NODE>
+				<GENERATION description="Nombre de trimestres exigés pour départ à taux plein " generation = "year[age_min]" code="N_tau"  format="integer">
+	            	<CODE description = "Nombre de trimestres taux plein avant 2003" code="N_tau_ini">
+	              		<VALUE valeur="150" deb="1945-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+					<CODE description = "Nombre de trimestres taux plein en 2004" code="N_tau_04">
+	              		<VALUE valeur="152"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre de trimestres taux plein en 2005" code="N_tau_05">
+	              		<VALUE valeur="154"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre de trimestres taux plein en 2006" code="N_tau_06">
+	              		<VALUE valeur="156"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre de trimestres taux plein en 2007" code="N_tau_07">
+	              		<VALUE valeur="158"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Nombre de trimestres taux plein en 2008" code="N_tau_08">
+	              		<VALUE valeur="160"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Nombre de trimestres taux plein en 2009" code="N_tau_09">
+	              		<VALUE valeur="161"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre de trimestres taux plein en 2010" code="N_tau_10">
+	              		<VALUE valeur="162"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Nombre de trimestres taux plein en 2011" code="N_tau_11">
+	              		<VALUE valeur="163"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre de trimestres taux plein en 2012-13" code="N_tau_12">
+	              		<VALUE valeur="164"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Nombre de trimestres taux plein en 2014" code="N_tau_14">
+	              		<VALUE valeur="165"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Nombre de trimestres taux plein en 2015-18" code="N_tau_15">
+	              		<VALUE valeur="166"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Nombre de trimestres taux plein à partir de 2019" code="N_tau_19">
+	              		<VALUE valeur="167"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>					                                           
+	            </GENERATION>
+	            <GENERATION description="Taux de la décôte (valeurs ramenées en trimestres)" generation = "year[age_min]" code="dec"  format="percent">
+	            	<CODE description = "Taux de la décôte jusqu'en 2005" code="dec_ini">
+	              		<VALUE valeur="0" deb="1945-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+					<CODE description = "Taux de la décôte en 2006" code="dec_06">
+	              		<VALUE valeur="0.00125"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Taux de la décôte en 2007" code="dec_07">
+	              		<VALUE valeur="0.0025"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Taux de la décôte en 2008" code="dec_08">
+	              		<VALUE valeur="0.00375"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Taux de la décôte en 2009" code="dec_09">
+	              		<VALUE valeur="0.005"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Taux de la décôte en 2010" code="dec_10">
+	              		<VALUE valeur="0.00625"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+					<CODE description = "Taux de la décôte en 2011" code="dec_11">
+	              		<VALUE valeur="0.0075"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Taux de la décôte en 2012" code="dec_12">
+	              		<VALUE valeur="0.00875"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Taux de la décôte en 2013" code="dec_13">
+	              		<VALUE valeur="0.01"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Taux de la décôte en 2014" code="dec_14">
+	              		<VALUE valeur="0.01125"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Taux de la décôte à partir de 2015" code="dec_15">
+	              		<VALUE valeur="0.0125"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>				                                           
+	            </GENERATION>
+	            <GENERATION description="Taux de la surcote (valeurs ramenées en trimestres)" generation = "year[age_min]" code="sur"  format="percent">
+	            	<CODE description = "Taux de la surcote jusqu'en 2003" code="sur_ini">
+	              		<VALUE valeur="0" deb="1945-01-01" fin="2100-12-31"/>
+	              	</CODE> 
+					<CODE description = "Taux de la surcote en 2004" code="sur_04">
+	              		<VALUE valeur="0.00125"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	            	<CODE description = "Taux de la surcote de 2004 à 2008" code="sur_04">
+	              		<VALUE valeur="0.0075"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>
+	              	<CODE description = "Taux de la surcote à partir de 2009" code="sur_09">
+	              		<VALUE valeur="0.0125"  deb="2004-01-01" fin="2100-12-31"/>
+	              	</CODE>                                           
+	            </GENERATION>
+			</NODE>
+		</NODE>	   
+	</NODE>
+</NODE>
