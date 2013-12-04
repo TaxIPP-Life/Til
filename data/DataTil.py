@@ -367,8 +367,8 @@ class DataTil(object):
         futur = self.futur
         past = self.past      
         
-        ind['period'] = self.survey_date
-        men['period'] = self.survey_date
+        ind['period'] = self.survey_year
+        men['period'] = self.survey_year
         
         if 'age' not in ind.columns :
             ind['age'] = self.survey_date//100 - ind['anais']
@@ -462,8 +462,9 @@ class DataTil(object):
                 table[var] = table[var].astype(int)
             for var in vars_float:
                 table[var] = table[var].astype(float)
+            table = table.sort_index(by=['period','id'])
             tables[name] = table
-
+            
         self.ind = tables['ind']
         self.men = tables['men']      
         self.foy = tables['foy']         

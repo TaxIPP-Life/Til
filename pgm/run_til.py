@@ -21,7 +21,7 @@ from src_liam.simulation import Simulation
 #         input_dir=path_til + '\\data\\Patrimoine\\')
 
 
-fichier= path_til + 'Model\\console.yml'
+fichier= path_til + 'Model\\console_Destinie.yml'
 #fichier=  path_til + '\\Model\\console_retro.yml'
 
 # fichier= 'path_til + '\\tests\\functional\\simulation.yml'
