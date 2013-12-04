@@ -1,3 +1,23 @@
-<NODE datesim="2010 "><NODE code="ret_base" description="Retraites de base"><NODE code="RG" description="Regime general"><CODE code="tx_plein" description="Taux plein"><VALUE valeur="0.500000" /></CODE><CODE code="age_max" description="Age limite de depart à la retraite (en mois)"><VALUE valeur="840.000000" /></CODE>
-<MULTIPLE code="age_min" description="Age legal de depart à la retraite (en mois)" varcontrol="naiss">
-	<VALUE deb="1900-01-01" fin="1951-07-01" valeur="720.000000" /><VALUE deb="1951-07-01" fin="1952-01-01" valeur="724.000000" /><VALUE deb="1952-01-01" fin="1953-01-01" valeur="729.000000" /><VALUE deb="1953-01-01" fin="1954-01-01" valeur="734.000000" /><VALUE deb="1954-01-01" fin="1955-01-01" valeur="739.000000" /><VALUE deb="1955-01-01" fin="unbound" valeur="744.000000" /></MULTIPLE><CODE code="tx_fou" description="Taux plein"><VALUE valeur="0.500000" /></CODE></NODE></NODE><NODE code="ret_comp" description="Retraites de base"><NODE code="RG" description="Regime general"><CODE code="tx_plein" description="Taux plein"><VALUE valeur="0.500000" /></CODE></NODE></NODE></NODE>
+<NODE datesim="2010 ">
+	<NODE code="ret_base" description="Retraites de base">
+		<NODE code="RG" description="Regime general">
+			<CODE code="tx_plein" description="Taux plein"><VALUE valeur="0.500000" />
+			</CODE><CODE code="age_max" description="Age limite de depart à la retraite (en mois)">
+			<VALUE valeur="840.000000" />
+			</CODE>
+			<MULTIPLE code="age_min" description="Age legal de depart à la retraite (en mois)" varcontrol="naiss">
+				<VALUE deb="1900-01-01" fin="1951-07-01" valeur="720.000000" /><VALUE deb="1951-07-01" fin="1952-01-01" valeur="724.000000" />
+				<VALUE deb="1952-01-01" fin="1953-01-01" valeur="729.000000" /><VALUE deb="1953-01-01" fin="1954-01-01" valeur="734.000000" />
+				<VALUE deb="1954-01-01" fin="1955-01-01" valeur="739.000000" /><VALUE deb="1955-01-01" fin="unbound" valeur="744.000000" />
+				</MULTIPLE><CODE code="tx_fou" description="Taux plein"><VALUE valeur="0.500000" />
+			</CODE>
+		</NODE>
+	</NODE>
+	<NODE code="ret_comp" description="Retraites de base">
+		<NODE code="RG" description="Regime general">
+			<CODE code="tx_plein" description="Taux plein">
+				<VALUE valeur="0.500000" />
+			</CODE>
+		</NODE>
+	</NODE>
+</NODE>
