@@ -73,7 +73,7 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: patrimoine_200.h5
+        file: patrimoine_900.h5
         
     output:
         file: simul.h5

@@ -1,0 +1,318 @@
+<!--
+RQ :
+1) certaines subtilités de législation antérieures à 1972 n'ont pas été codées :
+- Avant 1972 : le SAM du RG était calculé sur les 10 dernières années
+2) Faire atttention à l'appel de GENERATION (Même fonctionnement mais la condition ne porte
+plus sur l'année de naissance) pour :
+- les durées de services de la FP : date de la liquidation (varcontrol="date")
+- le nombre de trimestres exigés dans FP est basé sur l'année d'ouverture des droits.
+On a donc : varcontrol="year[age_min]"
+-->
+
+<NODE description= "Retraites">
+	<NODE description="Retraites de base" code="ret_base" >
+		<NODE description="Régime général" code="RG" >
+			<CODE description="Taux plein" code="tx_plein"  format="percent">
+  				<VALUE valeur=".40" deb="1945-01-01" fin="1971-12-31"/>
+  				<VALUE valeur=".50" deb="1972-01-01" fin="2100-12-31"/>
+  			</CODE>
+  			<CODE description="Age limite de départ à la retraite (en mois)" code="age_max" format="integer">
+				<VALUE valeur="840" deb="2010-01-01" fin="2100-12-31"/>
+				<VALUE valeur="780" deb="1945-01-01" fin="2009-12-31"/>
+			</CODE>  			
+	   		<VALBYTRANCHES description="Age legal de depart à la retraite (en mois)" code="age_min"  format="integer">
+	   			<VARCONTROL>
+	   				<CODE code='naiss' deb="2011-07-01" fin="2100-12-31" format="date"/>
+	   			</VARCONTROL> 
+	   			<VALUE valeur="720" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+				<VALUE valeur="724" valeurcontrol="1951-07-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="729" valeurcontrol="1952-01-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="734" valeurcontrol="1953-01-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="739" valeurcontrol="1954-01-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="744" valeurcontrol="1955-01-01" deb="2011-07-01" fin="2100-12-31"/>
+			</VALBYTRANCHES>
+			<VALBYTRANCHES description="Age d'annulation de la décote (en mois) " code="age_dec" format="integer">
+	   			<VARCONTROL>
+	   				<CODE code='naiss' deb="2011-07-01" fin="2100-12-31" format="date"/>
+	   			</VARCONTROL> 
+	   			<VALUE valeur="780" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+				<VALUE valeur="784" valeurcontrol="1951-07-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="789" valeurcontrol="1952-01-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="794" valeurcontrol="1953-01-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="799" valeurcontrol="1954-01-01" deb="2011-07-01" fin="2100-12-31"/>
+				<VALUE valeur="804" valeurcontrol="1955-01-01" deb="2011-07-01" fin="2100-12-31"/>
+			</VALBYTRANCHES>
+			<VALBYTRANCHES description=" Nombre d'années prises en compte pour le SAM" code="nb_sam"  format="integer">
+	   			<VARCONTROL>
+	   				<CODE code='naiss' deb="1994-01-01" fin="2100-12-31" format="date"/>
+	   			</VARCONTROL> 
+	   			<VALUE valeur="10" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+				<VALUE valeur="11" valeurcontrol="1934-07-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="12" valeurcontrol="1935-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="13" valeurcontrol="1936-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="14" valeurcontrol="1937-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="15" valeurcontrol="1938-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="16" valeurcontrol="1939-07-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="17" valeurcontrol="1940-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="19" valeurcontrol="1941-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="19" valeurcontrol="1942-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="20" valeurcontrol="1943-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="21" valeurcontrol="1944-07-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="22" valeurcontrol="1945-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="23" valeurcontrol="1946-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="24" valeurcontrol="1947-01-01" deb="1994-01-01" fin="2100-12-31"/>
+				<VALUE valeur="25" valeurcontrol="1948-01-01" deb="1994-01-01" fin="2100-12-31"/>
+			</VALBYTRANCHES>
+			<VALBYTRANCHES description="Nombre de trimestres exigés pour CP unitaire" code="N_CP"  format="integer">
+	   			<VARCONTROL>
+	   				<CODE code='naiss' deb="2004-01-01" fin="2100-12-31" format="date"/>
+	   			</VARCONTROL> 
+	   			<VALUE valeur="120" deb="1945-01-01" fin="1972-12-31"/>
+              	<VALUE valeur="150" deb="1973-01-01" fin="2003-12-31"/>
+              	<VALUE valeur="150" valeurcontrol="1900-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="152" valeurcontrol="1944-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="154" valeurcontrol="1945-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="156" valeurcontrol="1946-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="158" valeurcontrol="1947-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="160" valeurcontrol="1948-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="161" valeurcontrol="1949-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="162" valeurcontrol="1950-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="163" valeurcontrol="1951-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="164" valeurcontrol="1952-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="165" valeurcontrol="1953-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="166" valeurcontrol="1955-01-01" deb="2009-01-01" fin="2100-12-31"/>
+			</VALBYTRANCHES>
+			<VALBYTRANCHES escription="Nombre de trimestres exigés pour départ à taux plein" code="N_tau" format="integer">
+	   			<VARCONTROL>
+	   				<CODE code='naiss' deb="1994-01-01" fin="2100-12-31" format="date"/>
+	   			</VARCONTROL> 
+   			    <!-- Ne doit être pris en compte que pour N_Cp ? avant 1983
+          		</-><VALUE valeur="120" deb="1945-01-01" fin="1972-12-31"/> -->
+              	<VALUE valeur="150" valeurcontrol="1900-01-01" deb="1973-01-01" fin="2003-12-31"/>
+              	<VALUE valeur="151" valeurcontrol="1934-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="152" valeurcontrol="1934-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="153" valeurcontrol="1936-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="154" valeurcontrol="1937-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="155" valeurcontrol="1938-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="156" valeurcontrol="1939-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="157" valeurcontrol="1940-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="158" valeurcontrol="1941-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="159" valeurcontrol="1942-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="160" valeurcontrol="1943-01-01" deb="1994-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="161" valeurcontrol="1949-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="162" valeurcontrol="1950-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="163" valeurcontrol="1951-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="164" valeurcontrol="1952-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="165" valeurcontrol="1953-01-01" deb="2009-01-01" fin="2100-12-31"/>
+	   			<VALUE valeur="166" valeurcontrol="1955-01-01" deb="2009-01-01" fin="2100-12-31"/>
+			</VALBYTRANCHES>
+            <VALBYTRANCHES description="Taux de la décote (valeurs ramenées en trimestres)" code="dec" format="percent">
+            	<VARCONTROL>
+	   				<CODE code='naiss' deb="1994-01-01" fin="2100-12-31" format="date"/>
+	   			</VARCONTROL> 
+              	<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+              	<VALUE valeur="0.025" valeurcontrol="1900-01-01" deb="1946-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.02375" valeurcontrol="1944-01-01" deb="2004-01-01" fin="2100-12-31"/>
+				<VALUE valeur="0.0225" valeurcontrol="1945-01-01" deb="2004-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.02125" valeurcontrol="1946-01-01" deb="2004-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.02" valeurcontrol="1947-01-01" deb="2004-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.01875" valeurcontrol="1948-01-01" deb="2004-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.0175" valeurcontrol="1949-01-01" deb="2004-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.01625" valeurcontrol="1950-01-01" deb="2004-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.015" valeurcontrol="1951-01-01" deb="2004-01-01" fin="2100-12-31"/>
+            	<VALUE valeur="0.01375" valeurcontrol="1952-01-01" deb="2004-01-01" fin="2100-12-31"/>
+              	<VALUE valeur="0.0125" valeurcontrol="1953-01-01" deb="2004-01-01" fin="2100-12-31"/>                              
+            </VALBYTRANCHES>
+            <CODE description="Taux de la surcote (trimestres) première année" code="sur_an1"  format="percent">
+          		<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+          		<VALUE valeur="0.025" deb="1946-01-01"  fin="1982-12-31"/>
+          		<VALUE valeur="0.0" deb="1983-01-01" fin="2003-12-31"/>
+          		<VALUE valeur="0.0075" deb="2004-01-01" fin="2009-03-31"/>
+          		<VALUE valeur="0.0125" deb="2009-04-01" fin="2100-12-31"/>
+             </CODE>
+             <CODE description="Taux de la surcote (trimestres) deuxième année" code="sur_an2"  format="percent">
+				<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+          		<VALUE valeur="0.025" deb="1946-01-01"  fin="1982-12-31"/>
+          		<VALUE valeur="0.0" deb="1983-01-01" fin="2003-12-31"/>
+          		<VALUE valeur="0.0075" deb="2004-01-01" fin="2006-12-31"/>
+          		<VALUE valeur="0.01" deb="2007-01-01" fin="2009-03-31"/>
+          		<VALUE valeur="0.0125" deb="2009-04-01" fin="2100-12-31"/>
+              </CODE>
+             <CODE description="Taux de la surcote (trimestres) troisième année" code="sur_an3"  format="percent">
+          		<VALUE valeur="0.0" deb="1945-01-01" fin="1945-12-31"/>
+          		<VALUE valeur="0.025" deb="1946-01-01" fin="1982-12-31"/>
+          		<VALUE valeur="0.0" deb="1983-01-01" fin="2003-12-31"/>
+          		<VALUE valeur="0.0075" deb="2004-01-01" fin="2006-12-31"/>
+          		<VALUE valeur="0.0125" deb="2007-01-01" fin="2100-12-31"/>
+              </CODE>
+		</NODE>
+		<NODE description="Fonction Publique" code="FP" >
+			<CODE description="Taux plein" code="tx_plein"  format="percent">
+  				<VALUE valeur=".75" deb="1945-01-01" fin="2100-12-31"/>
+  			</CODE>
+  			<NODE description="Fonctionnaire sédentaire/contractuel" code="FPS">
+	            <VALBYTRANCHES description="Age limite de départ à la retraite (en mois)" code="age_max"  format="integer">
+	            	<VARCONTROL>
+		   				<CODE code='naiss' deb="2011-01-01" fin="2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+	              	<VALUE valeur="780" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="784" valeurcontrol="1951-07-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="789" valeurcontrol="1952-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="794" valeurcontrol="1953-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="799" valeurcontrol="1954-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="804" valeurcontrol="1955-01-01" deb="2011-01-01" fin="2100-12-31"/>                       
+	            </VALBYTRANCHES>
+	            <VALBYTRANCHES description="Age légal de départ à la retraite (en mois)" code="age_min" format="integer">
+	            	<VARCONTROL>
+		   				<CODE code='naiss' deb="2011-01-01" fin="2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+	              	<VALUE valeur="720" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="724" valeurcontrol="1951-07-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="729" valeurcontrol="1952-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="734" valeurcontrol="1953-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="739" valeurcontrol="1954-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="744" valeurcontrol="1955-01-01" deb="2011-01-01" fin="2100-12-31"/>                       
+	            </VALBYTRANCHES>
+	            <VALBYTRANCHES description="Age légal de départ à la retraite (en mois)" code="age_min" format="integer">
+	            	<VARCONTROL>
+		   				<CODE code='naiss' deb="2011-01-01" fin="2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+	              	<VALUE valeur="744" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="753" valeurcontrol="1951-01-01" deb="2011-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="757" valeurcontrol="1951-07-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="760" valeurcontrol="1951-09-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="765" valeurcontrol="1952-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="768" valeurcontrol="1952-04-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="776" valeurcontrol="1953-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="779" valeurcontrol="1953-11-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="784" valeurcontrol="1954-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="787" valeurcontrol="1954-06-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="795" valeurcontrol="1955-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="798" valeurcontrol="1956-01-01" deb="2011-01-01" fin="2100-12-31"/> 
+		   			<VALUE valeur="801" valeurcontrol="1957-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="804" valeurcontrol="1958-01-01" deb="2011-01-01" fin="2100-12-31"/>                          
+	            </VALBYTRANCHES>
+	            <VALBYTRANCHES description="Age de bénéfice du montant garanti (en mois)" code="age_mg" format="integer">
+	            	<VARCONTROL>
+		   				<CODE code='naiss' deb="2011-01-01" fin="2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+	              	<VALUE valeur="720" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="726" valeurcontrol="1951-01-01" deb="2011-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="730" valeurcontrol="1951-07-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="739" valeurcontrol="1951-09-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="743" valeurcontrol="1952-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="752" valeurcontrol="1952-05-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="765" valeurcontrol="1953-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="778" valeurcontrol="1954-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="784" valeurcontrol="1954-09-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="789" valeurcontrol="1955-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="798" valeurcontrol="1956-01-01" deb="2011-01-01" fin="2100-12-31"/> 
+		   			<VALUE valeur="801" valeurcontrol="1957-01-01" deb="2011-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="804" valeurcontrol="1958-01-01" deb="2011-01-01" fin="2100-12-31"/>                          
+	            </VALBYTRANCHES>
+				<CODE description="Durée de service minimale (en mois)" code="ser_min" format="integer">
+					<VALUE valeur="180" deb="1945-01-01" fin="2010-12-31"/>
+					<VALUE valeur="24" deb="2011-01-01" fin="2100-12-31"/>
+				</CODE>			
+	  		</NODE>
+	  		<NODE description="Fonctionnaire actif" code="FPA">
+	  			 <VALBYTRANCHES description="Age limite de départ à la retraite (en mois)" code="age_max"  format="integer">
+	            	<VARCONTROL>
+		   				<CODE code='naiss' deb="2011-07-01" fin="2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+	              	<VALUE valeur="720" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="724" valeurcontrol="1956-07-01" deb="2011-07-01" fin="2100-12-31"/>
+	              	<VALUE valeur="729" valeurcontrol="1957-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="734" valeurcontrol="1958-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="739" valeurcontrol="1959-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="744" valeurcontrol="1960-01-01" deb="2011-07-01" fin="2100-12-31"/>                         
+	            </VALBYTRANCHES>
+	            <VALBYTRANCHES description="Age légal de départ à la retraite (en mois)" code="age_min"  format="integer">
+	            	<VARCONTROL>
+		   				<CODE code='naiss' deb="2011-07-01" fin="2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+	              	<VALUE valeur="660" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="664" valeurcontrol="1951-07-01" deb="2011-07-01" fin="2100-12-31"/>
+	              	<VALUE valeur="669" valeurcontrol="1952-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="674" valeurcontrol="1953-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="679" valeurcontrol="1954-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="684" valeurcontrol="1955-01-01" deb="2011-07-01" fin="2100-12-31"/>                         
+	            </VALBYTRANCHES>
+	            <VALBYTRANCHES description="Age d'annulation de la décote (en mois) " code="age_dec" format="integer">
+	            	<VARCONTROL>
+		   				<CODE code='naiss' deb="2011-07-01" fin= "2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+	              	<VALUE valeur="684" valeurcontrol="1900-01-01" deb="2003-01-01" fin="2100-12-31"/>
+		   			<VALUE valeur="693" valeurcontrol="1951-01-01" deb="2011-07-01" fin="2100-12-31"/>
+	              	<VALUE valeur="697" valeurcontrol="1951-07-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="700" valeurcontrol="1951-09-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="705" valeurcontrol="1952-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="708" valeurcontrol="1952-04-01" deb="2011-07-01" fin="2100-12-31"/> 
+		   			<VALUE valeur="716" valeurcontrol="1953-01-01" deb="2011-07-01" fin="2100-12-31"/>
+	              	<VALUE valeur="719" valeurcontrol="1953-11-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="724" valeurcontrol="1954-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="727" valeurcontrol="1954-06-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="735" valeurcontrol="1955-01-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="738" valeurcontrol="1956-01-01" deb="2011-07-01" fin="2100-12-31"/>
+	              	<VALUE valeur="741" valeurcontrol="1957-11-01" deb="2011-07-01" fin="2100-12-31"/>
+		   			<VALUE valeur="744" valeurcontrol="1958-01-01" deb="2011-07-01" fin="2100-12-31"/>                            
+	            </VALBYTRANCHES>
+				<VALBYTRANCHES description="Durée de service minimale (en mois)" code="ser_min" format="integer">
+	            	<VARCONTROL>
+		   				<CODE code="date_dep" deb="2011-07-01" fin= "2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+					<VALUE valeur="180" deb="2011-07-01" fin="2100-12-31" valeurcontrol="2011-01-01"/>
+					<VALUE valeur="184" deb="2011-07-01" fin="2100-12-31" valeurcontrol="2011-07-01"/>
+					<VALUE valeur="189" deb="2011-07-01" fin="2100-12-31" valeurcontrol="2012-01-01"/>
+					<VALUE valeur="194" deb="2011-07-01" fin="2100-12-31" valeurcontrol="2013-01-01"/>
+					<VALUE valeur="199" deb="2011-07-01" fin="2100-12-31" valeurcontrol="2014-01-01"/>
+					<VALUE valeur="204" deb="2011-07-01" fin="2100-12-31" valeurcontrol="2015-01-01"/>
+				</VALBYTRANCHES>
+				<VALBYTRANCHES description="Nombre de trimestres exigés pour départ à taux plein " code="N_tau"  format="integer">
+		  			<VARCONTROL>
+		   				<CODE code="date(age_min)" deb="2004-01-01" fin= "2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+					<VALUE valeur="150" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+					<VALUE valeur="152"  valeurcontrol="2004-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="154"  valeurcontrol="2005-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="156"  valeurcontrol="2006-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="158"  valeurcontrol="2007-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="160"  valeurcontrol="2008-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="161"  valeurcontrol="2009-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="162"  valeurcontrol="2010-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="163"  valeurcontrol="2011-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="164"  valeurcontrol="2012-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="165"  valeurcontrol="2014-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="166"  valeurcontrol="2015-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	              	<VALUE valeur="167" valeurcontrol="2019-01-01" deb="2004-01-01" fin="2100-12-31"/>
+				</VALBYTRANCHES>
+				<VALBYTRANCHES description="Taux de la décote (valeurs ramenées en trimestres)" code="dec"  format="percent">
+		  			<VARCONTROL>
+		   				<CODE code="date(age_min)" deb="2004-01-01" fin= "2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+		            <VALUE valeur="0" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+					<VALUE valeur="0.00125" valeurcontrol="2006-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.0025"  valeurcontrol="2007-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.00375"  valeurcontrol="2008-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.005"  valeurcontrol="2009-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.00625" valeurcontrol="2010-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.0075" valeurcontrol="2011-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.00875"  valeurcontrol="2012-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.01" valeurcontrol="2013-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.01125" valeurcontrol="2014-01-01" deb="2004-01-01" fin="2100-12-31"/>
+		            <VALUE valeur="0.0125"  valeurcontrol="2015-01-01" deb="2004-01-01" fin="2100-12-31"/>
+				</VALBYTRANCHES>
+				<VALBYTRANCHES description="Taux de la surcote (valeurs ramenées en trimestres)" code="sur"  format="percent">
+		  			<VARCONTROL>
+		   				<CODE code="date(age_min)" deb="2004-01-01" fin= "2100-12-31" format="date"/>
+		   			</VARCONTROL> 
+		   			<VALUE valeur="0.00125"  deb="2003-01-01" fin="2004-12-31"/>
+	             	<VALUE valeur="0.0075"  valeurcontrol="2004-01-01" deb="2004-01-01" fin="2100-12-31"/>
+					<VALUE valeur="0.0125"  valeurcontrol="2009-01-01" deb="2004-01-01" fin="2100-12-31"/>
+	            </VALBYTRANCHES>
+	  		</NODE>
+		</NODE>
+	</NODE>	 
+	<NODE description="Retraites complementaires" code="ret_comp" >
+	</NODE>  
+</NODE>
