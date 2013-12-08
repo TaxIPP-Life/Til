@@ -21,7 +21,7 @@ entities:
             - conj: int
             - dur_in_couple: {type: float, initialdata: false}
             - dur_out_couple: {type: int, initialdata: false}
-            - civilstate: int
+            - civilstate: {type: int, initialdata: false}
             
         # education    
             - education_level: {type: int, initialdata: false, default: 10}
