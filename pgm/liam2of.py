@@ -22,8 +22,6 @@ from utils import til_name_to_of
 def main(simulation, period=None, output=".h5"):
     temps = time.clock()    
     output_tab = path_til + "/output/to_run_leg.h5"
-
-
     # on travaille d'abord sur l'ensemble des tables puis on selectionne chaque annee
     # on étudie d'abord la table individu pour pouvoir séléctionner les identifiants
     # step 1
@@ -34,33 +32,32 @@ def main(simulation, period=None, output=".h5"):
         if nom == 'person':
             ent = til_name_to_of[nom]
             # convert from PyTables to Pandas
-            table[ent] = pd.DataFrame(entity.array.columns)
+            table['ind'] = pd.DataFrame(entity.array.columns)
             # rename variables to make them OF ones
             table['ind'] = table['ind'].rename(columns={
                         'men': 'idmen', 'foy': 'idfoy', 'id': 'noi', 'statmarit': 'civilstate'})
 
     # get years
     years = np.unique(table['ind']['period'].values/100)
-    ent = 'ind'
     # création de variable
     
 # useless since agem is in simu    
 #     table[ent]['agem'] = 12 * table[ent]['age'] 
     
-    table[ent]['ageq'] = table[ent]['age']/5 - 4 
-    table[ent]['ageq'] = table[ent]['ageq']*(table[ent]['ageq'] > 0) 
-    table[ent]['ageq'] = 12 + (table[ent]['ageq']-12)*(table[ent]['ageq'] < 12) 
+    table['ind']['ageq'] = table['ind']['age']/5 - 4 
+    table['ind']['ageq'] = table['ind']['ageq']*(table['ind']['ageq'] > 0) 
+    table['ind']['ageq'] = 12 + (table['ind']['ageq']-12)*(table['ind']['ageq'] < 12) 
     #TODO: modifier pour les jeunes veufs 
     
     # create fam entity
     try:
-        table[ent][['idfam','quifam']] = table[ent].loc[:,['idmen','quimen']]
+        table['ind'][['idfam','quifam']] = table['ind'].loc[:,['idmen','quimen']]
     except:
         pdb.set_trace()
     
     # save information on qui == 0
-    foy0 = table[ent].loc[table[ent]['quifoy']==0,['noi','idfoy','idmen','idfam','period']]
-    men0 = table[ent].loc[table[ent]['quimen']==0,['noi','idfoy','idmen','idfam','period']]
+    foy0 = table['ind'].loc[table['ind']['quifoy']==0,['noi','idfoy','idmen','idfam','period']]
+    men0 = table['ind'].loc[table['ind']['quimen']==0,['noi','idfoy','idmen','idfam','period']]
 
 #    # Travail sur les qui quand on ne controle pas dans la simulation que tout le monde n'est pas qui==2
 ## inutile car fait maintenant dans la simulation mais peut-être mieux à refaire ici un jour
@@ -84,7 +81,6 @@ def main(simulation, period=None, output=".h5"):
         nom = entity.name
         if nom in til_name_to_of:
             if nom != 'person': 
-                pd.DataFrame(entity.array.columns)
                 ent = til_name_to_of[nom]
                 # convert from PyTables to Pandas
                 table[ent] = pd.DataFrame(entity.array.columns)

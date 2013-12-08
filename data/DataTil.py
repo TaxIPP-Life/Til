@@ -520,21 +520,23 @@ class DataTil(object):
             entity = eval('self.'+ ent_name)
             entity = entity.fillna(-1)
             ent_table = entity.to_records(index=False)
-            dtypes = ent_table.dtype   
-            table = h5file.createTable(ent_node, of_name_to_til[ent_name], dtypes, title="%s table" % ent_name)         
+            dtypes = ent_table.dtype
+            final_name = of_name_to_til[ent_name]
+            table = h5file.createTable(ent_node, final_name, dtypes, title="%s table" % final_name)         
             table.append(ent_table)
             table.flush()    
 
             if ent_name == 'men':
+                entity = entity.loc[entity['id']>-1]
                 ent_table2 = entity[['pond','id','period']].to_records(index=False)
                 dtypes2 = ent_table2.dtype 
-                table = h5file.createTable(ent_node, 'companies', dtypes2, title="%s table" % ent_name)
+                table = h5file.createTable(ent_node, 'companies', dtypes2, title="'companies table")
                 table.append(ent_table2)
                 table.flush()  
             if ent_name == 'ind':
                 ent_table2 = entity[['agem','sexe','pere','mere','id','findet','period']].to_records(index=False)
                 dtypes2 = ent_table2.dtype 
-                table = h5file.createTable(ent_node, 'register', dtypes2, title="%s table" % ent_name)
+                table = h5file.createTable(ent_node, 'register', dtypes2, title="register table")
                 table.append(ent_table2)
                 table.flush()  
         h5file.close()
