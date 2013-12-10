@@ -356,19 +356,17 @@ class DataTil(object):
         self.ind = ind_exp
         self.foy = foy_exp
         self.drop_variable({'men':['id_rep','nb_rep','index'], 'ind':['id_rep','id_men',]})    
-
-    def var_sup(self):
-        '''
-        Création des variables indiquant le nombre de personnes dans le ménage et dans le foyer
-        '''   
-        ind = self.ind
-        men = self.men
-        foy = self.foy 
-        futur = self.futur
-        past = self.past      
         
-        ind['period'] = self.survey_year
-        men['period'] = self.survey_year
+    def format_to_liam(self):
+        '''
+        On met ici les variables avec les bons codes pour achever le travail de DataTil
+        On crée aussi les variables utiles pour la simulation
+        '''
+        men = self.men      
+        ind = self.ind
+        foy = self.foy
+        futur = self.futur
+        past = self.past  
         
         if 'age' not in ind.columns :
             ind['age'] = self.survey_date//100 - ind['anais']
@@ -377,16 +375,11 @@ class DataTil(object):
         if 'agem' not in ind.columns :
             ind['agem'] = ind['age'].astype(np.int16)
             ind.loc[ind['agem'] !=-1, 'agem'] = ind.loc[ind['agem'] !=-1, 'agem'] * 12
-        
-        for var in ['choi', 'xpr', 'rsti', 'anc']:
-            if var not in ind.columns:
-                ind[var] = 0
-                ind[var].dtype = np.int32
-        
+                
         for data in [ind, men, foy, futur, past] : 
             if data:
-                data['period'] = data['period']*100 + 1
-        
+                data['period'] =  self.survey_date        
+                
         ind_men = ind.groupby('men')       
         ind = ind.set_index('men')
         ind['nb_men'] = ind_men.size().astype(np.int)
@@ -401,24 +394,12 @@ class DataTil(object):
         ind = ind.fillna(-1)
         ind = ind.replace(-1, np.nan)
         ind = minimal_dtype(ind)
-        
-        self.ind = ind
-        self.men = men
-        self.foy = foy 
-        self.futur = futur
-        self.past = past
-        
-    def format_to_liam(self):
-        '''
-        On met ici les variables avec les bons codes pour achever le travail de DataTil
-        On crée aussi les variables utiles pour la simulation
-        '''
-        men = self.men      
-        ind = self.ind
-        foy = self.foy
-        futur = self.futur
-        past = self.past  
-               
+
+        special_foy = foy.iloc[1]
+        special_foy['id'] = -4 
+        #TODO: 
+        foy = foy.append(special_foy)
+                       
         def _name_var(ind, men):
             if 'lienpref' in ind.columns :
                 ind['quimen'] = ind['lienpref']
@@ -428,9 +409,7 @@ class DataTil(object):
                 ind = ind.fillna(-1)                
             return men, ind
             
-        def _check_final(ind):
-            assert sum((ind['men']== -1) & (ind['period']== self.survey_date) ) == 0
-            assert sum((ind['men']== -1) & (ind['period']== self.survey_date) ) == 0
+
             
         men, ind = _name_var(ind, men)
         if 'lienpref' in ind.columns :
@@ -447,20 +426,22 @@ class DataTil(object):
 #            else: 
 #                ind[var] = ind[var].astype(int)
 
-        _check_final(ind)
         tables = {}
         for name in ['ind', 'foy', 'men']:
             table = eval(name)
             vars_int, vars_float = variables_til[name]
             vars = ['id','period','pond'] + vars_int + vars_float
-            try: 
-                table = table[vars]
-            except: 
-                table['pond'] = 1 
-                table = table[vars]
+
             for var in vars_int:
+                if var not in table.columns:
+                    if var=='pond':
+                        table[var] = 1
+                    else:
+                        table[var] = -1
                 table[var] = table[var].astype(int)
             for var in vars_float:
+                if var not in table.columns:
+                    table[var] = np.nan
                 table[var] = table[var].astype(float)
             table = table.sort_index(by=['period','id'])
             tables[name] = table
@@ -476,7 +457,36 @@ class DataTil(object):
 #                    vars_link = [x for x in table.columns if x in links]
 #                    table[vars_link] += 1
 #                    table[vars_link] = table[vars_link].replace(0,-1)     
- 
+
+    def final_check(self):
+
+        men = self.men  
+        men =  men[men['period']==self.survey_date]    
+        ind = self.ind
+        ind =  ind[ind['period']==self.survey_date]
+        foy = self.foy
+        foy =  foy[foy['period']==self.survey_date]
+        
+        ## lien foy : bien présent, un et un seul quifoy=0 par foy
+        ind['test_qui'] = (ind['quifoy'] == 0).astype(int)
+        ind_foy = ind[ind['foy']>-1].groupby('foy')
+        assert ind_foy['test_qui'].sum().max() == 1
+        assert ind_foy['test_qui'].sum().min() == 1
+        assert ind['foy'].isin(foy['id']).all()
+        assert foy['id'].isin(ind['foy']).all()
+                
+        ## de même pour lien men 
+        ind['test_qui'] = (ind['quimen'] == 0).astype(int)
+        ind_men = ind[ind['men']>-1].groupby('men')
+#         test = ind_men['test_qui'].sum()>1
+#         test[test]
+        assert ind_men['test_qui'].sum().max() == 1
+        assert ind_men['test_qui'].sum().min() == 1
+        assert ind['men'].isin(men['id']).all()
+        assert men['id'].isin(ind['men']).all()                       
+
+
+             
     def store_to_liam(self):
         '''
         Sauvegarde des données au format utilisé ensuite par le modèle Til
