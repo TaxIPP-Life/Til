@@ -368,7 +368,7 @@ class DataTil(object):
         futur = self.futur
         past = self.past  
         
-        if 'age' not in ind.columns :
+        if ('age' not in ind.columns) & ('anais' in ind.columns):
             ind['age'] = self.survey_date//100 - ind['anais']
             ind['age'] = ind['age'].astype(np.int8)
             
@@ -395,10 +395,10 @@ class DataTil(object):
         ind = ind.replace(-1, np.nan)
         ind = minimal_dtype(ind)
 
-        special_foy = foy.iloc[1]
-        special_foy['id'] = -4 
-        #TODO: 
-        foy = foy.append(special_foy)
+#         special_foy = foy.iloc[1]
+#         special_foy['id'] = -4 
+#         #TODO: 
+#         foy = foy.append(special_foy)
                        
         def _name_var(ind, men):
             if 'lienpref' in ind.columns :
@@ -493,6 +493,7 @@ class DataTil(object):
         Appelle des fonctions de Liam2
         Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
         '''
+        #TODO: faire une fonction _path_to_store pour chaque subclass
         if self.seuil is None:
             path = path_til +'model\\' + self.name + '_' + '0' +'.h5' # + survey_date
         else: 
