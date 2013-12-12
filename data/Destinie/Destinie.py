@@ -285,7 +285,9 @@ class Destinie(DataTil):
         
         # 2eme étape : attribution du numéro de ménage grâce aux têtes de ménage
         nb_men = len(ind[ind['quimen'] == 0]) 
-        ind['men'][ind['quimen'] == 0] = range(0, nb_men)
+        # Rq : les 10 premiers ménages correspondent à des institutions et non des ménages ordianires
+        # 0 -> DASS, 1 -> 
+        ind['men'][ind['quimen'] == 0] = range(10, nb_men +10)
         
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
@@ -304,10 +306,10 @@ class Destinie(DataTil):
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
 
         # 4eme étape : création d'un ménage fictif résiduel :
-        # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = -4
-        ind.loc[ (ind['men']== -1) & (ind['age']<18), 'men' ] = -4
+        # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = 0
+        ind.loc[ (ind['men']== -1) & (ind['age']<18), 'men' ] = 0
         
-        # TO DO ( Quand on sera à l'étape gestion de la dépendance ) :
+        # TODO: ( Quand on sera à l'étape gestion de la dépendance ) :
         # créer un ménage fictif maison de retraite + comportement d'affectation.
         
         # 5eme étape : mises en formes finales
@@ -355,12 +357,12 @@ if __name__ == '__main__':
     data.check_conjoint(couple_hdom=True)
     data.creation_menage()
     data.creation_foy()    
-    data.var_sup()
     
     # (c) - Ajout des informations futures et mise au format Liam
     futur_t = time.time()
     data.add_futur()
     data.format_to_liam()
+    data.final_check()
     data.store_to_liam()
 
     print ("Temps Destiny.py : " + str(time.time() - start_t) + "s, dont " +

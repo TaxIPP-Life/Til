@@ -183,21 +183,23 @@ class DataTil(object):
         conj = spouse & ~decl
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac_condition = (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) & (ind['men'] != -4) 
+        pac_condition = (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) & (ind['men'] !=0) 
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
         ind['quifoy'] = 0
         ind['quifoy'][conj] = 1
         ind['quifoy'][pac] = 2
-        ind['quifoy'][ind['men'] == -4] = -4
+        # Les personnes à la DASS (men=0), sont associés à une déclaration fiscale
+        ind['quifoy'][ind['men'] == 0] = 2
     
         # 3eme étape : attribution des identifiants des foyers fiscaux
         ind['foy'] = -1
-        ind.loc[(ind['men'] == -4), 'foy'] = -4
+        ind.loc[(ind['men'] == 0), 'foy'] = 0
         nb_foy = sum(ind['quifoy'] == 0) 
         print "Le nombre de foyers créés est : " + str(nb_foy)
-        ind.loc[ind['quifoy'] == 0, 'foy'] = range(0, nb_foy)
+        # Rq: correspond au même décalage que pour les ménages (10premiers : institutions)
+        ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy +10)
         
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
@@ -211,21 +213,22 @@ class DataTil(object):
             print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
 
         # 4eme étape : création de la table foy
-        vous = (ind['quifoy'] == 0)
-        foy = DataFrame({'id':range(nb_foy), 'vous': ind['id'][vous], 'men':ind['men'][vous] })
+        vous = (ind['quifoy'] == 0) & (ind['foy'] > 9)
+        foy = ind.loc[vous, ['foy', 'id', 'men']]
+        foy.rename(columns={'foy': 'id', 'id': 'vous'})
+         # Etape propre à l'enquete Patrimoine
         var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
         foy_men = men[var_to_declar]
         # hypothèse réparartition des élements à égalité entre les déclarations : discutable
         nb_foy_men = ind[vous].groupby('men').size()
         foy_men = foy_men.div(nb_foy_men,axis=0) 
-        #TODO: faire la somme par me.
+        #TODO: faire la somme par men.
         foy = merge(foy, foy_men, left_on='men', right_index=True)
-        foy['vous'] = ind['id'][vous]
-        foy = foy.drop('id',axis=1)
-        foy = foy.reset_index()
-        foy['id'] = foy.index
         foy['period'] = survey_year
-           
+        to_add = pd.DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
+        to_add['vous'] = -1
+        print to_add
+        foy = foy.append(to_add)
         #### fin de declar
         self.ind = ind
         self.foy = foy
@@ -396,7 +399,6 @@ class DataTil(object):
         ind = minimal_dtype(ind)
 
 #         special_foy = foy.iloc[1]
-#         special_foy['id'] = -4 
 #         #TODO: 
 #         foy = foy.append(special_foy)
                        
@@ -434,6 +436,7 @@ class DataTil(object):
 
             for var in vars_int:
                 if var not in table.columns:
+                    print var
                     if var=='pond':
                         table[var] = 1
                     else:
@@ -469,7 +472,7 @@ class DataTil(object):
         
         ## lien foy : bien présent, un et un seul quifoy=0 par foy
         ind['test_qui'] = (ind['quifoy'] == 0).astype(int)
-        ind_foy = ind[ind['foy']>-1].groupby('foy')
+        ind_foy = ind[ind['foy']>9].groupby('foy') # on exclut le collectivité
         assert ind_foy['test_qui'].sum().max() == 1
         assert ind_foy['test_qui'].sum().min() == 1
         assert ind['foy'].isin(foy['id']).all()
@@ -477,9 +480,7 @@ class DataTil(object):
                 
         ## de même pour lien men 
         ind['test_qui'] = (ind['quimen'] == 0).astype(int)
-        ind_men = ind[ind['men']>-1].groupby('men')
-#         test = ind_men['test_qui'].sum()>1
-#         test[test]
+        ind_men = ind[ind['men']>9].groupby('men') # on exclut le collectivité
         assert ind_men['test_qui'].sum().max() == 1
         assert ind_men['test_qui'].sum().min() == 1
         assert ind['men'].isin(men['id']).all()

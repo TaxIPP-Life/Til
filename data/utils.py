@@ -15,6 +15,7 @@ import pdb
 of_name_to_til=  {'ind':'person','foy':'declar','men':'menage', 'fam':'famille'}
 
 
+
 def recode(table, var_in, var_out, list, method, dtype=None):
     '''
     code une variable à partir d'une autre
@@ -134,6 +135,7 @@ def minimal_dtype(table):
                     pdb.set_trace()
                 #modif['boolean'].append(colname)
                 #table[colname] = col.astype(np.bool)
+                table[colname] = col.astype(np.int8)
             else:
                 try:
                     if (col[col.notnull()].astype(int) == col[col.notnull()]).all():
