@@ -57,7 +57,7 @@ class Patrimoine(DataTil):
     def _output_name(self):
         return 'Patrimoine_' + str(self.size) + '.h5'
         if self.seuil is None:
-            return 'Patrimoine_' + '0' +'.h5' # + survey_date
+            return 'Patrimoine_0.h5' # + survey_date
         else: 
             return 'Patrimoine_' + str(self.seuil) +'.h5' # + survey_date 
             

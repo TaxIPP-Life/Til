@@ -67,7 +67,9 @@ class Cohort(DataTil):
             
     def imputations(self):
         #TODO: findet ? 
-        self.ind['sexe'] = np.random.random_integers(0, 1, size = self.size)
+        self.ind['sexe'] = np.random.random_integers(1, 2, size = self.size)
+        self.ind['civilstate'] = 1
+        self.ind['workstate'] = 11
         
     def links(self):
         size = self.size
@@ -83,7 +85,7 @@ class Cohort(DataTil):
 if __name__ == '__main__':
     import time
     start_t = time.time()
-    data = Cohort(10000)
+    data = Cohort(1000)
     data.load()
     data.imputations()
     data.links()
