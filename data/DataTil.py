@@ -377,7 +377,7 @@ class DataTil(object):
             ind.loc[ind['agem'] !=-1, 'agem'] = ind.loc[ind['agem'] !=-1, 'agem'] * 12
                 
         for data in [ind, men, foy, futur, past] : 
-            if data:
+            if data is not None:
                 data['period'] =  self.survey_date        
                 
         ind_men = ind.groupby('men')       
