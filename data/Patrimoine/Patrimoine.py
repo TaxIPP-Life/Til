@@ -53,7 +53,14 @@ class Patrimoine(DataTil):
 # Pour les enfants, on cherche leur parent un peu en fonction de s'ils sont en couple ou non, ça doit donc touner après conjoint.
 # Ensuite, c'est assez évident que le format initial et le drop_variable doivent se faire le plus tôt possible
 # on choisit de faire le drop avant le format intitial, on pourrait faire l'inverse en étant vigilant sur les noms
-        
+
+    def _output_name(self):
+        return 'Patrimoine_' + str(self.size) + '.h5'
+        if self.seuil is None:
+            return 'Patrimoine_' + '0' +'.h5' # + survey_date
+        else: 
+            return 'Patrimoine_' + str(self.seuil) +'.h5' # + survey_date 
+            
     def load(self):
         print "début de l'importation des données"
         ind = pd.read_csv(path_data_patr + 'individu.csv')

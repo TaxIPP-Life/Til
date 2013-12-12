@@ -39,6 +39,9 @@ class Destinie(DataTil):
         self.done = []
         self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_conjoint', 'creation_menage', 'creation_foy', 'var_sup', 'add_futur', 'store_to_liam']
        
+    def _output_name(self):
+        return 'Destinie.h5'
+            
     def load(self):
         def _BioEmp_in_2():
             ''' Division de BioEmpen trois tables '''

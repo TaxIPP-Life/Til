@@ -486,6 +486,8 @@ class DataTil(object):
         assert men['id'].isin(ind['men']).all()                       
 
 
+    def _output_name(self):
+        raise NotImplementedError()
              
     def store_to_liam(self):
         '''
@@ -493,11 +495,8 @@ class DataTil(object):
         Appelle des fonctions de Liam2
         Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
         '''
-        #TODO: faire une fonction _path_to_store pour chaque subclass
-        if self.seuil is None:
-            path = path_til +'model\\' + self.name + '_' + '0' +'.h5' # + survey_date
-        else: 
-            path = path_til +'model\\' + self.name + '_' + str(self.seuil) +'.h5' # + survey_date
+        
+        path = path_til +'model\\' + self._output_name()
         h5file = tables.openFile( path, mode="w")
         # 1 - on met d'abord les global en recopiant le code de liam2
         globals_def = {'periodic': {'path': 'param\\globals.csv'}}

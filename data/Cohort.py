@@ -56,15 +56,18 @@ class Cohort(DataTil):
             for var in vars_float:
                 table[var] = table[var].astype(float)
                 
-            table['pond'] = 1
+            table['pond'] = 1.0
             table['period'] = self.survey_date
             table['id'] = range(size)
             self.__setattr__(name_table, table)
         print "fin de la créations des données"
-        
+
+    def _output_name(self):
+        return 'Cohort_' + str(self.size) + '.h5'
+            
     def imputations(self):
         #TODO: findet ? 
-        self.ind['sexe'] = np.random.random_integers(0,1,size = 10)
+        self.ind['sexe'] = np.random.random_integers(0, 1, size = self.size)
         
     def links(self):
         size = self.size
@@ -80,13 +83,11 @@ class Cohort(DataTil):
 if __name__ == '__main__':
     import time
     start_t = time.time()
-    data = Cohort(10)
+    data = Cohort(10000)
     data.load()
     data.imputations()
     data.links()
     data.format_to_liam()
-    pdb.set_trace()
     data.final_check()
     data.store_to_liam()
-    pdb.set_trace()
     
