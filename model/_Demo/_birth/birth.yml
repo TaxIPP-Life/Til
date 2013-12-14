@@ -22,7 +22,7 @@ entities:
                       conj = UNSET,
                       civilstate = SINGLE,
                       workstate = STUDENT,
-                      sexe = choice([1,2], [0.512, 0.488]),
+                      sexe = choice([MALE,FEMALE], [0.512, 0.488]),
                       productivity = 0,
                       sali = 0,
                       rsti = 0,

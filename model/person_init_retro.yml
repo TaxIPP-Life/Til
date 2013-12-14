@@ -91,10 +91,10 @@ entities:
             homes:      {type: one2many, target: menage, field: owner}
         
         macros:
-            MALE: 1
-            FEMALE: 2
-            ISMALE: sexe == 1
-            ISFEMALE: sexe == 2
+            MALE: 0
+            FEMALE: 1
+            ISMALE: sexe == 0
+            ISFEMALE: sexe == 1
 
             UNSET: 0
 
