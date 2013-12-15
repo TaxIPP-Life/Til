@@ -32,7 +32,7 @@ simulation:
         - declar: [cases,empty_declar]
         - register: [init_reg]
         - person: [qui_solve]
-        - legislation: [2009]
+        # - legislation: [2009]
         - register: [sum_indiv]
         - person: [stat_period_ini, stat_period]
         
@@ -73,7 +73,7 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: patrimoine_900.h5
+        file: Cohort_1000.h5
         
     output:
         file: simul.h5
@@ -86,4 +86,4 @@ simulation:
 
     # first simulated period
     init_period: 200901
-    periods: 10
+    periods: 50

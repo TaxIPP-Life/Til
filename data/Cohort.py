@@ -67,7 +67,7 @@ class Cohort(DataTil):
             
     def imputations(self):
         #TODO: findet ? 
-        self.ind['sexe'] = np.random.random_integers(1, 2, size = self.size)
+        self.ind['sexe'] = np.random.random_integers(0, 1, size = self.size)
         self.ind['civilstate'] = 1
         self.ind['workstate'] = 11
         
@@ -90,6 +90,8 @@ if __name__ == '__main__':
     data.imputations()
     data.links()
     data.format_to_liam()
+    pdb.set_trace()
     data.final_check()
+    pdb.set_trace()
     data.store_to_liam()
     
