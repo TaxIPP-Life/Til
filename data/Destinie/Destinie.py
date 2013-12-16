@@ -262,15 +262,15 @@ class Destinie(DataTil):
         
         # (b) - Personnes prenant en charge d'autres individus
 
-            # Mères avec enfants à charge : (ne rajoute aucun ménage)
-        enf_mere = ind.loc[(ind['men_pere'] == 0)&(ind['men_mere'] == 1) & (ind['age']<26), 'mere'].astype(int)
+        # Mères avec enfants à charge : (ne rajoute aucun ménage)
+        enf_mere = ind.loc[(ind['men_pere'] == 0) & (ind['men_mere'] == 1) & (ind['age']<26), 'mere'].astype(int)
         ind.loc[enf_mere.values,'quimen'] = 0
 
-            # Pères avec enfants à charge :(ne rajoute aucun ménage)
-        enf_pere = ind.loc[(ind['men_mere'] == 0)&(ind['men_pere'] == 1) & (ind['age']<26), 'pere'].astype(int)
+        # Pères avec enfants à charge :(ne rajoute aucun ménage)
+        enf_pere = ind.loc[(ind['men_mere'] == 0) & (ind['men_pere'] == 1) & (ind['age']<26), 'pere'].astype(int)
         ind.loc[enf_pere.values,'quimen'] = 0
         
-            # Personnes ayant un parent à charge de plus de 75 ans : (rajoute 190 ménages)
+        # Personnes ayant un parent à charge de plus de 75 ans : (rajoute 190 ménages)
         care = {}
         for par in ['mere', 'pere']:
             care_par = ind.loc[(ind['men_' + par] == 1), ['id', par]].astype(int)
@@ -282,7 +282,7 @@ class Destinie(DataTil):
             #print 'Nouveaux ménages' ,len(ind.loc[(ind['id'].isin(care_par['id_enf'].values)) & ind['quimen']!= 0])
             # Enfant ayant des parents à charge deviennent tête de ménage, parents à charge n'ont pas de foyers
             ind.loc[care_par['id_enf'], 'quimen'] = 0
-            ind.loc[care_par['id_'+par], 'quimen'] = -2 # pour identifier les couples à charge
+            ind.loc[care_par['id_' + par], 'quimen'] = -2 # pour identifier les couples à charge
             
             # Si personne potentiellement à la charge de plusieurs enfants -> à charge de l'enfant ayant l'identifiant le plus petit
             care_par = care_par.drop_duplicates('id_' + par)
@@ -365,6 +365,7 @@ class Destinie(DataTil):
     
     def add_futur(self):
         print "Début de l'actualisation des changements jusqu'en 2060"
+        # TODO: déplacer dans DataTil
         ind = self.ind
         futur = self.futur 
         men = self.men
@@ -383,6 +384,7 @@ class Destinie(DataTil):
                         data[var] = -1
                     
         # On ajoute ces données aux informations de 2009
+        # TODO: être sur que c'est bien. 
         ind = pd.concat([ind, futur], axis=0, join='outer', ignore_index=True)
         ind = ind.fillna(-1)
         assert sum((ind['foy']== -1) & (ind['period']== self.survey_year)) == 0
