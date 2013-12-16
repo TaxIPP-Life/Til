@@ -22,7 +22,7 @@ import gc
 
 import sys 
 sys.path.append(path_til_liam)
-import src_liam.importer as imp
+import src.importer as imp
 
 # Dictionnaire des variables, cohérent avec les imports du modèle. 
 # il faut que ce soit à jour. Le premier éléments est la liste des
@@ -31,7 +31,7 @@ variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy',
                          'pere','mere','conj','civilstate','findet',
                          'workstate','xpr','anc'],['sali','rsti','choi']),
                  'men': (['pref'],[]),
-                 'foy': (['vous'],[])
+                 'foy': (['vous','men'],[])
                  }
 
 class DataTil(object):
@@ -232,7 +232,7 @@ class DataTil(object):
         to_add = pd.DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
         to_add['vous'] = -1
         to_add['period'] = survey_year
-        foy = pd.concat([foy,to_add], axis = 0, join='outer', ignore_index=True)
+        foy = pd.concat([foy, to_add], axis = 0, join='outer', ignore_index=True)
         foy.index = foy['id']
         assert sum(ind['foy']==-1) == 0
         print 'Taille de la table foyers :', len(foy)
@@ -378,8 +378,9 @@ class DataTil(object):
         foy = self.foy
         futur = self.futur
         past = self.past  
-        assert sum((ind['foy']==-1) &ind['period'] == self.survey_year) == 0
-        assert sum((ind['men']==-1)&ind['period'] == self.survey_year) == 0
+        # TODO: ça doit être dans final_check
+        assert sum((ind['foy']==-1) & ind['period'] == self.survey_year) == 0
+        assert sum((ind['men']==-1) & ind['period'] == self.survey_year) == 0
         
         
         if ('age' not in ind.columns) & ('anais' in ind.columns):
@@ -415,28 +416,27 @@ class DataTil(object):
         if 'lienpref' in ind.columns :
             self.drop_variable({'ind':['lienpref','anais','mnais']}) 
 
-        for data in [ind, men, foy] :
-            data = data.fillna(-1)
-            data = data.replace(-1, np.nan)
-            data = minimal_dtype(data)
-            data.index = data['id']
+#         for data in [ind, men, foy] :
+#             data = data.fillna(-1)
+#             data = data.replace(-1, np.nan) #???! c'est quoi cette succesion ? 
+#             data = minimal_dtype(data)
+#             data.index = data['id']
 
         tables = {}
         for name in ['ind', 'foy', 'men']:
             table = eval(name)
             vars_int, vars_float = variables_til[name]
-            vars = ['id','period','pond'] + vars_int + vars_float
-            for var in vars_int:
+            for var in vars_int + ['id','period']:
+                if var not in table.columns:
+                    table[var] = -1
+                table = table.fillna(-1)
+                table[var] = table[var].astype(np.int32)
+            for var in vars_float + ['pond']:
                 if var not in table.columns:
                     if var=='pond':
                         table[var] = 1
                     else:
                         table[var] = -1
-                table = table.fillna(-1)
-                table[var] = table[var].astype(np.int32)
-            for var in vars_float:
-                if var not in table.columns:
-                    table[var] = -1
                 table = table.fillna(-1)
                 table[var] = table[var].astype(np.float64)
             table = table.sort_index(by=['period','id'])
