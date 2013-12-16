@@ -130,7 +130,6 @@ class DataTil(object):
         test = merge(test, test, left_on='id', right_on='conj')
         confusion = test[(test['id_y']> test['id_x'])& (test['civilstate_y']!= test['civilstate_x']) & ~test['civilstate_y'].isin([3,4]) &  ~test['civilstate_x'].isin([3,4])]
         if confusion:
-            confusion.to_csv('conf.csv')
             print "Nombre de confusion sur l'état civil (corrigées) : ", len(confusion)
             # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
             ind['civilstate'][confusion['id_y'].values] = ind['civilstate'][confusion['id_x'].values]
@@ -138,12 +137,13 @@ class DataTil(object):
         #3- Nombre de personnes avec conjoint hdom
         conj_hdom = ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]
         print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
-        if not couple_hdom : 
+        if couple_hdom == False : 
             print "Ces personnes sont considérées célibataires "
-            ind.loc[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1), 'civilstate'] == 1
+            ind.loc[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1), 'civilstate'] = 1
+            assert len(ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]) == 0
         self.ind = ind
         print ("Fin de la vérification sur les conjoints")
-
+        
     def enfants(self):   
         '''
         Calcule l'identifiant des parents 
@@ -173,7 +173,7 @@ class DataTil(object):
             ind['nb_enf'] = enf_tot
             ind['nb_enf'] = ind['nb_enf'].fillna(0)
             
-        # 1ere étape : Identification des personnes emariées/pacsées
+        # 1ere étape : Identification des personnes mariées/pacsées
         spouse = (ind['conj'] != -1) & ind['civilstate'].isin([2,5]) 
         print str(sum(spouse)) + " personnes en couples"
         
@@ -184,22 +184,22 @@ class DataTil(object):
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
         pac_condition = (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) & (ind['men'] !=0) 
-        pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
+        pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition 
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
         ind['quifoy'] = 0
-        ind['quifoy'][conj] = 1
-        ind['quifoy'][pac] = 2
-        # Les personnes à la DASS (men=0), sont associés à une déclaration fiscale
-        ind['quifoy'][ind['men'] == 0] = 2
-    
+        ind.loc[conj,'quifoy'] = 1
+         # Comprend les enfants n'ayant pas de parents spécifiés (à terme rattachés au foyer 0= DASS)
+        ind.loc[pac,'quifoy'] = 2
+        ind.loc[(ind['men'] == 0) & (ind['quifoy'] == 0), 'quifoy'] = 2
+
         # 3eme étape : attribution des identifiants des foyers fiscaux
         ind['foy'] = -1
-        ind.loc[(ind['men'] == 0), 'foy'] = 0
         nb_foy = sum(ind['quifoy'] == 0) 
         print "Le nombre de foyers créés est : " + str(nb_foy)
         # Rq: correspond au même décalage que pour les ménages (10premiers : institutions)
         ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy +10)
+        ind.loc[ind['men'] == 0, 'foy'] = 0
         
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
@@ -208,30 +208,38 @@ class DataTil(object):
         
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for parent in  ['pere', 'mere']:
-            pac_par = ind.loc[ pac_condition & (ind[parent] != -1) & (ind['foy'] == -1), parent]
-            ind.loc[pac_par.index.values, 'foy'] = ind.loc[pac_par.values, 'foy']
+            pac_par = ind.loc[ (ind['quifoy'] == 2) & (ind[parent] != -1) & (ind['foy'] == -1), ['id', parent]].astype(int)
+            ind['foy'][pac_par['id']] = ind['foy'][pac_par[parent]]
             print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
 
         # 4eme étape : création de la table foy
         vous = (ind['quifoy'] == 0) & (ind['foy'] > 9)
         foy = ind.loc[vous, ['foy', 'id', 'men']]
-        foy.rename(columns={'foy': 'id', 'id': 'vous'})
+        foy = foy.rename(columns={'foy': 'id', 'id': 'vous'})
          # Etape propre à l'enquete Patrimoine
-        var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin','pond']
-        foy_men = men[var_to_declar]
+        impots = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
+        var_to_declar = impots + ['pond']
+        foy_men = men.loc[men['pref'].isin(foy['vous']), var_to_declar].fillna(0)
         # hypothèse réparartition des élements à égalité entre les déclarations : discutable
-        nb_foy_men = ind[vous].groupby('men').size()
-        foy_men = foy_men.div(nb_foy_men,axis=0) 
-        #TODO: faire la somme par men.
-        foy = merge(foy, foy_men, left_on='men', right_index=True)
+        nb_foy_men = foy.groupby('men').size()
+        if (nb_foy_men.max() >1) & (foy_men['zimpot'].max() >0) :
+            assert len(nb_foy_men) ==  len(foy_men)
+            for var in impots : 
+                foy_men[var] = foy_men[var] / nb_foy_men 
+            #TODO: faire la somme par men : marche pas encore!
+            foy = merge(foy, foy_men, left_on = 'men', right_on ='id', how ='inner', right_index=True)
         foy['period'] = survey_year
         to_add = pd.DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
         to_add['vous'] = -1
-        print to_add
-        foy = foy.append(to_add)
+        to_add['period'] = survey_year
+        foy = pd.concat([foy,to_add], axis = 0, join='outer', ignore_index=True)
+        foy.index = foy['id']
+        assert sum(ind['foy']==-1) == 0
+        print 'Taille de la table foyers :', len(foy)
         #### fin de declar
         self.ind = ind
         self.foy = foy
+        
         print("fin de la creation des declarations")
         
     def creation_par_look_enf(self):
@@ -370,6 +378,9 @@ class DataTil(object):
         foy = self.foy
         futur = self.futur
         past = self.past  
+        assert sum((ind['foy']==-1) &ind['period'] == self.survey_year) == 0
+        assert sum((ind['men']==-1)&ind['period'] == self.survey_year) == 0
+        
         
         if ('age' not in ind.columns) & ('anais' in ind.columns):
             ind['age'] = self.survey_date//100 - ind['anais']
@@ -378,11 +389,11 @@ class DataTil(object):
         if 'agem' not in ind.columns :
             ind['agem'] = ind['age'].astype(np.int16)
             ind.loc[ind['agem'] !=-1, 'agem'] = ind.loc[ind['agem'] !=-1, 'agem'] * 12
-                
+                    
         for data in [ind, men, foy, futur, past] : 
             if data is not None:
-                data['period'] =  self.survey_date        
-                
+                data['period'] =  data['period']*100 +1 
+
         ind_men = ind.groupby('men')       
         ind = ind.set_index('men')
         ind['nb_men'] = ind_men.size().astype(np.int)
@@ -392,66 +403,52 @@ class DataTil(object):
         ind = ind.set_index('foy')
         ind['nb_foy'] = ind_foy.size().astype(np.int)
         ind = ind.reset_index()
-        
-        # Format minimal
-        ind = ind.fillna(-1)
-        ind = ind.replace(-1, np.nan)
-        ind = minimal_dtype(ind)
-
-#         special_foy = foy.iloc[1]
-#         #TODO: 
-#         foy = foy.append(special_foy)
                        
         def _name_var(ind, men):
             if 'lienpref' in ind.columns :
                 ind['quimen'] = ind['lienpref']
-                ind['quimen'][ind['quimen'] >1 ] = 2
+                ind.loc[ind['quimen'] >1 , 'quimen'] = 2
                 # a changer avec values quand le probleme d'identifiant et résolu .values
-                men['pref'] = ind.ix[ ind['lienpref']==0,'id'].values
-                ind = ind.fillna(-1)                
+                men['pref'] = ind.ix[ ind['lienpref']==0,'id'].values            
             return men, ind
-            
-
-            
         men, ind = _name_var(ind, men)
         if 'lienpref' in ind.columns :
             self.drop_variable({'ind':['lienpref','anais','mnais']}) 
-#        self.men = minimal_dtype(men)
-#        ind = minimal_dtype(ind)
-#        # ultime point sur les formats 
-#        # NOTE: on perd l'optimisation sur les formats mais comme
-#        # Liam ne s'en sert pas c'est pas grave.
-#        to_float = ['sali','choi','rsti']
-#        for var in ind.columns:
-#            if var in to_float:
-#                ind[var] = ind[var].astype(float)
-#            else: 
-#                ind[var] = ind[var].astype(int)
+
+        for data in [ind, men, foy] :
+            data = data.fillna(-1)
+            data = data.replace(-1, np.nan)
+            data = minimal_dtype(data)
+            data.index = data['id']
 
         tables = {}
         for name in ['ind', 'foy', 'men']:
             table = eval(name)
             vars_int, vars_float = variables_til[name]
             vars = ['id','period','pond'] + vars_int + vars_float
-
             for var in vars_int:
                 if var not in table.columns:
-                    print var
                     if var=='pond':
                         table[var] = 1
                     else:
                         table[var] = -1
-                table[var] = table[var].astype(int)
+                table = table.fillna(-1)
+                table[var] = table[var].astype(np.int32)
             for var in vars_float:
                 if var not in table.columns:
-                    table[var] = np.nan
-                table[var] = table[var].astype(float)
+                    table[var] = -1
+                table = table.fillna(-1)
+                table[var] = table[var].astype(np.float64)
             table = table.sort_index(by=['period','id'])
             tables[name] = table
+                    
+        # Format minimal
+        
             
         self.ind = tables['ind']
-        self.men = tables['men']      
-        self.foy = tables['foy']         
+        self.men = tables['men']    
+        self.foy = tables['foy']   
+          
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
 #            links = ['id','pere','mere','conj','foy','men','pref','vous']
@@ -459,34 +456,37 @@ class DataTil(object):
 #                if table is not None:
 #                    vars_link = [x for x in table.columns if x in links]
 #                    table[vars_link] += 1
-#                    table[vars_link] = table[vars_link].replace(0,-1)     
+#                    table[vars_link] = table[vars_link].replace(0,-1)  
 
     def final_check(self):
-
         men = self.men  
         men =  men[men['period']==self.survey_date]    
         ind = self.ind
         ind =  ind[ind['period']==self.survey_date]
         foy = self.foy
         foy =  foy[foy['period']==self.survey_date]
+
+        # Foyers et ménages bien attribués
+        assert sum((ind['foy'] == -1)) == 0
+        assert sum((ind['men'] == -1)) == 0
         
         ## lien foy : bien présent, un et un seul quifoy=0 par foy
         ind['test_qui'] = (ind['quifoy'] == 0).astype(int)
-        ind_foy = ind[ind['foy']>9].groupby('foy') # on exclut le collectivité
+        ind_foy = ind[ind['foy']>9].groupby('foy') # on exclut les collectivités
         assert ind_foy['test_qui'].sum().max() == 1
         assert ind_foy['test_qui'].sum().min() == 1
+        print sum(~ind['foy'].isin(foy['id'])), sum(~ foy['id'].isin(ind['foy']))
         assert ind['foy'].isin(foy['id']).all()
         assert foy['id'].isin(ind['foy']).all()
                 
         ## de même pour lien men 
         ind['test_qui'] = (ind['quimen'] == 0).astype(int)
-        ind_men = ind[ind['men']>9].groupby('men') # on exclut le collectivité
+        ind_men = ind[ind['men']>9].groupby('men') # on exclut les collectivités
         assert ind_men['test_qui'].sum().max() == 1
         assert ind_men['test_qui'].sum().min() == 1
         assert ind['men'].isin(men['id']).all()
         assert men['id'].isin(ind['men']).all()                       
-
-
+        
     def _output_name(self):
         raise NotImplementedError()
              

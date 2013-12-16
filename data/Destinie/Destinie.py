@@ -33,7 +33,8 @@ class Destinie(DataTil):
         self.ind = None
         self.men = None
         self.foy = None
-        
+        self.futur = None
+        self.past = None
         # TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         # TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
@@ -200,6 +201,7 @@ class Destinie(DataTil):
         ind['id'] = ind.index
         year_ini = self.survey_year # = 2009 
         print "Début de l'initialisation des données pour " + str(year_ini)
+        
         #Déclarations initiales des enfants
         pere_ini = ind[['id', 'pere']]
         mere_ini = ind[['id', 'mere']]
@@ -229,20 +231,20 @@ class Destinie(DataTil):
             # c- Comparaisons et détermination des liens
             # Cas 1 : enfants et parents déclarent le même lien : ils vivent ensembles
             parents = link.loc[(link[par + '_decla'] == link[ par + '_ini']), 'id']
-            ind['men_' + par][parents.values] = 1
+            ind.loc[parents.values, 'men_' + par] = 1
             
             # Cas 2 : enfants déclarant un parent mais ce parent ne les déclare pas (rattachés au ménage du parent)
             # Remarques : 8 cas pour les pères, 10 pour les mères
             parents = link[(link[par + '_decla'] != link[ par +'_ini']) & (link[par +'_decla'] == -1) ] ['id']
-            ind['men_'+ par][parents.values] = 1
+            ind.loc[parents.values, 'men_'+ par] = 1
             print str(sum(ind['men_' + par]==1)) + " vivent avec leur " + par
             
             # Cas 3 : parent déclarant un enfant mais non déclaré par l'enfant (car hors ménage)
             # Aucune utilisation pour l'instant (men_par = 0) mais pourra servir pour la dépendance
             parents = link.loc[(link[par +'_decla'] != link[par +'_ini']) & (link[par +'_ini'] == -1), ['id', par +'_decla']].astype(int)
-            ind[par][parents['id'].values] = parents[par + '_decla'].values
+            ind.loc[parents['id'].values, par] = parents[par + '_decla'].values
             print str(sum((ind[par].notnull() & (ind[par] != -1 )))) + " enfants connaissent leur " + par
-        
+
         self.ind = ind.drop(list_enf,axis = 1)
         
     def creation_menage(self):
@@ -251,97 +253,146 @@ class Destinie(DataTil):
         ind['quimen'] = -1
         ind['men'] = -1
         ind['age'] = survey_year - ind['naiss']
-
+        ind = ind.fillna(-1)
         # 1ere étape : Détermination des têtes de ménages
         
         # (a) - Majeurs ne déclarant ni père, ni mère dans le même ménage (+ un cas de 17 ans indep.financièrement)
-        maj = ind.loc[(ind['men_pere'] == 0)&(ind['men_mere'] == 0) & (ind['age']>16)].index
-        ind['quimen'][maj] = 0
+        maj = ((ind['men_pere'] == 0) & (ind['men_mere'] == 0) & (ind['age']>16))
+        ind.loc[maj,'quimen'] = 0
         
         # (b) - Personnes prenant en charge d'autres individus
+
             # Mères avec enfants à charge : (ne rajoute aucun ménage)
         enf_mere = ind.loc[(ind['men_pere'] == 0)&(ind['men_mere'] == 1) & (ind['age']<26), 'mere'].astype(int)
-        ind['quimen'][enf_mere.values] = 0
+        ind.loc[enf_mere.values,'quimen'] = 0
+
             # Pères avec enfants à charge :(ne rajoute aucun ménage)
         enf_pere = ind.loc[(ind['men_mere'] == 0)&(ind['men_pere'] == 1) & (ind['age']<26), 'pere'].astype(int)
-        ind['quimen'][enf_pere.values] = 0
-            # Personnes ayant un parent à charge de plus de 70 ans : (rajoute 387 ménages)
+        ind.loc[enf_pere.values,'quimen'] = 0
+        
+            # Personnes ayant un parent à charge de plus de 75 ans : (rajoute 190 ménages)
+        care = {}
         for par in ['mere', 'pere']:
             care_par = ind.loc[(ind['men_' + par] == 1), ['id', par]].astype(int)
-            par_care = ind.loc[(ind['age'] >69) & (ind['id'].isin(care_par[par].values)), ['id']]
+            par_care = ind.loc[(ind['age'] >74) & (ind['id'].isin(care_par[par].values)), ['id']]
             care_par = merge(care_par, par_care, left_on = par, 
                              right_on='id', how = 'inner', 
                              suffixes = ('_enf', '_'+par))[['id_enf', 'id_'+par]]
+                             
+            #print 'Nouveaux ménages' ,len(ind.loc[(ind['id'].isin(care_par['id_enf'].values)) & ind['quimen']!= 0])
             # Enfant ayant des parents à charge deviennent tête de ménage, parents à charge n'ont pas de foyers
-            ind['quimen'][care_par['id_enf']] = 0
-            ind['quimen'][care_par['id_'+par]] = -2 # pour identifier les couples à charge
+            ind.loc[care_par['id_enf'], 'quimen'] = 0
+            ind.loc[care_par['id_'+par], 'quimen'] = -2 # pour identifier les couples à charge
+            
+            # Si personne potentiellement à la charge de plusieurs enfants -> à charge de l'enfant ayant l'identifiant le plus petit
+            care_par = care_par.drop_duplicates('id_' + par)
+            care[par] = care_par
+            
             print str(len(care_par)) +" " + par + "s à charge"
-        
+            
         # (c) - Correction pour les personnes en couple non à charge [identifiant le plus petit = tête de ménage]
-        ind.loc[( ind['conj'] > ind['id'] ) & ( ind['civilstate'] == 2 ) & (ind['quimen']!=-2), 'quimen'] = 0 
-        ind.loc[(ind['conj'] < ind['id']) & ( ind['civilstate'] == 2 )& (ind['quimen']!=-2), 'quimen'] = 1         
-        print str(len (ind[ind['quimen'] == 0])) + " ménages ont été constitués " # 21166
-        print "   dont " + str(len (ind[ind['quimen'] == 1])) +  " couples "   # 9087
-        
+        ind.loc[( ind['conj'] > ind['id'] ) & ( ind['conj'] != -1)  & (ind['quimen']!=-2), 'quimen'] = 0 
+        ind.loc[(ind['conj'] < ind['id']) & ( ind['conj'] != -1) & (ind['quimen']!=-2), 'quimen'] = 1         
+        print str(len (ind[ind['quimen'] == 0])) + " ménages ont été constitués " # 20815
+        print "   dont " + str(len (ind[ind['quimen'] == 1])) +  " couples "   # 9410
+
         # 2eme étape : attribution du numéro de ménage grâce aux têtes de ménage
         nb_men = len(ind[ind['quimen'] == 0]) 
         # Rq : les 10 premiers ménages correspondent à des institutions et non des ménages ordianires
         # 0 -> DASS, 1 -> 
-        ind['men'][ind['quimen'] == 0] = range(10, nb_men +10)
-        
+        ind.loc[ind['quimen'] == 0, 'men'] = range(10, nb_men +10)
+
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
-        conj = ind.loc[(ind['conj'] != -1) & (ind['quimen'] == 0), ['conj','men']].astype(int)
-        ind['men'][conj['conj'].values] = conj['men'].values
+        conj = ind.loc[(ind['quimen'] == 1), ['id', 'conj']].astype(int)
+        ind['men'] [conj['id'].values] = ind['men'][conj['conj'].values]
+
         # (b) - Rattachements de leurs enfants (d'abord ménage de la mère, puis celui du père)
-        for par in ['mere', 'pere']:
-            enf_par = ind.loc[(ind['men_' + par] == 1) & (ind['men'] == -1), par].astype(int)
-            ind['men'][enf_par.index.values] = ind['men'][enf_par.values]
+        for par in ['mere', 'pere']: 
+            enf_par = ind.loc[((ind['men_' + par] == 1) & (ind['men'] == -1)), ['id', par]].astype(int)
+            ind['men'][enf_par['id']] = ind['men'][enf_par[par]]
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
 
         # (c) - Rattachements des éventuels parents à charge
         for par in ['mere', 'pere']:
-            care_par = ind.loc[(ind['men_' + par] == 1) & (ind['men'] != -1), par].astype(int)
+            care_par = care[par]
+            care_par = ind.loc[ind['id'].isin(care_par['id_enf'].values) & (ind['men'] != -1), par]
             ind['men'][care_par.values] = ind['men'][care_par.index.values]
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
+            # Rétablissement de leur quimen
+            ind['quimen'] = ind['quimen'].replace(-2, 2)
+        # Rq : il faut également rattaché le deuxième parent :
+        conj_dep = ind.loc[(ind['men'] == -1) & (ind['conj'] != -1), ['id', 'conj']]
+        ind['men'][conj_dep['id'].values] = ind['men'][conj_dep['conj'].values]
 
         # 4eme étape : création d'un ménage fictif résiduel :
         # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = 0
+        print 'Nombres denfants à la DASS : ', len(ind.loc[ (ind['men']== -1) & (ind['age']<18), 'men' ])
         ind.loc[ (ind['men']== -1) & (ind['age']<18), 'men' ] = 0
-        
+
         # TODO: ( Quand on sera à l'étape gestion de la dépendance ) :
         # créer un ménage fictif maison de retraite + comportement d'affectation.
         
         # 5eme étape : mises en formes finales
         # attribution des quimen pour les personnes non référentes
         ind.loc[~ind['quimen'].isin([0,1]), 'quimen'] = 2
-        #ind[['men', 'quimen']] = ind[['men', 'quimen']].astype(int)
         
         # suppressions des variables inutiles
         ind = ind.drop(['men_pere', 'men_mere'],1)
         
         # 6eme étape : création de la table men
-        men = ind[['id', 'men']]
+        men = ind.loc[ind['quimen'] == 0, ['id', 'men']]
         men = men.rename(columns= {'id': 'pref', 'men': 'id'})
+        
+        # Rajout des foyers fictifs
+        to_add = pd.DataFrame([np.zeros(len(men.columns))], columns = men.columns)
+        to_add['pref'] = -1
+        to_add['id'] = 0
+        men = pd.concat([men,to_add], axis = 0, join='outer', ignore_index=True)
+
         for var in ['loyer', 'tu', 'zeat', 'surface', 'resage', 'restype', 'reshlm', 'zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']:
-            men[var] = np.nan
+            men[var] = 0
+            
         men['pond'] = 1
         men['period'] = survey_year
-        assert sum(ind['men']==-1) == 0 # Tout le monde a un ménage : on est content!
-    
-        self.ind = ind.fillna(-1)
+        men = men.fillna(-1)
+        ind = ind.fillna(-1)
+        
+        assert sum((ind['men']==-1)) == 0 # Tout le monde a un ménage : on est content!
+        print 'Taille de la table men :', len(men)
+        self.ind = ind
         self.men = men
     
     def add_futur(self):
         print "Début de l'actualisation des changements jusqu'en 2060"
         ind = self.ind
         futur = self.futur 
+        men = self.men
+        foy = self.foy
+        past = self.past
+
+        # On précise les dates :
+        for data in [ind, men, foy] : 
+            if data is not None:
+                data['period'] =  self.survey_year 
         
+        for data in [futur, past] :
+            if data is not None:
+                for var in ind.columns:
+                    if not var in data.columns:
+                        data[var] = -1
+                    
         # On ajoute ces données aux informations de 2009
-        ind = ind.append(futur, ignore_index = True)
+        ind = pd.concat([ind, futur], axis=0, join='outer', ignore_index=True)
         ind = ind.fillna(-1)
+        assert sum((ind['foy']== -1) & (ind['period']== self.survey_year)) == 0
+        assert sum((ind['men']==-1) & (ind['period']== self.survey_year)) == 0
         ind.sort(['period', 'id'])
+        assert sum(((ind['foy']==-1) & (ind['period']== self.survey_year))) == 0
+        assert sum((ind['men']==-1)& (ind['period']== self.survey_year)) == 0
         self.ind = ind
+        self.men = men
+        self.foy = foy
         print "Fin de l'actualisation des changements jusqu'en 2060"
     
 if __name__ == '__main__':
@@ -354,7 +405,7 @@ if __name__ == '__main__':
     # (b) - Travail sur la base initiale (données à l'année de l'enquête)
     ini_t = time.time()
     data.enf_to_par()
-    data.check_conjoint(couple_hdom=True)
+    data.check_conjoint()
     data.creation_menage()
     data.creation_foy()    
     
