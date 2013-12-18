@@ -40,7 +40,7 @@ entities:
                
                 # Changement dans les regroupements (declar et menages)
                 ### ménages
-                - quimen: if(l_conj.dead and l_conj.men == men and l_conj.quimen == 0, 0, quimen)
+                - quimen: if(ORDINARY_HOUSE and l_conj.dead and l_conj.men == men and l_conj.quimen == 0, 0, quimen)
                 # si pour les enfants assez jeunes, on cherche un autre parent (note, fonctionne si le parent est dans le ménage)                
                 - orph_pere: (l_pere.dead and (l_pere.men == men) and (quimen>1) and (age<20))
                 - men: if(orph_pere and mere>-1 and not l_mere.dead, l_mere.men, men)               
@@ -51,10 +51,11 @@ entities:
                 - orph_indep: ((l_pere.dead and (l_pere.men == men) and (mere == UNSET or (l_mere.men != men and age >=20))) or
                               (l_mere.dead and (l_mere.men == men) and (pere == UNSET or (l_pere.men != men and age >=20)))) and
                                 (quimen>1) and (age > 15)
-                - orph_das: ((l_pere.dead and (l_pere.men == men) and mere == UNSET) or
+                - orph_dass: ((l_pere.dead and (l_pere.men == men) and mere == UNSET) or
                               (l_mere.dead and (l_mere.men == men) and pere == UNSET)) and
                                 (quimen>1) and (age <= 15)
-                - remove(orph_das)
+                - men: if(orph_dass, DASS, men) 
+                - csv( dump(), fname='death2.csv')
                 - assertTrue( min(men) != -1)
                 - live_together_c: l_conj.orph_indep and l_conj.men == men
                 - live_together_p: l_pere.orph_indep and l_pere.men == men
@@ -182,8 +183,7 @@ entities:
                 
                 - pers2reg.deces: if(dead, period, pers2reg.deces)
                 - remove(dead)   
-                - remove(men==-2)
-                - remove(men==-2)
+                - csv( dump(), fname='death2.csv')
                 - assertEqual(max(l_men.get(persons.count(quimen==0 and not dead))),1)
                 - assertTrue( min(men) != -1)
                 - assertEqual(max(l_foy.get(on_declar.count(quifoy==0 and not dead))),1)

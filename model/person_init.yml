@@ -120,6 +120,10 @@ entities:
             
             BEGINER: xpr == 1
 
+            #TODO: add others
+            ORDINARY_HOUSE: (men>9)
+            DASS: 1
+            INDASS: (foy==1)
             # IS_LOWER_SECONDARY_EDU: education_level == 2
             # IS_UPPER_SECONDARY_EDU: education_level == 3
             # IS_TERTIARY_EDU: education_level == 4
