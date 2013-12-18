@@ -387,11 +387,9 @@ class Destinie(DataTil):
         # TODO: être sur que c'est bien. 
         ind = pd.concat([ind, futur], axis=0, join='outer', ignore_index=True)
         ind = ind.fillna(-1)
-        assert sum((ind['foy']== -1) & (ind['period']== self.survey_year)) == 0
-        assert sum((ind['men']==-1) & (ind['period']== self.survey_year)) == 0
+        men = men.fillna(-1)
+        foy = foy.fillna(-1)
         ind.sort(['period', 'id'])
-        assert sum(((ind['foy']==-1) & (ind['period']== self.survey_year))) == 0
-        assert sum((ind['men']==-1)& (ind['period']== self.survey_year)) == 0
         self.ind = ind
         self.men = men
         self.foy = foy

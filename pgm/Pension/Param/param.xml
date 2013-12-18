@@ -82,7 +82,7 @@ On a donc : varcontrol="year[age_min]"
 	   			<VALUE valeur="165" valeurcontrol="1953-01-01" deb="2009-01-01" fin="2100-12-31"/>
 	   			<VALUE valeur="166" valeurcontrol="1955-01-01" deb="2009-01-01" fin="2100-12-31"/>
 			</VALBYTRANCHES>
-			<VALBYTRANCHES escription="Nombre de trimestres exigés pour départ à taux plein" code="N_tau" format="integer">
+			<VALBYTRANCHES description="Nombre de trimestres exigés pour départ à taux plein" code="N_tau" format="integer">
 	   			<VARCONTROL>
 	   				<CODE code='naiss' deb="1994-01-01" fin="2100-12-31" format="date"/>
 	   			</VARCONTROL> 
