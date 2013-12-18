@@ -205,7 +205,7 @@ class Patrimoine(DataTil):
             #liste blanche
             info_pers = ['anais','mnais','sexe','dip14']
             famille = ['couple','lienpref','enf','civilstate','pacs','gpar','per1e','mer1e']
-            jobmarket = ['statut','situa','preret','classif']
+            jobmarket = ['statut','situa','preret','classif', 'cs42']
             info_parent = ['jepnais','jemnais','jemprof']
             carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
             revenus = ["zsalaires_i", "zchomage_i", "zpenalir_i", "zretraites_i", "cyder", "duree"]           
@@ -350,7 +350,6 @@ class Patrimoine(DataTil):
         ind = self.ind
         conj = ind.loc[ind['couple']==1,['men','lienpref','id', 'civilstate']]
         print "Nombre d'individus se déclarant en couple dans la table initiale : ", len(conj)
-        print conj['lienpref'].value_counts()
         # Personnes en couple vivant dans le même ménage (8230)
         conj.loc[conj['lienpref']==1,'lienpref'] = 0
         # Couples fils/belle-fille (ou recip.) vivant ds ménage parents (18)
@@ -417,7 +416,7 @@ class Patrimoine(DataTil):
                 # cas à résoudre "à la main"
                 potential = ind.loc[parent['id_4'], ['anais','lienpref','sexe','couple','conj']]
                 potential = potential[ind.loc[id,'anais'] - potential['anais'] > 16 ]
-                pot_mother = potential[potential['sexe']==2]
+                pot_mother = potential[potential['sexe']==1]
                 if len(pot_mother):
                     par =  pot_mother['anais'].idxmin()
                 else: 
@@ -431,9 +430,9 @@ class Patrimoine(DataTil):
         #enf = enf.append(enf4[['id','id_1','id_2']])       
         enf = merge(enf,ind[['id','sexe']], left_on='id_1', right_on='id', how = 'left', suffixes=('', '_'))
         enf['pere'] = Series(dtype=np.int32)
-        enf['pere'][enf['sexe']==1] = enf['id_1'][enf['sexe']==1] 
+        enf['pere'][enf['sexe']==0] = enf['id_1'][enf['sexe']==0] 
         enf['mere'] = Series(dtype=np.int32)
-        enf['mere'][enf['sexe']==2] = enf['id_1'][enf['sexe']==2] 
+        enf['mere'][enf['sexe']==1] = enf['id_1'][enf['sexe']==1] 
         
         cond_pere = notnull(enf['mere']) & notnull(enf['id_2'])
         enf['pere'][cond_pere] = enf['id_2'][cond_pere]
@@ -454,6 +453,7 @@ class Patrimoine(DataTil):
         par_look_enf = pd.DataFrame()
         for k in range(1,13):
             k = str(k)
+            # hodln : lien de parenté
             var_hod = ['hodln','hodsex','hodan','hodco','hodip','hodenf',
                        'hodemp','hodcho','hodpri','hodniv']
             var_hod_rename=['hodln','sexe','anais','couple','dip6','nb_enf',
@@ -481,16 +481,16 @@ class Patrimoine(DataTil):
             par_look_enf = par_look_enf.append(temp)
             
         var_parent = ["id","men","sexe","anais","cs42"]
-        ind['gpar'] = ind['per1e'].isin([1,2]) | ind['mer1e'].isin([1,2]) 
-        info_pr = ind.ix[ind['lienpref']==0,var_parent]
-        info_cj = ind.ix[ind['lienpref']==1,var_parent]    
+        ind['gpar'] = ind['per1e'].isin([1,2]) | ind['mer1e'].isin([1,2]) # Pourquoi 1 et 2 ? 
+        info_pr = ind.loc[(ind['lienpref']==0), var_parent]
+        info_cj = ind.loc[(ind['lienpref']==1), var_parent]    
         var_parent_pr = ['id_pr'] + var_parent[1:]
         var_parent_pr[var_parent_pr.index('anais')] = 'anais_pr'
         var_parent_cj = [nom +'_cj' for nom in var_parent]
         
         # d'abord les peres...
-        info_pr_pere = info_pr[info_pr['sexe']==1].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
-        info_cj_pere = info_cj[info_cj['sexe']==1].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
+        info_pr_pere = info_pr[info_pr['sexe']==0].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
+        info_cj_pere = info_cj[info_cj['sexe']==0].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
         info_pere = info_pr_pere.append(info_cj_pere)
         
         cond1 = par_look_enf['hodln']==1
@@ -502,8 +502,8 @@ class Patrimoine(DataTil):
         par_look_enf3 = merge(par_look_enf[cond3], info_cj_pere, left_on='id', right_on='men', how='left')
 
         #... puis les meres
-        info_pr_mere = info_pr[info_pr['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
-        info_cj_mere = info_cj[info_cj['sexe']==2].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
+        info_pr_mere = info_pr[info_pr['sexe']==1].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
+        info_cj_mere = info_cj[info_cj['sexe']==1].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
         info_mere = info_pr_mere.append(info_cj_mere)
 
         par_look_enf1 = merge(par_look_enf1, info_mere, left_on='id', right_on='men', how = 'left')
@@ -516,8 +516,10 @@ class Patrimoine(DataTil):
         par_look_enf['men'] = Series(dtype=np.int32)
         par_look_enf['men'][notnull(par_look_enf['men_x'])] = par_look_enf['men_x'][par_look_enf['men_x'].notnull()]
         par_look_enf['men'][notnull(par_look_enf['men_y'])] = par_look_enf['men_y'][par_look_enf['men_y'].notnull()]
-        par_look_enf = par_look_enf.drop(['hodcho','hodemp','hodniv','hodpri','men_x','men_y','to_delete_x','to_delete_y','jepprof'],axis=1)
+        par_look_enf = par_look_enf.drop(['hodcho','hodemp','hodniv','hodpri','men_x','men_y','to_delete_x','to_delete_y','jepprof', 'men'],axis=1)
+        par_look_enf = par_look_enf.rename(columns={'id': 'men'})
         self.par_look_enf = par_look_enf
+        
         
     def matching_par_enf(self):
         '''
@@ -614,10 +616,10 @@ class Patrimoine(DataTil):
         # Comme enf_tot a le bon index on fait
         ind['nb_enf'] = enf_tot
         ind['nb_enf'] = ind['nb_enf'].fillna(0)     
-        men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
-        women_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==2)
-        men_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
-        women_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==2)   
+        men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
+        women_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
+        men_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
+        women_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==1)   
         
        
         var_match = ['age','findet','nb_enf'] #,'classif','dip6'
@@ -655,16 +657,17 @@ if __name__ == '__main__':
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.format_initial()
     data.conjoint()
-    data.check_conjoint()
+    data.check_conjoint(couple_hdom = True)
     data.enfants()
     data.creation_par_look_enf()
     data.expand_data(seuil=900)
     data.matching_par_enf() 
     data.match_couple_hdom()
-    data.check_conjoint()
+    data.check_conjoint(couple_hdom = False)
     data.creation_foy()   
     data.var_sup()  
     data.format_to_liam()
+    data.final_check()
     data.store_to_liam()
     print "Temps de calcul : ", (time.time() - start_t), 's'
     print "Nombre d'individus de la table final : ", len(data.ind) 
