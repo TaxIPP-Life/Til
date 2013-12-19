@@ -73,10 +73,10 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: Cohort_1000.h5
+        file: Patrimoine_300.h5
         
     output:
-        file: simul.h5
+        file: simul2.h5
         
     skip_shows: True
     timings: False

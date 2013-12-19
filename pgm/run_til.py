@@ -1,9 +1,9 @@
 # -*- coding:utf-8 -*-
 
-from CONFIG import path_til_liam, path_til
+from CONFIG import path_til_liam, path_til, path_til_liam2
 import sys 
 
-sys.path.append(path_til_liam)
+sys.path.append(path_til_liam2)
 from src.simulation import Simulation
 
 

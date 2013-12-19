@@ -55,7 +55,7 @@ entities:
                               (l_mere.dead and (l_mere.men == men) and pere == UNSET)) and
                                 (quimen>1) and (age <= 15)
                 - men: if(orph_dass, DASS, men) 
-                - csv( dump(), fname='death2.csv')
+                #- csv( dump(), fname='death.csv')
                 - assertTrue( min(men) != -1)
                 - live_together_c: l_conj.orph_indep and l_conj.men == men
                 - live_together_p: l_pere.orph_indep and l_pere.men == men
@@ -183,7 +183,7 @@ entities:
                 
                 - pers2reg.deces: if(dead, period, pers2reg.deces)
                 - remove(dead)   
-                - csv( dump(), fname='death2.csv')
+                #- csv( dump(), fname='death2.csv')
                 - assertEqual(max(l_men.get(persons.count(quimen==0 and not dead))),1)
                 - assertTrue( min(men) != -1)
                 - assertEqual(max(l_foy.get(on_declar.count(quifoy==0 and not dead))),1)

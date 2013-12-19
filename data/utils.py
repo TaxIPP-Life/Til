@@ -76,20 +76,32 @@ def replicate(table):
         
         return table_exp
 
+def new_idmen(table, var):
+    new = table[[var + '_ini', var]]
+    men_ord = (table[var + '_ini'] > 9)
+    men_nonord = (table[var + '_ini']<10)
+    # les ménages nonordinaires gardent leur identifiant initial même si leur pondération augmente
+    new.loc[men_nonord, var] = new.loc[men_nonord, var + '_ini']
+    # on conserve la règle du début des identifiants à 10 pour les ménages ordinaires
+    new.loc[men_ord, var] = range(10, 10 + sum(men_ord))
+    new = new[var]
+    return new
+
 def new_link_with_men(table, table_exp, link_name):
-        '''
-        A partir des valeurs initiables de lien initial (link_name) replique pour avoir le bon nouveau lien 
-        '''
-        nb_by_table = np.asarray(table.groupby(link_name).size())
-        #TODO: améliorer avec numpy et groupby ? 
-        group_old_id = table_exp.ix[table_exp['id_ini'].isin(table[link_name]),['id_ini','id']].groupby('id_ini').groups.values()
-        group_old_id = np.array(group_old_id)
-        group_old_id =  group_old_id.repeat(nb_by_table)
-        new_id = []
-        for el in group_old_id: 
-            new_id += el
-        return new_id
+    '''
+    A partir des valeurs initiables de lien initial (link_name) replique pour avoir le bon nouveau lien 
+    '''
+    nb_by_table = np.asarray(table.groupby(link_name).size())
+    #TODO: améliorer avec numpy et groupby ? 
+    group_old_id = table_exp.loc[table_exp['id_ini'].isin(table[link_name]),['id_ini','id']].groupby('id_ini').groups.values()
+    pd.DataFrame(group_old_id).to_csv('oldnew.csv')
     
+    group_old_id = np.array(group_old_id)
+    group_old_id =  group_old_id.repeat(nb_by_table)
+    new_id = []
+    for el in group_old_id: 
+        new_id += el
+    return new_id
 
 def _MinType_col_int_pos(col):
     '''

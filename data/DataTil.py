@@ -7,7 +7,7 @@ Alexis Eidelman
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
 from matching import Matching
-from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype
+from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype, new_idmen
 from pgm.CONFIG import path_data_patr, path_til, path_til_liam, path_til_liam2
 import pandas as pd
 import numpy as np
@@ -175,13 +175,16 @@ class DataTil(object):
         '''
         ind = self.ind 
         men = self.men 
-        survey_year = self.survey_year     
+        survey_year = self.survey_year 
+        ind.to_csv('beforecreationfoy.csv')   
         print ("Creation des declarations fiscales")
         # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
         if 'nb_enf' not in list(ind.columns):
             nb_enf_mere= ind.groupby('mere').size()
             nb_enf_pere = ind.groupby('pere').size()
+            print len(nb_enf_mere), len(nb_enf_pere)
             enf_tot = pd.concat([nb_enf_mere, nb_enf_pere], axis=1)
+            print(enf_tot)
             enf_tot = enf_tot.sum(axis=1)
             # Comme enf_tot a le bon index on fait
             ind['nb_enf'] = enf_tot
@@ -206,7 +209,7 @@ class DataTil(object):
         conj = spouse & ( ind['conj'] < ind['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac_condition = (ind['civilstate']==1) & (ind['nb_enf']==0) & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) & (ind['men'] !=0) 
+        pac_condition = (ind['civilstate']==1)  & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) &(ind['nb_enf']==0)
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition 
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
@@ -216,15 +219,15 @@ class DataTil(object):
         ind.loc[pac,'quifoy'] = 2
         ind.loc[(ind['men'] == 0) & (ind['quifoy'] == 0), 'quifoy'] = 2
         print "Nombres de foyers fiscaux", sum(ind['quifoy'] == 0), ", dont couple", sum(ind['quifoy'] == 1)
+        
         # 3eme étape : attribution des identifiants des foyers fiscaux
         ind['foy'] = -1
         nb_foy = sum(ind['quifoy'] == 0) 
         print "Le nombre de foyers créés est : " + str(nb_foy)
         # Rq: correspond au même décalage que pour les ménages (10premiers : institutions)
         ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy +10)
-        ind.loc[ind['men'] == 0, 'foy'] = 0
         
-        # 3eme étape : Rattachement des autres membres du ménage
+        # 4eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
         conj = ind.loc[(ind['conj'] != -1) & (ind['civilstate'].isin([2,5]))& (ind['quifoy'] == 0), ['conj','foy']]
         ind['foy'][conj['conj'].values] = conj['foy'].values
@@ -232,10 +235,13 @@ class DataTil(object):
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for parent in  ['pere', 'mere']:
             pac_par = ind.loc[ (ind['quifoy'] == 2) & (ind[parent] != -1) & (ind['foy'] == -1), ['id', parent]].astype(int)
-            ind['foy'][pac_par['id']] = ind['foy'][pac_par[parent]]
+            ind['foy'][pac_par['id'].values] = ind['foy'][pac_par[parent].values]
             print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
-
-        # 4eme étape : création de la table foy
+            
+        # Enfants de la Dass -> foyer fiscal 'collectif'    
+        ind.loc[ind['men']==0, 'foy'] = 0
+        
+        # 5eme étape : création de la table foy
         vous = (ind['quifoy'] == 0) & (ind['foy'] > 9)
         foy = ind.loc[vous,['foy', 'id', 'men']]
         foy = foy.rename(columns={'foy': 'id', 'id': 'vous'})
@@ -251,14 +257,20 @@ class DataTil(object):
             assert len(nb_foy_men) ==  len(foy_men)
             for var in impots : 
                 foy_men[var] = foy_men[var] / nb_foy_men 
-            #TODO: faire la somme par men : marche pas encore!
             foy = merge(foy, foy_men, on = 'men', how ='left', right_index=True)
         foy['period'] = survey_year
-        to_add = pd.DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
-        to_add['vous'] = -1
-        to_add['period'] = survey_year
-        foy = pd.concat([foy, to_add], axis = 0, ignore_index=True)
+        
+        # Ajouts des 'communautés' dans la table foyer
+        for k in [0]:
+            if sum(ind['foy'] == k) !=0 :
+                to_add = pd.DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
+                to_add['id'] = k
+                to_add['vous'] = -1
+                to_add['period'] = survey_year
+                foy = pd.concat([foy, to_add], axis = 0, ignore_index=True)
+            
         foy.index = foy['id']
+        ind[ind['foy']==-1].to_csv('test.csv')
         assert sum(ind['foy']==-1) == 0
         print 'Taille de la table foyers :', len(foy)
         #### fin de declar
@@ -332,22 +344,25 @@ class DataTil(object):
 
         # 3- Nouvelles pondérations (qui seront celles associées aux individus après réplication)
         men['pond'] = men['pond'].div(men['nb_rep'])
-        men_exp = replicate(men) 
-
+        men_exp = replicate(men)
+        # pour conserver les 10 premiers ménages = collectivités 
+        men_exp['id'] = new_idmen(men_exp, 'id')
+        
         if foy is not None:
             foy = merge(men[['id','nb_rep']],foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
             foy_exp= replicate(foy)
-            foy_exp['men'] = new_link_with_men(foy, men_exp, 'men')
+            foy_exp['men'] = new_link_with_men(foy, men_exp, 'men') 
         else: 
             foy_exp = None
-            
+  
         if par is not None:
-            par = merge(men[['id','nb_rep']], par, left_on='id', right_on='men', how='right', suffixes=('_men',''))
+            par = merge(men[['id','nb_rep']], par, left_on='id', right_on='men', how='inner', suffixes=('_men',''))
             par_exp = replicate(par)
-            par_exp['men'] = new_link_with_men(par, men_exp, 'men')         
+            par_exp['men'] = new_link_with_men(par, men_exp, 'men') 
         else: 
             par_exp = None 
-                      
+        
+        par_exp.to_csv('test2.csv')
         ind = merge(men[['id','nb_rep']], ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
         ind_exp= replicate(ind)
         # liens entre individus
@@ -371,7 +386,9 @@ class DataTil(object):
         print("fin travail sur identifiant")
         
         # lien indiv - entités supérieures
-        ind_exp['men'] = new_link_with_men(ind, men_exp, 'men')  
+        ind_exp['men'] = new_link_with_men(ind, men_exp, 'men')
+        ind_exp['men'] += 10 
+        ind_exp.to_csv('indtest.csv') 
         if foy is not None:
             #le plus simple est de repartir des quifoy, cela change du men
             # la vérité c'est que ça ne marche pas avec ind_exp['foy'] = new_link_with_men(ind, foy_exp, 'foy')
@@ -384,12 +401,13 @@ class DataTil(object):
             ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]       
             pac_mere = pac & ~notnull(ind['foy'])
             ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']]  
-
+        
+        assert sum(ind['id']==-1) == 0
         self.par_look_enf = par
         self.men = men_exp
         self.ind = ind_exp
         self.foy = foy_exp
-        self.drop_variable({'men':['id_rep','nb_rep','index'], 'ind':['id_rep','id_men',]})    
+        self.drop_variable({'men':['id_rep','nb_rep'], 'ind':['id_rep','id_men',]})    
         
     def format_to_liam(self):
         '''
@@ -482,6 +500,8 @@ class DataTil(object):
         # Foyers et ménages bien attribués
         assert sum((ind['foy'] == -1)) == 0
         assert sum((ind['men'] == -1)) == 0
+        print "Nombre de personnes dans ménages ordinaires : ", sum(ind['men']>9)
+        print "Nombre de personnes vivant au sein de collectivités : ", sum(ind['men']<10)
         
         ## lien foy : bien présent, un et un seul quifoy=0 par foy
         ind['test_qui'] = (ind['quifoy'] == 0).astype(int)
