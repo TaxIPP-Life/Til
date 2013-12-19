@@ -411,7 +411,7 @@ if __name__ == '__main__':
     
     # (c) - Ajout des informations futures et mise au format Liam
     futur_t = time.time()
-    data.add_futur()
+    #data.add_futur()
     data.format_to_liam()
     data.final_check()
     data.store_to_liam()

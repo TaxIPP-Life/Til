@@ -55,7 +55,7 @@ class Patrimoine(DataTil):
 # on choisit de faire le drop avant le format intitial, on pourrait faire l'inverse en étant vigilant sur les noms
 
     def _output_name(self):
-        return 'Patrimoine_' + str(self.size) + '.h5'
+        #return 'Patrimoine_' + str(self.size) + '.h5'
         if self.seuil is None:
             return 'Patrimoine_0.h5' # + survey_date
         else: 
@@ -204,7 +204,7 @@ class Patrimoine(DataTil):
             black_list = jeunesse_grave + parent_prop  + diplom
             #liste blanche
             info_pers = ['anais','mnais','sexe','dip14']
-            famille = ['couple','lienpref','enf','civilstate','pacs','gpar','per1e','mer1e']
+            famille = ['couple','lienpref','enf','civilstate','pacs','grandpar','per1e','mer1e']
             jobmarket = ['statut','situa','preret','classif', 'cs42']
             info_parent = ['jepnais','jemnais','jemprof']
             carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
@@ -317,7 +317,6 @@ class Patrimoine(DataTil):
             pref1 = conj.loc[conj['lienpref']==1,'identmen']
             assert sum(~pref1.isin(pref0)) == 0
             conj_hdom = pref0[~pref0.isin(pref1)]
-            print(len(conj_hdom))
             ind.loc[conj_hdom.index,'couple'] = 2
             
             # Présence du fils/fille de la personne de ref si déclaration belle-fille/beau-fils
@@ -481,7 +480,7 @@ class Patrimoine(DataTil):
             par_look_enf = par_look_enf.append(temp)
             
         var_parent = ["id","men","sexe","anais","cs42"]
-        ind['gpar'] = ind['per1e'].isin([1,2]) | ind['mer1e'].isin([1,2]) # Pourquoi 1 et 2 ? 
+        ind['grandpar'] = ind['per1e'].isin([1,2]) | ind['mer1e'].isin([1,2]) # Pourquoi 1 et 2 ? 
         info_pr = ind.loc[(ind['lienpref']==0), var_parent]
         info_cj = ind.loc[(ind['lienpref']==1), var_parent]    
         var_parent_pr = ['id_pr'] + var_parent[1:]
@@ -489,8 +488,8 @@ class Patrimoine(DataTil):
         var_parent_cj = [nom +'_cj' for nom in var_parent]
         
         # d'abord les peres...
-        info_pr_pere = info_pr[info_pr['sexe']==0].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
-        info_cj_pere = info_cj[info_cj['sexe']==0].rename(columns={'id':'pere', 'anais':'jepnais','gpar':'gparpat','cs42':'jepprof','sexe':'to_delete'})
+        info_pr_pere = info_pr[info_pr['sexe']==0].rename(columns={'id':'pere', 'anais':'jepnais','grandpar':'grandpar_pat','cs42':'jepprof','sexe':'to_delete'})
+        info_cj_pere = info_cj[info_cj['sexe']==0].rename(columns={'id':'pere', 'anais':'jepnais','grandpar':'grandpar_pat','cs42':'jepprof','sexe':'to_delete'})
         info_pere = info_pr_pere.append(info_cj_pere)
         
         cond1 = par_look_enf['hodln']==1
@@ -502,8 +501,8 @@ class Patrimoine(DataTil):
         par_look_enf3 = merge(par_look_enf[cond3], info_cj_pere, left_on='id', right_on='men', how='left')
 
         #... puis les meres
-        info_pr_mere = info_pr[info_pr['sexe']==1].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
-        info_cj_mere = info_cj[info_cj['sexe']==1].rename(columns={'id':'mere', 'anais':'jemnais','gpar':'gparmat','cs42':'jemprof','sexe':'to_delete'}) 
+        info_pr_mere = info_pr[info_pr['sexe']==1].rename(columns={'id':'mere', 'anais':'jemnais','grandpar':'grandpar_mat','cs42':'jemprof','sexe':'to_delete'}) 
+        info_cj_mere = info_cj[info_cj['sexe']==1].rename(columns={'id':'mere', 'anais':'jemnais','grandpar':'grandpar_mat','cs42':'jemprof','sexe':'to_delete'}) 
         info_mere = info_pr_mere.append(info_cj_mere)
 
         par_look_enf1 = merge(par_look_enf1, info_mere, left_on='id', right_on='men', how = 'left')
@@ -589,7 +588,7 @@ class Patrimoine(DataTil):
         ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
         
         self.ind = minimal_dtype(ind)
-        self.drop_variable({'ind':['enf','per1e','mer1e','gpar'] + ['jepnais','jemnais','jemprof']})
+        self.drop_variable({'ind':['enf','per1e','mer1e','grandpar'] + ['jepnais','jemnais','jemprof']})
     
     def match_couple_hdom(self):
         '''
@@ -639,8 +638,6 @@ class Patrimoine(DataTil):
         ind.loc[men_libre & ~notnull(ind['conj']),['civilstate','couple']] =  [1,3]
         ind.loc[women_libre & ~notnull(ind['conj']),['civilstate','couple']] =  [1,3]  
     
-        #on corrige là, les innocents qui se disent mariés et pas en couple.  
-        #ind.ix[ind['civilstate'].isin([2,5]) & ~notnull(ind['conj']),['civilstate','couple']] =  [3,3] 
         self.ind = ind   
         self.drop_variable({'ind':['couple']})        
 
@@ -660,12 +657,11 @@ if __name__ == '__main__':
     data.check_conjoint(couple_hdom = True)
     data.enfants()
     data.creation_par_look_enf()
-    data.expand_data(seuil=900)
+    data.expand_data(seuil=300)
     data.matching_par_enf() 
     data.match_couple_hdom()
     data.check_conjoint(couple_hdom = False)
     data.creation_foy()   
-    data.var_sup()  
     data.format_to_liam()
     data.final_check()
     data.store_to_liam()

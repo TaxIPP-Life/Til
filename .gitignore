@@ -52,4 +52,7 @@ output/*.csv
 output/check_simul/*.csv
 
 pgm/CONFIG.py
+pgm/Pension/Calculate/*.csv
+pgm/Pension/Param/*.csv
+pgm/Pension/Param/*.xlsx
 data/Patrimoine/path_config.R

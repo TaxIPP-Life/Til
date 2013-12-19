@@ -96,43 +96,58 @@ class DataTil(object):
         
         #1 -Vérifie que les conjoints sont bien reciproques 
         ind = ind.fillna(-1)
-        test = ind.loc[(ind['conj'] != -1),['id','conj','civilstate']] #| ind['civilstate'].isin([2,5])
-        test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
-        try: 
-            assert(sum(test['conj_x'] == test['id_y']) == 0)
-        except :
-            test = test[test['conj_x'] != test['id_y']]
-            print "Nombre d'époux non réciproques : " + str(len(test)) 
-            
-            # (a) - l'un des deux se déclare célibataire -> le second le devient
-            celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
-                                        ['id_x', 'civilstate_y']]
-            if celib_y:
-                ind['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
-                ind['conj'][celib_y['id_x'].values] = np.nan
-
-            celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
-                                        ['id_y','civilstate_x']]
-            if celib_x:
-                ind['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
-                ind['conj'][celib_x['id_y'].values] = -1
-
-            # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
-            # -> Conjoint réattribué à qui de droit
-            no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
-            if no_conj:
-                print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
-                ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
-            
+        def _reciprocite_conj(ind):
+            test = ind.loc[(ind['conj'] != -1),['id','conj','civilstate']] #| ind['civilstate'].isin([2,5])
+            test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
+            try: 
+                assert(sum(test['conj_x'] == test['id_y']) == 0)
+            except :
+                test = test[test['conj_x'] != test['id_y']]
+                print "Nombre d'époux non réciproques : " + str(len(test)) 
+                
+                # (a) - l'un des deux se déclare célibataire -> le second le devient
+                celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
+                                            ['id_x', 'civilstate_y']]
+                if celib_y:
+                    ind['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
+                    ind['conj'][celib_y['id_x'].values] = np.nan
+    
+                celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
+                                            ['id_y','civilstate_x']]
+                if celib_x:
+                    ind['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
+                    ind['conj'][celib_x['id_y'].values] = -1
+    
+                # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
+                # -> Conjoint réattribué à qui de droit
+                no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
+                if no_conj:
+                    print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
+                    ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
+                    ind = ind.fillna(-1)
+                    
+              
+            return ind
+        ind = _reciprocite_conj(ind)
         #2 - Vérifications de la concordance des états civils déclarés pour les personnes ayant un conjoint déclaré (i.e. vivant avec lui)
         test = ind.loc[(ind['conj']!= -1), ['conj','id','civilstate', 'sexe']]
         test = merge(test, test, left_on='id', right_on='conj')
+        
+        # 2.a - Confusion mariage/pacs
         confusion = test[(test['id_y']> test['id_x'])& (test['civilstate_y']!= test['civilstate_x']) & ~test['civilstate_y'].isin([3,4]) &  ~test['civilstate_x'].isin([3,4])]
         if confusion:
-            print "Nombre de confusion sur l'état civil (corrigées) : ", len(confusion)
+            print "Nombre de confusions sur l'état civil (corrigées) : ", len(confusion)
             # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
             ind['civilstate'][confusion['id_y'].values] = ind['civilstate'][confusion['id_x'].values]
+            ind = ind.fillna(-1)
             
+        # 2.b - Un déclarant marié/pacsé l'autre veuf/divorcé -> marié/pacsé devient célibataire
+        conf = test[(test['civilstate_y']!= test['civilstate_x']) & (test['civilstate_y'].isin([3,4]) |  test['civilstate_x'].isin([3,4]))]
+        confusion = conf[conf['civilstate_y'].isin([3,4]) & conf['civilstate_x'].isin([2,5]) ]
+        if confusion:
+            print "Nombre de couples marié/veuf (corrigés) : ", len(confusion)
+            ind['civilstate'][confusion['id_x'].values] = 1
+        
         #3- Nombre de personnes avec conjoint hdom
         conj_hdom = ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]
         print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
@@ -141,8 +156,8 @@ class DataTil(object):
             ind.loc[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1), 'civilstate'] = 1
             assert len(ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]) == 0
         self.ind = ind
+        #ind = _reciprocite_conj(ind)
         print ("Fin de la vérification sur les conjoints")
-        
     def enfants(self):   
         '''
         Calcule l'identifiant des parents 
@@ -237,14 +252,13 @@ class DataTil(object):
             for var in impots : 
                 foy_men[var] = foy_men[var] / nb_foy_men 
             #TODO: faire la somme par men : marche pas encore!
-            foy = merge(foy, foy_men, on = 'men', how ='inner', right_index=True)
+            foy = merge(foy, foy_men, on = 'men', how ='left', right_index=True)
         foy['period'] = survey_year
         to_add = pd.DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
         to_add['vous'] = -1
         to_add['period'] = survey_year
         foy = pd.concat([foy, to_add], axis = 0, ignore_index=True)
         foy.index = foy['id']
-        ind[ind['foy'] == -1].to_csv('testfoy.csv')
         assert sum(ind['foy']==-1) == 0
         print 'Taille de la table foyers :', len(foy)
         #### fin de declar
@@ -387,10 +401,10 @@ class DataTil(object):
         foy = self.foy
         futur = self.futur
         past = self.past  
-        # TODO: ça doit être dans final_check
-        assert sum((ind['foy']==-1) & ind['period'] == self.survey_year) == 0
-        assert sum((ind['men']==-1) & ind['period'] == self.survey_year) == 0
         
+        for data in [ind, men, foy] : 
+            if data is not None:
+                data['period'] =  self.survey_year 
         
         if ('age' not in ind.columns) & ('anais' in ind.columns):
             ind['age'] = self.survey_date//100 - ind['anais']
@@ -441,7 +455,7 @@ class DataTil(object):
                 table = table.fillna(-1)
                 table[var] = table[var].astype(np.float64)
             table = table.sort_index(by=['period','id'])
-            tables[name] = tab
+            tables[name] = table
         self.ind = tables['ind']
         self.men = tables['men']    
         self.foy = tables['foy']   
