@@ -39,6 +39,7 @@ class Cohort(DataTil):
     def __init__(self, size=1000):
         DataTil.__init__(self)
         self.survey_date = 100*2009 + 1
+        self.survey_year = 2009
         self.size = size
         self.name = 'cohort'
 
@@ -80,7 +81,13 @@ class Cohort(DataTil):
         
         self.foy['vous'] = rg
         self.men['pref'] = rg
-
+        
+        # special household
+        self.ind['men'] += 10
+        self.ind['foy'] += 10 
+        self.foy['id'] += 10
+        self.men['id'] += 10
+        
     
 if __name__ == '__main__':
     import time
@@ -90,8 +97,6 @@ if __name__ == '__main__':
     data.imputations()
     data.links()
     data.format_to_liam()
-    pdb.set_trace()
     data.final_check()
-    pdb.set_trace()
     data.store_to_liam()
     
