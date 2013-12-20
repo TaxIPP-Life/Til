@@ -38,7 +38,6 @@ class Patrimoine(DataTil):
         self.survey_year = 2009
         self.last_year = 2009
         self.survey_date = 100*self.survey_year + 1
-
         #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
@@ -353,7 +352,6 @@ class Patrimoine(DataTil):
         conj.loc[conj['lienpref']==32,'lienpref'] = 3
         # frères, soeurs et liens indéterminés (4)
         conj.loc[conj['lienpref']==50,'lienpref'] = 10
-        
         conj2 = merge(conj, conj, on=['men','lienpref'], how= 'outer')
         conj2 = conj2[conj2['id_x'] != conj2['id_y']]
         assert len(conj2) == len(conj)
@@ -383,58 +381,69 @@ class Patrimoine(DataTil):
         1 : enf de pref et de son conj, 2:enf de pref seulement, 3 : enf de conj seulement, 4 : conj de l'enf de pref/conj
         '''    
         ind = self.ind
-        enf = ind.loc[ ind['enf'] != 0 ,['men','lienpref','id','enf']]
-        # Enfants de la personne de référence
-        enf0 = enf[enf['enf'].isin([1,2])]
-        enf0['lienpref'] = 0
-        enf0 = merge(enf0, ind[['men','lienpref','id']], on=['men','lienpref'], how='left', suffixes=('', '_1'))
+        enf = ind.loc[ ind['enf'] != -1, ['men','lienpref','id','enf']]
+        info_par = ind.loc[:, ['men','lienpref','id', 'sexe']].rename(columns = {'sexe': 'sexe_par'})
         
-        # Enfants du conjoint de la personne de référence
-        enf1 = enf[enf['enf'].isin([1,3])]
+        # [0] Enfants de la personne de référence
+        enf0 = enf[(enf['enf'].isin([1,2]))].drop('enf', axis = 1)
+        enf0['lienpref'] = 0
+        enf0 = merge(enf0, info_par, on=['men','lienpref'], how='left', suffixes=('_enf', '_par'))
+
+        # [1] Enfants du conjoint de la personne de référence
+        enf1 = enf[(enf['enf'].isin([1,3]))].drop('enf', axis = 1)
         enf1['lienpref'] = 1
-        enf1 = merge(enf1, ind[['men','lienpref','id']], on=['men','lienpref'], how='left', suffixes=('', '_2'))
-              
-        # cas des petits-enfants : on cherche les enfants de la personne de référence (enf=1,2 ou 3) et on tente de les associer 
-        # aux petits enfants (lienpref=31)
+        enf1 = merge(enf1, info_par, on=['men','lienpref'], how='left', suffixes=('_enf', '_par'))
+        enf_tot = enf0.append(enf1)
+        
+        # [2] Parents à charge
+        gpar0 = ind.loc[ (ind['lienpref'] ==3), ['men','lienpref','id']]
+        gpar0['lienpref'] = 0
+        gpar0 = merge(gpar0, info_par, on=['men','lienpref'], how='left', suffixes=('_par', '_enf'))
+        #enf_tot = enf_tot.append(gpar0)
+
+        gpar1 = ind.loc[ (ind['lienpref'] == 32), ['men','lienpref','id']]
+        gpar1['lienpref'] = 1
+        gpar1 = merge(gpar1, info_par, on=['men','lienpref'], how='left', suffixes=('_par', '_enf'))
+        gpar = gpar0.append(gpar1)
+        # TODO: pas normal que plusieurs personnes du même sexe se déclare parent de la personne de ref
+        gpar = gpar.drop_duplicates(['id_enf', 'sexe_par'])
+        enf_tot = enf_tot.append(gpar)
+        
+        # [3] Petits-enfants : on cherche les enfants de la personne de référence ou de son conjoint et on tente de les associer 
+        # à des petits enfants (lienpref=21)
         # TODO: en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le registre...
         # et savoir que ce sont les petites enfants (pour l'héritage par exemple)
-        par4 = enf[enf['enf'].isin([1,2,3])]
-        par4['lienpref'] = 21
-        par4 = merge(par4, ind[['men','lienpref','id']], on=['men','lienpref'], how='inner', suffixes=('_4', ''))
-        enf4 = DataFrame( index=par4['id'].unique(), columns=['id_1','id_2'], dtype=np.int32)
-        parents = pd.groupby(par4, 'id')
-        for idx, parent in parents:
-            id = int(idx)
-            if len(parent) == 1:
-                enf4['id_1'][id] = int(parent['id_4'])
+        par = ind.loc[ (ind['enf'] != -1) & ind['enf'].isin([1,2,3]), ['men','lienpref','id', 'sexe', 'age']].rename(columns = {'sexe': 'sexe_par', 'age' : 'age_par'})
+        par['lienpref'] = 21
+        par = merge(par, ind[['men','lienpref','id']], on=['men','lienpref'], how='inner', suffixes=('_par', '_enf'))
+        enf3 = par.drop_duplicates(['id_enf', 'sexe_par'])
+        for enf in par['id_enf']:
+            parent = par[par['id_enf']== enf]
+            if len(parent) > 1:
+                pot_mother = parent[parent['sexe_par']==1].sort('age_par')
+                if len(pot_mother) > 1:
+                    enf3.loc[enf3['id_enf']==enf] =  pot_mother.drop_duplicates('id_enf', take_last=True)
+                pot_father = parent[parent['sexe_par']==0].sort('age_par')
+                if len(pot_father) > 1:
+                    enf3.loc[enf3['id_enf']==enf] =  pot_father.drop_duplicates('id_enf', take_last=True)
+        enf_tot = enf_tot.append(enf3)
+
+        enf = DataFrame(enf_tot[['sexe_par', 'id_enf', 'id_par']].fillna(-1), dtype = np.int32)
+        enf = enf[enf['id_enf'] != -1]
+
+        # [4] Création des variables 'pere' et 'mere'
+        ind.index = ind['id']
+        for par in ['pere', 'mere'] :
+            ind[par] = -1
+            if par == 'pere':
+                sexe = 0
             else:
-                # cas à résoudre "à la main"
-                potential = ind.loc[parent['id_4'], ['anais','lienpref','sexe','couple','conj']]
-                potential = potential[ind.loc[id,'anais'] - potential['anais'] > 16 ]
-                pot_mother = potential[potential['sexe']==1]
-                if len(pot_mother):
-                    par =  pot_mother['anais'].idxmin()
-                else: 
-                    par =  potential['anais'].idxmin()
-                enf4['id_1'][id] = par
-        
-        enf4['id'] = enf4.index
-        enf4['id_2'] = ind.ix[enf4['id_1'],'conj'].values
-        
-        enf = merge(enf0[['id','id_1']],enf1[['id','id_2']], how='outer')
-        #enf = enf.append(enf4[['id','id_1','id_2']])       
-        enf = merge(enf,ind[['id','sexe']], left_on='id_1', right_on='id', how = 'left', suffixes=('', '_'))
-        enf['pere'] = Series(dtype=np.int32)
-        enf['pere'][enf['sexe']==0] = enf['id_1'][enf['sexe']==0] 
-        enf['mere'] = Series(dtype=np.int32)
-        enf['mere'][enf['sexe']==1] = enf['id_1'][enf['sexe']==1] 
-        
-        cond_pere = notnull(enf['mere']) & notnull(enf['id_2'])
-        enf['pere'][cond_pere] = enf['id_2'][cond_pere]
-        cond_mere = ~notnull(enf['mere']) & notnull(enf['id_2'])
-        enf['mere'][cond_mere] = enf['id_2'][cond_mere]
-        #sum(sexe1==sexe2) 6 couples de parents homosexuels
-        ind = merge(ind,enf[['id','pere','mere']], on='id', how='left')
+                sexe = 1  
+            ind[par][enf.loc[(enf['sexe_par'] == sexe),'id_enf'].values] = enf.loc[(enf['sexe_par'] == sexe),'id_par'].values
+            
+        print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['age']<18))
+       
+        #-> Cas exotiques : bcp de lien indéterminé + frères/soeur : ind[(ind['pere'] == -1) & (ind['mere']==-1) & (ind['age']<18)].to_csv('mineurs.csv')
         self.ind = ind
           
     def creation_par_look_enf(self):
@@ -444,7 +453,6 @@ class Patrimoine(DataTil):
         '''
         men = self.men      
         ind = self.ind
-        ## info sur les enfants hors du domicile des parents
         par_look_enf = pd.DataFrame()
         for k in range(1,13):
             k = str(k)
@@ -513,6 +521,7 @@ class Patrimoine(DataTil):
         par_look_enf['men'][notnull(par_look_enf['men_y'])] = par_look_enf['men_y'][par_look_enf['men_y'].notnull()]
         par_look_enf = par_look_enf.drop(['hodcho','hodemp','hodniv','hodpri','men_x','men_y','to_delete_x','to_delete_y','jepprof', 'men'],axis=1)
         par_look_enf = par_look_enf.rename(columns={'id': 'men'})
+        
         self.par_look_enf = par_look_enf
         
         
@@ -521,6 +530,7 @@ class Patrimoine(DataTil):
         Matching des parents et des enfants hors du domicile
         '''
         ind = self.ind
+        ind = ind.fillna(-1)
         par_look_enf = self.par_look_enf
 
         ## info sur les parents hors du domicile des enfants
@@ -545,6 +555,9 @@ class Patrimoine(DataTil):
         #comme enf_tot a le bon index on fait
         enf_look_par['nb_enf'] = enf_tot
         enf_look_par['nb_enf'] = enf_look_par['nb_enf'].fillna(0)
+        enf_look_par = enf_look_par.fillna(-1)
+        enf_look_par.to_csv('ttt.csv')
+
         #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
         var_match = ['jepnais','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
         #TODO: gerer les valeurs nulles, pour l'instant c'est très moche
@@ -554,7 +567,7 @@ class Patrimoine(DataTil):
 
         # etape1 : deux parents vivants
         cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
-        cond1_par = notnull(par_look_enf['pere']) & notnull(par_look_enf['mere'])
+        cond1_par = (par_look_enf['pere'] != -1) & (par_look_enf['mere'] != -1)
         # TODO: si on fait les modif de variables plus tôt, on peut mettre directement par_look_enf1
         
         #à cause du append plus haut, on prend en fait ici les premiers de par_look_enf
@@ -565,8 +578,8 @@ class Patrimoine(DataTil):
          
         #etape 2 : seulement mère vivante
         enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
-        cond2_enf = (~notnull(enf_look_par['mere'])) & (enf_look_par['mer1e'] == 2)
-        cond2_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['mere'])
+        cond2_enf = ((enf_look_par['mere'] == -1)) & (enf_look_par['mer1e'] == 2)
+        cond2_par = ~par_look_enf.index.isin(parent_found) & (par_look_enf['mere'] != -1)
         match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
                           par_look_enf.ix[cond2_par, var_match], score)
         parent_found2 = match2.evaluate(orderby=None, method='cells')
@@ -574,8 +587,8 @@ class Patrimoine(DataTil):
         
         #étape 3 : seulement père vivant
         enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
-        cond3_enf = (~notnull(enf_look_par['pere'])) & (enf_look_par['per1e'] == 2)
-        cond3_par = ~par_look_enf.index.isin(parent_found) & notnull(par_look_enf['pere'])
+        cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
+        cond3_par = ~par_look_enf.index.isin(parent_found) & (par_look_enf['pere'] != -1)
         
         # TODO: changer le score pour avoir un lien entre pere et mere plus évident
         match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
@@ -600,17 +613,21 @@ class Patrimoine(DataTil):
         
         couple_hdom = ind['couple']==2
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
-        ind.ix[(couple_hdom) & (ind['civilstate']==5),  'civilstate'] = 2
+        ind.loc[(couple_hdom) & (ind['civilstate']==5),  'civilstate'] = 2
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
         # ne gère pas les couples homosexuels
                 
         ## nb d'enfant
-        nb_enf_mere= ind.groupby('mere').size()
-        nb_enf_pere = ind.groupby('pere').size()
-        enf_tot = pd.concat([nb_enf_mere[1:], nb_enf_pere[1:]], axis=0)
-        ind['nb_enf'] = 0
         ind.index = ind['id']
-        ind['nb_enf'][enf_tot.index.values] = enf_tot.values  
+        nb_enf_mere = pd.DataFrame(ind.groupby('mere').size(), columns = ['nb_enf'])
+        nb_enf_mere['id'] = nb_enf_mere.index.values
+        nb_enf_pere = pd.DataFrame(ind.groupby('pere').size(), columns = ['nb_enf'])
+        nb_enf_pere['id'] = nb_enf_pere.index
+        # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
+        enf_tot = nb_enf_mere[nb_enf_mere['id'] != -1].append( nb_enf_pere[nb_enf_pere['id'] != -1]).astype(int)
+        ind['nb_enf'] = 0
+        ind.loc[enf_tot['id'].values, 'nb_enf'] = enf_tot['nb_enf']
+        
         men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
         women_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
         men_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
@@ -666,7 +683,6 @@ if __name__ == '__main__':
     
     # des petites verifs finales 
     ind = data.ind
-    ind.to_csv('finalcheck.csv')
     ind['en_couple'] = ind['conj']>-1 
     test = ind['conj']>-1   
     print ind.groupby(['civilstate','en_couple']).size()
