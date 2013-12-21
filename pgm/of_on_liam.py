@@ -32,10 +32,21 @@ import pandas.rpy.common as com
 from rpy2.robjects import r
 import gc
 
-
-
-
-def main(simulation, annee_leg=None,annee_base=None, output='array'):  
+### list des variable que l'on veut conserver
+### Note plus vraiment utile
+listkeep = {'ind': ["salsuperbrut","cotsoc_noncontrib","cotsal_noncontrib","cotsoc_bar","cotsoc_lib",
+                     "cotpat_contrib","cotpat_noncontrib","cotsal_contrib","cotsal","impo","psoc","mini","pfam","logt"],
+            'men': ["decile","decile_net", "pauvre60", "revdisp", "revini", "revnet", "typ_men", "uc"],
+            'fam': ["aah","caah","aeeh","aefa","af","cf","paje", "al","alf","als","apl","ars","asf",
+                     "api","apje","asi","aspa","rmi","rsa","rsa_socle"],
+            'foy': ["decote", "irpp", "isf_tot", "avantage_qf"]}
+    
+def main(simulation, annee_leg=None,annee_base=None, output='array'):
+    ''' Send data from the simulation to openfisca
+    - annee_base: si rempli alors on tourne sur cette année-là, sinon sur toute la base
+     mais à voir
+     - annee_leg pour donner les paramètres
+     '''
     print "annee base", annee_base
     #TODO: test output is either a simulation either a string
     # if not isinstance(output,SurveySimulation)
@@ -43,23 +54,13 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
 #    for ent in ('ind','men','foy','fam'):
 #        del output_h5[ent]
 #        output_h5[ent]=pd.DataFrame() 
-    
-    ### list des variable que l'on veut conserver
-    ### Note plus vraiment utile
-    listkeep = {}
-    listkeep['ind'] = ["salsuperbrut",
-                "cotsoc_noncontrib","cotsal_noncontrib","cotsoc_bar","cotsoc_lib","cotpat_contrib","cotpat_noncontrib","cotsal_contrib","cotsal",
-                "impo","psoc","mini","pfam","logt"]
-    listkeep['men']= ["decile","decile_net", "pauvre60", "revdisp", "revini", "revnet", "typ_men", "uc"]
-    listkeep['fam']= ["aah","caah","aeeh","aefa","af","cf","paje", "al","alf","als","apl","ars","asf",
-                      "api","apje","asi","aspa","rmi","rsa","rsa_socle"]
-    listkeep['foy']= ["decote", "irpp", "isf_tot", "avantage_qf"] 
   
     ## on recupere la liste des annees en entree
     if annee_base is not None:
         if isinstance(annee_base,int):
             annee_base = [annee_base]
     else:
+        #TODO: ? peut-être updater pour qaund
         get_years =  HDFStore(path_til + "/output/to_run_leg.h5")   
         years = [x[-4:] for x in dir(get_years.root) if x[0]!='_' ]
         get_years.close()
@@ -67,10 +68,11 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
     country = 'france'    
     for year in annee_base:        
         yr = str(year)
-        deb3 =  time.clock()  
+        deb3 =  time.clock()
+          
         simu = SurveySimulation()
         simu.set_config(year = year, country = country)
-        # mettre les paramètres de a législation 2009
+        #_load_parameters(annee_leg):
         date_str = str(annee_leg)+ '-01-01'
         date = dt.datetime.strptime(date_str ,"%Y-%m-%d").date()
         reader = XmlReader(simu.param_file, date)
@@ -79,9 +81,10 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
         simu.P_default.datesim = date
         simu.P = Tree2Object(rootNode, defaut=False)
         simu.P.datesim = date
-        
+            
 #        liam2of.main(simulation, year, ".h5")
         table = liam2of.main(simulation, year, "table")
+        pdb.set_trace()
         simu.set_config(survey_filename=table, num_table=3, print_missing=False)
         tps_charge = time.clock()-deb3
         print tps_charge, time.clock()
@@ -182,8 +185,6 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
 # ('sali', '<f8'), ('productivity', '<f8'), ('rsti', '<f8'), ('choi', '<f8'), ('xpr', '<i4'), 
 # ('anc', '<i4'), ('dur_rest_ARE', '<i4')]
         
-            
-            
 ####  export par period       
 #            df = simu.output_table.table3[ent]     
 ##            key = 'survey_'+str(year) + '/'+ent              
@@ -197,12 +198,6 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
 #            file_dir = output + name+ ".gzip"
 #            phrase = "save("+name+", file='" +file_dir+"', compress=TRUE)"
 #            r(phrase) 
-
-               
-               
-               
-
-
 
 if __name__ == "__main__":
     main(2009)
