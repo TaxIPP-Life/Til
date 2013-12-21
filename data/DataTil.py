@@ -176,19 +176,17 @@ class DataTil(object):
         ind = self.ind 
         men = self.men 
         survey_year = self.survey_year 
-        ind.to_csv('beforecreationfoy.csv')   
         print ("Creation des declarations fiscales")
         # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
         if 'nb_enf' not in list(ind.columns):
-            nb_enf_mere= ind.groupby('mere').size()
+            ## nb d'enfant
+            ind.index = ind['id']
+            nb_enf_mere = ind.groupby('mere').size()
             nb_enf_pere = ind.groupby('pere').size()
-            print len(nb_enf_mere), len(nb_enf_pere)
-            enf_tot = pd.concat([nb_enf_mere, nb_enf_pere], axis=1)
-            print(enf_tot)
-            enf_tot = enf_tot.sum(axis=1)
-            # Comme enf_tot a le bon index on fait
-            ind['nb_enf'] = enf_tot
-            ind['nb_enf'] = ind['nb_enf'].fillna(0)
+            # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
+            enf_tot = pd.concat([nb_enf_mere_dom[1:], nb_enf_pere_dom[1:]], axis=0).astype(int)
+            ind['nb_enf'] = 0
+            ind['nb_enf'][enf_tot.index.values] = enf_tot.values
         
         def _name_var(ind, men):
             if 'lienpref' in ind.columns :
@@ -270,7 +268,6 @@ class DataTil(object):
                 foy = pd.concat([foy, to_add], axis = 0, ignore_index=True)
             
         foy.index = foy['id']
-        ind[ind['foy']==-1].to_csv('test.csv')
         assert sum(ind['foy']==-1) == 0
         print 'Taille de la table foyers :', len(foy)
         #### fin de declar
@@ -362,7 +359,6 @@ class DataTil(object):
         else: 
             par_exp = None 
         
-        par_exp.to_csv('test2.csv')
         ind = merge(men[['id','nb_rep']], ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
         ind_exp= replicate(ind)
         # liens entre individus
@@ -388,7 +384,6 @@ class DataTil(object):
         # lien indiv - entités supérieures
         ind_exp['men'] = new_link_with_men(ind, men_exp, 'men')
         ind_exp['men'] += 10 
-        ind_exp.to_csv('indtest.csv') 
         if foy is not None:
             #le plus simple est de repartir des quifoy, cela change du men
             # la vérité c'est que ça ne marche pas avec ind_exp['foy'] = new_link_with_men(ind, foy_exp, 'foy')
