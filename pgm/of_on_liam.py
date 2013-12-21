@@ -82,16 +82,15 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
         simu.P = Tree2Object(rootNode, defaut=False)
         simu.P.datesim = date
             
-#        liam2of.main(simulation, year, ".h5")
-        table = liam2of.main(simulation, year, "table")
-        pdb.set_trace()
+        table = liam2of.table_for_of(simulation, year, check_validity=True, save_tables=False)
         simu.set_config(survey_filename=table, num_table=3, print_missing=False)
-        tps_charge = time.clock()-deb3
+        
+        tps_charge = time.clock() - deb3
         print tps_charge, time.clock()
         deb_comp =  time.clock()
         simu.compute()
         tps_comp = time.clock() - deb_comp
-        print "total", time.clock()-deb3
+        print "total", time.clock() - deb3
              
         # save results in the simulation or in a hdf5 table.
         deb_write =  time.clock()        
