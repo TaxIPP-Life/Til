@@ -11,17 +11,28 @@ import numpy as np
 import pdb
 import tables
 import time
-from src.lib.simulation import SurveySimulation, Simulation 
-from src.parametres.paramData import XmlReader, Tree2Object
+
+from utils import of_name_to_til
+import liam2of
+from CONFIG import path_of, path_liam, path_til
+
+import sys
+sys.path.append(path_of)
+sys.path.remove('C:\\liam2')
+# sys.path.remove(path__liam)
+try:
+    sys.modules.pop('src')
+    from src.lib.simulation import SurveySimulation
+    from src.parametres.paramData import XmlReader, Tree2Object
+except:
+    pdb.set_trace()
 import pandas as pd 
 import datetime as dt   
 import pandas.rpy.common as com     
 from rpy2.robjects import r
 import gc
 
-from utils import of_name_to_til
-import liam2of
-from CONFIG import path_of, path_til_liam, path_til
+
 
 
 def main(simulation, annee_leg=None,annee_base=None, output='array'):  

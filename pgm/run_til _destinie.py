@@ -2,10 +2,10 @@
 
 # on dit à la fonction main (qui est ce qui est appelé avec f5 ou f6 d'être utilisée avec les paramètres que l'on donne à sys.argv
 
-from CONFIG import path_of, path_til_liam, path_til
+from CONFIG import path_of, path_liam, path_til
 import sys 
 
-sys.path.append(path_til_liam)
+sys.path.append(path_liam)
 sys.path.append(path_of)
 
 

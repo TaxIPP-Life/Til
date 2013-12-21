@@ -16,7 +16,7 @@ import pandas.rpy.common as com
 from rpy2.robjects import r
 import os
 
-from CONFIG import path_of, path_til_liam, path_til
+from CONFIG import path_of, path_liam, path_til
 from utils import til_name_to_of
 
 def main(simulation, period=None, output=".h5"):

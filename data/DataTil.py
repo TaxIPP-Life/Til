@@ -8,7 +8,7 @@ Alexis Eidelman
 
 from matching import Matching
 from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype, new_idmen
-from pgm.CONFIG import path_data_patr, path_til, path_til_liam, path_til_liam2
+from pgm.CONFIG import path_data_patr, path_til, path_liam
 import pandas as pd
 import numpy as np
 import tables
@@ -20,7 +20,7 @@ import pdb
 import gc
 
 import sys 
-sys.path.append(path_til_liam2)
+sys.path.append(path_liam)
 import src.importer as imp
 
 # Dictionnaire des variables, cohérent avec les imports du modèle. 
@@ -245,7 +245,7 @@ class DataTil(object):
         vous = (ind['quifoy'] == 0) & (ind['foy'] > 9)
         foy = ind.loc[vous,['foy', 'id', 'men']]
         foy = foy.rename(columns={'foy': 'id', 'id': 'vous'})
-         # Etape propre à l'enquete Patrimoine
+        # Etape propre à l'enquete Patrimoine
         impots = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
         var_to_declar = impots + ['pond', 'id', 'pref']
         foy_men = men.loc[men['pref'].isin(foy['vous']), var_to_declar].fillna(0)
