@@ -3,8 +3,8 @@
 
 
 import:
-    - person_init_retro.yml
-    - register.yml
+    - _person//person_init_retro.yml
+    - _person//register.yml
     - _house//menage.yml
     - _fiscal//declar.yml
     - _work//work_pensIPP.yml  # work0, work_pensIPP

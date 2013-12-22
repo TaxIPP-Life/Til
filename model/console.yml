@@ -3,8 +3,8 @@
 
 
 import:
-    - person_init.yml
-    - register.yml
+    - _person//person.yml
+    - _person//register.yml
     - _house//menage.yml
     - _fiscal//declar.yml
     - _work//work_pensIPP.yml  # work0, work_pensIPP
@@ -71,7 +71,7 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: Patrimoine_300.h5
+        file: Cohort_1000.h5
         
     output:
         file: simul2.h5
