@@ -3,8 +3,9 @@
 
 
 import:
-    - person_init.yml
-    - register.yml
+    - _person//person_Destinie.yml
+    - _person//register.yml
+    - _futur//futur.yml
     - _house//menage.yml
     - _fiscal//declar.yml
     - _work//work_pensIPP.yml  # work0, work_pensIPP
@@ -31,7 +32,6 @@ simulation:
         - companies: [init_size]
         - declar: [cases,empty_declar]
         - register: [init_reg]
-        - person: [qui_solve]
         - legislation: [2009]
         - register: [sum_indiv]
         - person: [stat_period_ini, stat_period]
@@ -62,7 +62,6 @@ simulation:
         ]
         - menage: [init_value,consumption,saving]
         - companies: [rien]
-        - person: [qui_solve] 
         # - legislation: [2009] #[annee leg]
         # - register: [alive]
         # - register: [sum_indiv]
