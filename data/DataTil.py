@@ -30,8 +30,10 @@ variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy',
                          'pere','mere','conj','civilstate','findet',
                          'workstate','xpr','anc'],['sali','rsti','choi']),
                  'men': (['pref'],[]),
-                 'foy': (['vous','men'],[])
-                 }
+                 'foy': (['vous','men'],[]),
+                 'futur': (['sexe','pere','mere','conj','civilstate','findet',
+                         'workstate'],['sali']),
+                 'past': ([],[])}
 
 class DataTil(object):
     """
@@ -178,15 +180,16 @@ class DataTil(object):
         survey_year = self.survey_year 
         print ("Creation des declarations fiscales")
         # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
-        if 'nb_enf' not in list(ind.columns):
+        if 'nb_enf' not in ind.columns:
             ## nb d'enfant
             ind.index = ind['id']
             nb_enf_mere = ind.groupby('mere').size()
             nb_enf_pere = ind.groupby('pere').size()
             # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
-            enf_tot = pd.concat([nb_enf_mere_dom[1:], nb_enf_pere_dom[1:]], axis=0).astype(int)
+            enf_tot = pd.concat([nb_enf_mere, nb_enf_pere], axis=0)
+            enf_tot = enf_tot.drop([-1])
             ind['nb_enf'] = 0
-            ind['nb_enf'][enf_tot.index.values] = enf_tot.values
+            ind['nb_enf'][enf_tot.index] = enf_tot.values
         
         def _name_var(ind, men):
             if 'lienpref' in ind.columns :
@@ -451,28 +454,31 @@ class DataTil(object):
 #             data.index = data['id']
 
         tables = {}
-        for name in ['ind', 'foy', 'men']:
+        for name in ['ind', 'foy', 'men', 'futur', 'past']:
             table = eval(name)
-            vars_int, vars_float = variables_til[name]
-            for var in vars_int + ['id','period']:
-                if var not in table.columns:
-                    table[var] = -1
-                table = table.fillna(-1)
-                table[var] = table[var].astype(np.int32)
-            for var in vars_float + ['pond']:
-                if var not in table.columns:
-                    if var=='pond':
-                        table[var] = 1
-                    else:
+            if table is not None:
+                vars_int, vars_float = variables_til[name]
+                for var in vars_int + ['id','period']:
+                    if var not in table.columns:
                         table[var] = -1
-                table = table.fillna(-1)
-                table[var] = table[var].astype(np.float64)
-            table = table.sort_index(by=['period','id'])
-            tables[name] = table
+                    table = table.fillna(-1)
+                    table[var] = table[var].astype(np.int32)
+                for var in vars_float + ['pond']:
+                    if var not in table.columns:
+                        if var=='pond':
+                            table[var] = 1
+                        else:
+                            table[var] = -1
+                    table = table.fillna(-1)
+                    table[var] = table[var].astype(np.float64)
+                table = table.sort_index(by=['period','id'])
+                tables[name] = table
+                
         self.ind = tables['ind']
         self.men = tables['men']    
         self.foy = tables['foy']   
-          
+        self.futur = tables['futur']  
+        self.past = tables['past']
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
 #            links = ['id','pere','mere','conj','foy','men','pref','vous']
@@ -553,29 +559,30 @@ class DataTil(object):
         
         # 2 - ensuite on s'occupe des entities
         ent_node = h5file.createGroup("/", "entities", "Entities")
-        for ent_name in ['ind','foy','men']:
+        for ent_name in ['ind','foy','men','futur','past']:
             entity = eval('self.'+ ent_name)
-            entity = entity.fillna(-1)
-            ent_table = entity.to_records(index=False)
-            dtypes = ent_table.dtype
-            final_name = of_name_to_til[ent_name]
-            table = h5file.createTable(ent_node, final_name, dtypes, title="%s table" % final_name)         
-            table.append(ent_table)
-            table.flush()    
-
-            if ent_name == 'men':
-                entity = entity.loc[entity['id']>-1]
-                ent_table2 = entity[['pond','id','period']].to_records(index=False)
-                dtypes2 = ent_table2.dtype 
-                table = h5file.createTable(ent_node, 'companies', dtypes2, title="'companies table")
-                table.append(ent_table2)
-                table.flush()  
-            if ent_name == 'ind':
-                ent_table2 = entity[['agem','sexe','pere','mere','id','findet','period']].to_records(index=False)
-                dtypes2 = ent_table2.dtype 
-                table = h5file.createTable(ent_node, 'register', dtypes2, title="register table")
-                table.append(ent_table2)
-                table.flush()  
+            if entity is not None:
+                entity = entity.fillna(-1)
+                ent_table = entity.to_records(index=False)
+                dtypes = ent_table.dtype
+                final_name = of_name_to_til[ent_name]
+                table = h5file.createTable(ent_node, final_name, dtypes, title="%s table" % final_name)         
+                table.append(ent_table)
+                table.flush()    
+    
+                if ent_name == 'men':
+                    entity = entity.loc[entity['id']>-1]
+                    ent_table2 = entity[['pond','id','period']].to_records(index=False)
+                    dtypes2 = ent_table2.dtype 
+                    table = h5file.createTable(ent_node, 'companies', dtypes2, title="'companies table")
+                    table.append(ent_table2)
+                    table.flush()  
+                if ent_name == 'ind':
+                    ent_table2 = entity[['agem','sexe','pere','mere','id','findet','period']].to_records(index=False)
+                    dtypes2 = ent_table2.dtype 
+                    table = h5file.createTable(ent_node, 'register', dtypes2, title="register table")
+                    table.append(ent_table2)
+                    table.flush()  
         h5file.close()
             
     def store(self):

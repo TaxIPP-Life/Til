@@ -12,7 +12,8 @@ from numpy.lib.stride_tricks import as_strided
 import pandas as pd
 import pdb
 
-of_name_to_til=  {'ind':'person','foy':'declar','men':'menage', 'fam':'famille'}
+of_name_to_til=  {'ind':'person','foy':'declar','men':'menage', 'fam':'famille',
+                   'futur':'futur', 'past':'past'}
 
 
 
