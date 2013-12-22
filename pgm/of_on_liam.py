@@ -161,6 +161,9 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
                 if nom == 'menage':
                     ent = 'fam'
                     vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
+                    if len(entity.array) == len(simu.output_table.table3[ent]) + 1 :
+                    #TODO: ad-hoc to remove a line id=0. Look where it comes from.
+                        entity.array =  entity.array[1:]
                     for var in vars:
                         value = simu.output_table.table3[ent][var]
                         #TODO: test the type
