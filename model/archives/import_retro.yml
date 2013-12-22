@@ -2,10 +2,8 @@
 # the following command in a console: 
 # INSTALL PATH\liam2 import demo_import.yml
 
-output: C:\Myliam2\Model\retro.h5
-#globals:
-#    periodic:
-#        path: data\person_sta.csv
+output: retro.h5
+
 
 globals:
     periodic:
@@ -13,17 +11,58 @@ globals:
 
 entities:
     person:
-        files: 
-            - C:\Myliam2\Patrimoine\retro2009.csv
-            - C:\Myliam2\Patrimoine\person2009.csv
-            
-    menage: 
-        path: C:\Myliam2\Patrimoine\menage2009.csv
+        path: to_import.Rdata
+        files: retro
+        # fields :
+            # - age:    int
+            # - agem:    int
+            # - sexe:   int
+            # - pere:   int
+            # - mere:   int
+            # - conj:   int
+ 
 
-    declar: 
-        path: C:\Myliam2\Patrimoine\declar2009.csv 
+        files: person
+            # - men:    int 
+            # - quimen:    int 
+            # - foy:    int 
+            # - quifoy:    int 
             
+ 
+            # - findet: int
+            # - workstate: int
+            # - sali:  float  
+            # - rsti: float
+            # - choi: float
+            # - xpr: int
+            # - anc: int        
+        files: retro
+            
+                #- data\person.csv 
+           
+        # if you want to invert the value of some boolean fields (True -> False
+        # and False -> True), add them to the "invert" list below.
+#        invert: [list, of, boolean, fields, to, invert]
+
+    register:
+        path: to_import.Rdata
+        files: person
+        fields :
+            - age:    int
+            - sexe:   int
+            - pere:   int
+            - mere:   int
+            - findet: int
+        
+    menage: 
+        path: to_import.Rdata
+        
+    declar: 
+        path: to_import.Rdata  
+
     companies: 
-        path: C:\Myliam2\Patrimoine\menage2009.csv           
+        path: to_import.Rdata  
+        files: menage
         fields: 
-            - pond: float
+            - pond: float            
+            
