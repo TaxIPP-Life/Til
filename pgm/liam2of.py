@@ -76,11 +76,12 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
         table[ent] = table[ent].rename(columns={'id': id})
         # travail sur les qui
         nb_qui = ind.loc[ind[qui]>1, ['noi',id,qui]].groupby(id, sort=True).size()
-        new_qui = concatenated_ranges(nb_qui) + 2 
-        table['ind'] = table['ind'].sort(id) #note the sort
-        col_qui = table['ind'][qui]
-        col_qui[col_qui>1] = new_qui
-        table['ind'][qui] = col_qui 
+        if len(nb_qui)>0:
+            new_qui = concatenated_ranges(nb_qui) + 2 
+            table['ind'] = table['ind'].sort(id) #note the sort
+            col_qui = table['ind'][qui]
+            col_qui[col_qui>1] = new_qui
+            table['ind'][qui] = col_qui 
         
         
         # informations on qui == 0
