@@ -23,4 +23,7 @@ entities:
         processes:
             load:
                 - rien: 1
+                - show('le nombre d'évenement dans futur', count(id>0))
+                - show(count(id>0), count(fut2pers.id>0))
+                # - assertTrue( count(id>0) == count(fut2pers.id>0))
                 

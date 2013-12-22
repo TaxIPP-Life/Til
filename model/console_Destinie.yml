@@ -32,7 +32,7 @@ simulation:
         - companies: [init_size]
         - declar: [cases,empty_declar]
         - register: [init_reg]
-        - legislation: [2009]
+        # - legislation: [2009]
         - register: [sum_indiv]
         - person: [stat_period_ini, stat_period]
         
@@ -41,6 +41,7 @@ simulation:
     # vous et pref, plus tard, quand le code le permettra, on changera ce vous directement dans l'étape au niveau person
         # - person: [age, dump_info, show_demography , marriage]
         - register: [rien]
+        - futur: [load]
         - person: [ageing]
         - person: [death]
         - person: [independance]

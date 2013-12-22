@@ -67,6 +67,7 @@ entities:
             invl_mere:  {type: one2many, target: person, field: mere} 
             invl_pere:  {type: one2many, target: person, field: pere}
             pers2reg:   {type: many2one, target: register, field: id}
+            pers2fut:   {type: many2one, target: futur, field: id}
             
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
@@ -142,6 +143,9 @@ entities:
                 - age: trunc(agem/12)
                 # - wprm_init: permet de faire des tests
                 - wprm_init: lag(agem,2)
+                
+            death_futur:
+                - death: (pers2fut.civilstate == -2) 
                 
             stat_period_ini:
                 - csv('period', 'population', 'naissance', 'sali', 'rsti', 'choi','age moyen',fname='stat.csv')
