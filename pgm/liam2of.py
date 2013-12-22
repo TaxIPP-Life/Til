@@ -17,7 +17,7 @@ from rpy2.robjects import r
 import os
 
 from CONFIG import path_of, path_liam, path_til
-from utils import of_name_to_til
+from utils import of_name_to_til, concatenated_ranges
 
 
 def table_for_of(simulation, period=None, check_validity=False, save_tables=False):
@@ -66,22 +66,31 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
 #        print "les qui pour ", ent," sont réglés"
 #    time_qui = time.clock() - time_qui
 #    print "le temps passé à s'occuper des qui a été",time_qui
-    
+    ind = table['ind']
     for ent in ['men','foy']:
         entity = _get_entity(of_name_to_til[ent])
 
         table[ent] = pd.DataFrame(entity.array.columns)
-        ident = 'id'+ent
-        table[ent] = table[ent].rename(columns={'id': ident})
+        id = 'id' + ent
+        qui = 'qui' + ent
+        table[ent] = table[ent].rename(columns={'id': id})
+        # travail sur les qui
+        nb_qui = ind.loc[ind[qui]>1, ['noi',id,qui]].groupby(id, sort=True).size()
+        new_qui = concatenated_ranges(nb_qui) + 2 
+        table['ind'] = table['ind'].sort(id) #note the sort
+        col_qui = table['ind'][qui]
+        col_qui[col_qui>1] = new_qui
+        table['ind'][qui] = col_qui 
+        
         
         # informations on qui == 0
-        qui = table['ind'].loc[table['ind']['qui' + ent]==0,['noi','idfoy','idmen','idfam','period']] 
-        table[ent] = merge(table[ent], qui, how='left', left_on=[ident,'period'], right_on=[ident,'period'])
+        qui0 = table['ind'].loc[table['ind']['qui' + ent]==0,['noi','idfoy','idmen','idfam','period']] 
+        table[ent] = merge(table[ent], qui0, how='left', left_on=[id,'period'], right_on=[id,'period'])
     
         if ent=='men':
             # nbinde est limité à 6 personnes et donc valeur = 5 en python
             table[ent]['nbinde'] = (table[ent]['nb_persons']-1) * (table[ent]['nb_persons']-1 <=5) +5*(table[ent]['nb_persons']-1 >5)
-            table['fam'] = qui 
+            table['fam'] = qui0
     
     # remove non-ordinary household
     cond = (table['ind']['idmen'] >= 10) & (table['ind']['idfoy'] >= 10)
@@ -107,14 +116,22 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
                 except:
                     print ent
                     pb = ind.groupby([id,qui]).size() > 1
-                    ind.groupby([id,qui]).size()[pdb]
+                    print(ind.groupby([id,qui]).size()[pb])
                     pdb.set_trace()
+                    print(ind[ind[id]==43][['noi',id,qui]])
                 
                 qui0 = ind[ind[qui]==0]
                 try:  
                     assert qui0[id].isin(tab[id]).all()
+                except:
+                    cond = tab[id].isin(qui0[id])
+                    print(tab[~cond])
+                    pdb.set_trace()
+                try:
                     assert tab[id].isin(qui0[id]).all()
                 except:
+                    cond = tab[id].isin(qui0[id])
+                    print(tab[~cond])
                     pdb.set_trace()
 
     for year in years:    
