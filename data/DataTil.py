@@ -8,7 +8,7 @@ Alexis Eidelman
 
 from matching import Matching
 from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype, new_idmen
-from pgm.CONFIG import path_data_patr, path_til, path_liam
+from pgm.CONFIG import path_data_patr, path_til, path_til_liam2
 import pandas as pd
 import numpy as np
 import tables
@@ -20,7 +20,7 @@ import pdb
 import gc
 
 import sys 
-sys.path.append(path_liam)
+sys.path.append(path_til_liam2)
 import src.importer as imp
 
 # Dictionnaire des variables, cohérent avec les imports du modèle. 
@@ -477,8 +477,6 @@ class DataTil(object):
         self.ind = tables['ind']
         self.men = tables['men']    
         self.foy = tables['foy']   
-        self.futur = tables['futur']  
-        self.past = tables['past']
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
 #            links = ['id','pere','mere','conj','foy','men','pref','vous']

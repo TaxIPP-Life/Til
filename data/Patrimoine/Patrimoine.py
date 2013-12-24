@@ -239,6 +239,11 @@ class Patrimoine(DataTil):
         "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
         "cyder":"anc", "duree":"xpr"}
         ind = ind.rename(columns=dict_rename)
+        
+        def _recode_sexe():
+            if ind['sexe'].max() == 2:
+                ind['sexe'] = ind['sexe'].replace(2,1)
+                ind['sexe'] = ind['sexe'].replace(1,0)
 
         def _work_on_workstate(ind):
             '''
@@ -320,7 +325,7 @@ class Patrimoine(DataTil):
             ind.loc[manque_conj.index,'couple'] = 2
    
             return ind
-        
+        #_recode_sexe()
         ind['workstate'] = _work_on_workstate(ind)
         ind['workstate'].dtype = np.int8
         ind = _work_on_couple(ind)
@@ -442,10 +447,11 @@ class Patrimoine(DataTil):
             ind[par][enf.loc[(enf['sexe_par'] == sexe),'id_enf'].values] = enf.loc[(enf['sexe_par'] == sexe),'id_par'].values
             
         print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['age']<18))
-       
+        par_mineur = ind.loc[(ind['age']<18), 'id']
+        assert sum((ind['pere'].isin(par_mineur)) | (ind['mere'].isin(par_mineur))) == 0
         #-> Cas exotiques : bcp de lien indéterminé + frères/soeur : ind[(ind['pere'] == -1) & (ind['mere']==-1) & (ind['age']<18)].to_csv('mineurs.csv')
         self.ind = ind
-          
+        
     def creation_par_look_enf(self):
         '''
         Travail sur les liens parents-enfants. 
@@ -522,17 +528,20 @@ class Patrimoine(DataTil):
         par_look_enf = par_look_enf.drop(['hodcho','hodemp','hodniv','hodpri','men_x','men_y','to_delete_x','to_delete_y','jepprof', 'men'],axis=1)
         par_look_enf = par_look_enf.rename(columns={'id': 'men'})
         
-        self.par_look_enf = par_look_enf
-        
-        
+        par_mineur = ind.loc[(ind['age']<18), 'id']
+        assert sum(par_look_enf['pere'].isin(par_mineur) | par_look_enf['mere'].isin(par_mineur)) == 0
+        par_look_enf.to_csv('pb0.csv')
+        self.par_look_enf = par_look_enf.fillna(-1)
+
     def matching_par_enf(self):
         '''
         Matching des parents et des enfants hors du domicile
         '''
         ind = self.ind
         ind = ind.fillna(-1)
-        par_look_enf = self.par_look_enf
+        ind.index = ind['id']
 
+        par_look_enf = self.par_look_enf
         ## info sur les parents hors du domicile des enfants
         cond_enf_look_par = (ind['per1e']==2) | (ind['mer1e']==2)
         enf_look_par = ind[cond_enf_look_par]
@@ -544,19 +553,28 @@ class Patrimoine(DataTil):
         enf_look_par['classif'] = enf_look_par['classif2']
 
         ## nb d'enfant
+        # -- Au sein du domicile
         nb_enf_mere_dom = ind.groupby('mere').size()
-        nb_enf_pere_dom = ind.groupby('pere').size()
+        nb_enf_pere_dom= ind.groupby('pere').size()
+        # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
+        enf_tot_dom = pd.concat([nb_enf_mere_dom, nb_enf_pere_dom], axis=0)
+        enf_tot_dom = enf_tot_dom.drop([-1])
+        
+        # -- Hors domicile
         nb_enf_mere_hdom = par_look_enf.groupby('mere').size()
-        
         nb_enf_pere_hdom = par_look_enf.groupby('pere').size()
-        enf_tot = pd.concat([nb_enf_mere_dom, nb_enf_pere_dom, nb_enf_mere_hdom, nb_enf_pere_hdom], axis=1)
-        enf_tot = enf_tot.sum(axis=1)
+        enf_tot_hdom = pd.concat([nb_enf_mere_hdom, nb_enf_pere_hdom], axis=0)
+        enf_tot_hdom = enf_tot_hdom.drop([-1])
+        enf_tot_hdom.to_csv('tt.csv')
         
-        #comme enf_tot a le bon index on fait
-        enf_look_par['nb_enf'] = enf_tot
-        enf_look_par['nb_enf'] = enf_look_par['nb_enf'].fillna(0)
-        enf_look_par = enf_look_par.fillna(-1)
-        enf_look_par.to_csv('ttt.csv')
+        enf_tot = pd.concat([enf_tot_dom, enf_tot_hdom], axis = 1).fillna(0)
+        enf_tot = enf_tot[0] + enf_tot[1]
+        list = enf_tot.ix[enf_tot.index.isin(enf_look_par.index)]
+        #enf_tot = enf_tot.ix[(enf_look_par.index.isin(list))].astype(int)
+        
+        enf_look_par.index = enf_look_par['id']
+        enf_look_par['nb_enf'] = 0
+        enf_look_par.ix[list.index.values, 'nb_enf'] = list
 
         #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
         var_match = ['jepnais','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
@@ -574,7 +592,7 @@ class Patrimoine(DataTil):
         match1 = Matching(enf_look_par.ix[cond1_enf, var_match], 
                           par_look_enf.ix[cond1_par, var_match], score)
         parent_found = match1.evaluate(orderby=None, method='cells')
-        ind.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
+        ind.ix[parent_found.index.values, ['pere','mere']] = par_look_enf.ix[parent_found.values, ['pere','mere']]
          
         #etape 2 : seulement mère vivante
         enf_look_par.ix[parent_found.index, ['pere','mere']] = par_look_enf.ix[parent_found, ['pere','mere']]
@@ -582,20 +600,30 @@ class Patrimoine(DataTil):
         cond2_par = ~par_look_enf.index.isin(parent_found) & (par_look_enf['mere'] != -1)
         match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
                           par_look_enf.ix[cond2_par, var_match], score)
-        parent_found2 = match2.evaluate(orderby=None, method='cells')
-        ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
+        #parent_found2 = match2.evaluate(orderby=None, method='cells')
+        #ind.ix[parent_found2.index, ['mere']] = par_look_enf.ix[parent_found2, ['mere']]        
         
         #étape 3 : seulement père vivant
-        enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
+        #enf_look_par.ix[parent_found2.index, ['pere','mere']] = par_look_enf.ix[parent_found2, ['pere','mere']]
         cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
         cond3_par = ~par_look_enf.index.isin(parent_found) & (par_look_enf['pere'] != -1)
         
         # TODO: changer le score pour avoir un lien entre pere et mere plus évident
         match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
                           par_look_enf.ix[cond3_par, var_match], score)
-        parent_found3 = match3.evaluate(orderby=None, method='cells')
-        ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
-        
+        #parent_found3 = match3.evaluate(orderby=None, method='cells')
+        #ind.ix[parent_found3.index, ['pere']] = par_look_enf.ix[parent_found3, ['pere']]               
+
+        par_mineur = ind.loc[(ind['age']<18), 'id']
+        try :
+            assert sum(ind['pere'].isin(par_mineur) | ind['mere'].isin(par_mineur)) == 0
+        except:
+            mineur_par = ind['pere'].isin(par_mineur) | ind['mere'].isin(par_mineur)
+            print sum(mineur_par)
+            enf_mineur_par = ind.loc[mineur_par]
+            enf_mineur_par.to_csv('pbpar.csv')
+            ind.loc[((ind['id'].isin(enf_mineur_par['pere'])) | (ind['id'].isin(enf_mineur_par['mere']))) & ind['id'].isin(par_mineur) ].to_csv('pbbaby.csv')
+            pdb.set_trace()
         self.ind = minimal_dtype(ind)
         self.drop_variable({'ind':['enf','per1e','mer1e','grandpar'] + ['jepnais','jemnais','jemprof']})
     
@@ -610,7 +638,6 @@ class Patrimoine(DataTil):
         '''
 
         ind = self.ind  
-        
         couple_hdom = ind['couple']==2
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
         ind.loc[(couple_hdom) & (ind['civilstate']==5),  'civilstate'] = 2
@@ -626,7 +653,8 @@ class Patrimoine(DataTil):
         # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
         enf_tot = nb_enf_mere[nb_enf_mere['id'] != -1].append( nb_enf_pere[nb_enf_pere['id'] != -1]).astype(int)
         ind['nb_enf'] = 0
-        ind.loc[enf_tot['id'].values, 'nb_enf'] = enf_tot['nb_enf']
+        ind.ix[enf_tot['id'].values, 'nb_enf'] = enf_tot['nb_enf']
+
         
         men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
         women_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
@@ -683,6 +711,7 @@ if __name__ == '__main__':
     
     # des petites verifs finales 
     ind = data.ind
+    ind.to_csv('finalcheck.csv')
     ind['en_couple'] = ind['conj']>-1 
     test = ind['conj']>-1   
     print ind.groupby(['civilstate','en_couple']).size()
