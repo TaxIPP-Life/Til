@@ -363,26 +363,24 @@ class DataTil(object):
             par_exp = None 
         
         ind = merge(men[['id','nb_rep']], ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
-        ind_exp= replicate(ind)
+        ind_exp = replicate(ind)
         # liens entre individus
-        ind_exp[['pere','id_rep']]
+
         tableA = ind_exp[['pere','mere','conj','id_rep']].reset_index()
         tableB = ind_exp[['id_rep','id_ini']]
         tableB['id_index'] = tableB.index
         ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
         print("debut travail sur identifiant")
-        pere = tableA.merge(tableB,left_on=['pere','id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
-        pere = pere.drop(['pere','mere','conj','id_ini','id_rep'], axis=1).rename(columns={'id_index':'pere'})
-        ind_exp = ind_exp.merge(pere, left_index=True,right_index=True, how='left', copy=False) 
         
-        mere = tableA.merge(tableB,left_on=['mere','id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
-        mere = mere.drop(['pere','mere','conj','id_ini','id_rep'], axis=1).rename(columns={'id_index':'mere'})
-        ind_exp = ind_exp.merge(mere, left_index=True,right_index=True, how='left', copy=False) 
-        
-        conj = tableA.merge(tableB,left_on=['conj','id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
-        conj = conj.drop(['pere','mere','conj','id_ini','id_rep'], axis=1).rename(columns={'id_index':'conj'})
-        ind_exp = ind_exp.merge(conj, left_index=True,right_index=True, how='left', copy=False) 
-        print("fin travail sur identifiant")
+        def _align_link(link_name, table_exp):
+            tab = tableA[[link_name,'id_rep','index']]
+            tab = tab.merge(tableB,left_on=[link_name,'id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
+            tab = tab.drop([link_name], axis=1).rename(columns={'id_index': link_name})
+            return table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False) 
+
+        ind_exp = _align_link('pere', ind_exp)
+        ind_exp = _align_link('mere', ind_exp)
+        ind_exp = _align_link('conj', ind_exp)
         
         # lien indiv - entités supérieures
         ind_exp['men'] = new_link_with_men(ind, men_exp, 'men')
