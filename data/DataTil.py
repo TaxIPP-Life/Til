@@ -8,7 +8,7 @@ Alexis Eidelman
 
 from matching import Matching
 from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype, new_idmen
-from pgm.CONFIG import path_data_patr, path_til, path_til_liam2
+from pgm.CONFIG import path_data_patr, path_til, path_liam
 import pandas as pd
 import numpy as np
 import tables
@@ -20,7 +20,7 @@ import pdb
 import gc
 
 import sys 
-sys.path.append(path_til_liam2)
+sys.path.append(path_liam)
 import src.importer as imp
 
 # Dictionnaire des variables, cohérent avec les imports du modèle. 
@@ -48,7 +48,7 @@ class DataTil(object):
         self.foy = None
         self.futur = None
         self.past = None
-        self.par_look_enf = None
+        self.child_out_of_house = None
         self.seuil= None
         
         #TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
@@ -279,7 +279,7 @@ class DataTil(object):
         
         print("fin de la creation des declarations")
         
-    def creation_par_look_enf(self):
+    def creation_child_out_of_house(self):
         '''
         Travail sur les liens parents-enfants. 
         On regarde d'abord les variables utiles pour le matching
@@ -307,7 +307,7 @@ class DataTil(object):
         #TODO: add future and past
         '''
         Note: ne doit pas tourner après lien parent_enfant
-        Cependant par_look_enfant doit déjà avoir été créé car on s'en sert pour la réplication
+        Cependant child_out_of_house doit déjà avoir été créé car on s'en sert pour la réplication
         '''
         self.seuil = seuil
         if seuil != 0 and nb_ligne is not None:
@@ -321,11 +321,11 @@ class DataTil(object):
         men = self.men      
         ind = self.ind        
         foy = self.foy
-        par = self.par_look_enf
+        par = self.child_out_of_house
         
         if par is None: 
             print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables " \
-            "par_look_enf plutôt que de les faire à partir des tables déjà étendue")
+            "child_out_of_house plutôt que de les faire à partir des tables déjà étendue")
             
         if foy is None: 
             print("C'est en principe plus efficace d'étendre après la création de la table foyer" \
@@ -349,7 +349,7 @@ class DataTil(object):
         men_exp['id'] = new_idmen(men_exp, 'id')
         
         if foy is not None:
-            foy = merge(men[['id','nb_rep']],foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
+            foy = merge(men[['id','nb_rep']], foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
             foy_exp= replicate(foy)
             foy_exp['men'] = new_link_with_men(foy, men_exp, 'men') 
         else: 
@@ -401,7 +401,7 @@ class DataTil(object):
             ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']]  
         
         assert sum(ind['id']==-1) == 0
-        self.par_look_enf = par
+        self.child_out_of_house = par
         self.men = men_exp
         self.ind = ind_exp
         self.foy = foy_exp
