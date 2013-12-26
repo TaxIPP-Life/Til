@@ -314,10 +314,6 @@ class DataTil(object):
             raise Exception("On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur" \
             "qui va determiner le nombre de ligne")
         #TODO: on peut prendre le min des deux quand même...
-        all = self.men.columns.tolist()
-        enfants_hdom = [x for x in all if x[:3]=='hod']
-        self.drop_variable({'men':enfants_hdom})
-        
         men = self.men      
         ind = self.ind        
         foy = self.foy
@@ -344,7 +340,10 @@ class DataTil(object):
 
         # 3- Nouvelles pondérations (qui seront celles associées aux individus après réplication)
         men['pond'] = men['pond'].div(men['nb_rep'])
+        # TO DO: réflechir pondération des personnes en collectivité pour l'instant = 1 
+        men.loc[men['id']<10, 'pond'] = 1
         men_exp = replicate(men)
+        
         # pour conserver les 10 premiers ménages = collectivités 
         men_exp['id'] = new_idmen(men_exp, 'id')
         
@@ -356,35 +355,38 @@ class DataTil(object):
             foy_exp = None
   
         if par is not None:
-            par = merge(men[['id','nb_rep']], par, left_on='id', right_on='men', how='inner', suffixes=('_men',''))
+            par = merge(men[['id','nb_rep']], par, left_on = 'id', right_on='men', how='inner', suffixes=('_men',''))
             par_exp = replicate(par)
             par_exp['men'] = new_link_with_men(par, men_exp, 'men') 
         else: 
             par_exp = None 
         
-        ind = merge(men[['id','nb_rep']], ind, left_on='id', right_on='men', how='right', suffixes = ('_men',''))
+        ind = merge(men[['id','nb_rep']].rename(columns = {'id': 'men'}), ind, on='men', how='right', suffixes = ('_men',''))
         ind_exp = replicate(ind)
+        # lien indiv - entités supérieures
+        ind_exp['men'] = new_link_with_men(ind, men_exp, 'men')
+        ind_exp['men'] += 10 
+
         # liens entre individus
 
         tableA = ind_exp[['pere','mere','conj','id_rep']].reset_index()
         tableB = ind_exp[['id_rep','id_ini']]
         tableB['id_index'] = tableB.index
-        ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
+        #ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
+        ind_exp[['pere', 'mere','conj']] = -1
         print("debut travail sur identifiant")
-        
         def _align_link(link_name, table_exp):
-            tab = tableA[[link_name,'id_rep','index']]
+            tab = tableA.loc[:, [link_name,'id_rep','index']]
             tab = tab.merge(tableB,left_on=[link_name,'id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
             tab = tab.drop([link_name], axis=1).rename(columns={'id_index': link_name})
-            return table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False) 
+            table_exp[link_name][tab.index.values] = tab[link_name].values
+            #table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False) 
+            return table_exp
 
         ind_exp = _align_link('pere', ind_exp)
         ind_exp = _align_link('mere', ind_exp)
         ind_exp = _align_link('conj', ind_exp)
-        
-        # lien indiv - entités supérieures
-        ind_exp['men'] = new_link_with_men(ind, men_exp, 'men')
-        ind_exp['men'] += 10 
+
         if foy is not None:
             #le plus simple est de repartir des quifoy, cela change du men
             # la vérité c'est que ça ne marche pas avec ind_exp['foy'] = new_link_with_men(ind, foy_exp, 'foy')
@@ -397,13 +399,13 @@ class DataTil(object):
             ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]       
             pac_mere = pac & ~notnull(ind['foy'])
             ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']]  
-        
+
         assert sum(ind['id']==-1) == 0
         self.child_out_of_house = par
         self.men = men_exp
         self.ind = ind_exp
         self.foy = foy_exp
-        self.drop_variable({'men':['id_rep','nb_rep'], 'ind':['id_rep','id_men',]})    
+        self.drop_variable({'men':['id_rep','nb_rep'], 'ind':['id_rep']})    
         
     def format_to_liam(self):
         '''

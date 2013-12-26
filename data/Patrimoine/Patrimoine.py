@@ -42,7 +42,7 @@ class Patrimoine(DataTil):
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.done = []
         self.methods_order = ['load','correction_initial','drop_variable','format_initial','conjoint','enfants',
-                      'creation_child_out_of_house','expand_data','matching_par_enf','matching_couple_hdom',
+                      'expand_data','creation_child_out_of_house','matching_par_enf','matching_couple_hdom',
                       'creation_foy','mise_au_format','var_sup','store_to_liam']
     
 # drop_variable() doit tourner avant table_initial() car on aurait un problème avec les variables qui sont renommées.
@@ -240,10 +240,11 @@ class Patrimoine(DataTil):
         "cyder":"anc", "duree":"xpr"}
         ind = ind.rename(columns=dict_rename)
         
-        def _recode_sexe():
-            if ind['sexe'].max() == 2:
-                ind['sexe'] = ind['sexe'].replace(1,0)
-                ind['sexe'] = ind['sexe'].replace(2,1)
+        def _recode_sexe(sexe):
+            if sexe.max() == 2:
+                sexe = sexe.replace(1,0)
+                sexe = sexe.replace(2,1)
+            return sexe
 
         def _work_on_workstate(ind):
             '''
@@ -325,7 +326,7 @@ class Patrimoine(DataTil):
             ind.loc[manque_conj.index,'couple'] = 2
    
             return ind
-        _recode_sexe()
+        ind['sexe'] = _recode_sexe(ind['sexe'])
         ind['workstate'] = _work_on_workstate(ind)
         ind['workstate'].dtype = np.int8
         ind = _work_on_couple(ind)
@@ -472,7 +473,7 @@ class Patrimoine(DataTil):
             var_hod_rename=['hodln','sexe','anais','couple','dip6','nb_enf',
                             'hodemp','hodcho','hodpri','hodniv']
             var_hod_k = [var + k for var in var_hod]
-            temp = men.loc[notnull(men[var_hod_k[0]]), ['id']+var_hod_k]
+            temp = men.loc[notnull(men[var_hod_k[0]]), ['id']+ var_hod_k]
             dict_rename = {'id': 'men'}
             for num_varname in range(len(var_hod_rename)):
                 dict_rename[var_hod_k[num_varname]] = var_hod_rename[num_varname]
@@ -534,7 +535,7 @@ class Patrimoine(DataTil):
         # len(temp) = len(child_out_of_house) - 4 #deux personnes du même sexe qu'on a écrasé a priori.
         child_out_of_house = temp
         # TODO: il y a des ménages avec hodln = 1 et qui pourtant n'ont pas deux membres (à moins qu'ils aient le même sexe. 
-        child_out_of_house = child_out_of_house.drop(['hodcho','hodemp','hodniv','hodpri','to_delete_x','to_delete_y','jepprof'],axis=1)
+        #child_out_of_house = child_out_of_house.drop(['hodcho','hodemp','hodniv','hodpri','to_delete_x','to_delete_y','jepprof'],axis=1)
         
         assert child_out_of_house['jemnais'].max() < 2010 - 18
         assert child_out_of_house['jepnais'].max() < 2010 - 18
@@ -547,7 +548,6 @@ class Patrimoine(DataTil):
         ind = self.ind
         ind = ind.fillna(-1)
         ind.index = ind['id']
-
         child_out_of_house = self.child_out_of_house
         ## info sur les parents hors du domicile des enfants
         cond_enf_look_par = (ind['per1e']==2) | (ind['mer1e']==2)
@@ -575,12 +575,12 @@ class Patrimoine(DataTil):
         
         enf_tot = pd.concat([enf_tot_dom, enf_tot_hdom], axis = 1).fillna(0)
         enf_tot = enf_tot[0] + enf_tot[1]
-        list = enf_tot.ix[enf_tot.index.isin(enf_look_par.index)]
-        #enf_tot = enf_tot.ix[(enf_look_par.index.isin(list))].astype(int)
-        
+        # Sélection des parents ayant des enfants (enf_tot) à qui on veut associer des parents (enf_look_par)
+        enf_tot = enf_tot.ix[enf_tot.index.isin(enf_look_par.index)].astype(int)
+  
         enf_look_par.index = enf_look_par['id']
         enf_look_par['nb_enf'] = 0
-        enf_look_par.ix[list.index.values, 'nb_enf'] = list
+        enf_look_par['nb_enf'][enf_tot.index.values] = enf_tot
 
         #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
         var_match = ['jepnais','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
@@ -606,32 +606,24 @@ class Patrimoine(DataTil):
         cond2_par = ~child_out_of_house.index.isin(parent_found) & (child_out_of_house['mere'] != -1)
         match2 = Matching(enf_look_par.ix[cond2_enf, var_match], 
                           child_out_of_house.ix[cond2_par, var_match], score)
-        #parent_found2 = match2.evaluate(orderby=None, method='cells')
-        #ind.ix[parent_found2.index, ['mere']] = child_out_of_house.ix[parent_found2, ['mere']]        
+        parent_found2 = match2.evaluate(orderby=None, method='cells')
+        ind.ix[parent_found2.index, ['mere']] = child_out_of_house.ix[parent_found2, ['mere']]        
         
         #étape 3 : seulement père vivant
-        #enf_look_par.ix[parent_found2.index, ['pere','mere']] = child_out_of_house.ix[parent_found2, ['pere','mere']]
+        enf_look_par.ix[parent_found2.index, ['pere','mere']] = child_out_of_house.ix[parent_found2, ['pere','mere']]
         cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
         cond3_par = ~child_out_of_house.index.isin(parent_found) & (child_out_of_house['pere'] != -1)
         
         # TODO: changer le score pour avoir un lien entre pere et mere plus évident
         match3 = Matching(enf_look_par.ix[cond3_enf, var_match], 
                           child_out_of_house.ix[cond3_par, var_match], score)
-        #parent_found3 = match3.evaluate(orderby=None, method='cells')
-        #ind.ix[parent_found3.index, ['pere']] = child_out_of_house.ix[parent_found3, ['pere']]               
+        parent_found3 = match3.evaluate(orderby=None, method='cells')
+        ind.ix[parent_found3.index, ['pere']] = child_out_of_house.ix[parent_found3, ['pere']]               
 
-        par_mineur = ind.loc[(ind['age']<18), 'id']
-        try :
-            assert sum(ind['pere'].isin(par_mineur.values) | ind['mere'].isin(par_mineur)) == 0
-        except:
-            mineur_par = ind['pere'].isin(par_mineur) | ind['mere'].isin(par_mineur)
-            print sum(mineur_par)
-            enf_mineur_par = ind.loc[mineur_par]
-            enf_mineur_par.to_csv('pbpar.csv')
-            ind.loc[((ind['id'].isin(enf_mineur_par['pere'])) | (ind['id'].isin(enf_mineur_par['mere']))) & ind['id'].isin(par_mineur) ].to_csv('pbbaby.csv')
-            pdb.set_trace()
         self.ind = minimal_dtype(ind)
-        self.drop_variable({'ind':['enf','per1e','mer1e','grandpar'] + ['jepnais','jemnais','jemprof']})
+        all = self.men.columns.tolist()
+        enfants_hdom = [x for x in all if x[:3]=='hod']
+        self.drop_variable({'ind':['enf','per1e','mer1e','grandpar'] + ['jepnais','jemnais','jemprof'], 'men':enfants_hdom})
     
     def match_couple_hdom(self):
         '''
@@ -659,15 +651,13 @@ class Patrimoine(DataTil):
         # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
         enf_tot = nb_enf_mere[nb_enf_mere['id'] != -1].append( nb_enf_pere[nb_enf_pere['id'] != -1]).astype(int)
         ind['nb_enf'] = 0
-        ind.ix[enf_tot['id'].values, 'nb_enf'] = enf_tot['nb_enf']
-
+        ind['nb_enf'][enf_tot['id'].values] = enf_tot['nb_enf']
         
         men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
         women_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
         men_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
         women_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==1)   
         
-       
         var_match = ['age','findet','nb_enf'] #,'classif','dip6'
         score = "- 0.4893 * other.age + 0.0131 * other.age **2 - 0.0001 * other.age **3 "\
                  " + 0.0467 * (other.age - age)  - 0.0189 * (other.age - age) **2 + 0.0003 * (other.age - age) **3 " \
@@ -703,8 +693,8 @@ if __name__ == '__main__':
     data.conjoint()
     data.check_conjoint(couple_hdom = True)
     data.enfants()
+    data.expand_data(seuil=400)
     data.creation_child_out_of_house()
-    data.expand_data(seuil=1000)
     data.matching_par_enf() 
     data.match_couple_hdom()
     data.check_conjoint(couple_hdom = False)

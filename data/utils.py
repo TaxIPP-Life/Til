@@ -74,7 +74,6 @@ def replicate(table):
         table_exp['id_rep'] =  index_repeated(nb_rep_table)
         table_exp['id_ini'] = table_exp['id']
         table_exp['id'] = table_exp.index
-        
         return table_exp
 
 def new_idmen(table, var):
@@ -84,7 +83,7 @@ def new_idmen(table, var):
     # les ménages nonordinaires gardent leur identifiant initial même si leur pondération augmente
     new.loc[men_nonord, var] = new.loc[men_nonord, var + '_ini']
     # on conserve la règle du début des identifiants à 10 pour les ménages ordinaires
-    new.loc[men_ord, var] = range(10, 10 + sum(men_ord))
+    new.loc[men_ord, var] = range(10, 10 + len(men_ord))
     new = new[var]
     return new
 
