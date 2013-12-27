@@ -216,7 +216,7 @@ class DataTil(object):
         # Identifiants associés
         ind['quifoy'] = 0
         ind.loc[conj,'quifoy'] = 1
-         # Comprend les enfants n'ayant pas de parents spécifiés (à terme rattachés au foyer 0= DASS)
+        # Comprend les enfants n'ayant pas de parents spécifiés (à terme rattachés au foyer 0= DASS)
         ind.loc[pac,'quifoy'] = 2
         ind.loc[(ind['men'] == 0) & (ind['quifoy'] == 0), 'quifoy'] = 2
         print "Nombres de foyers fiscaux", sum(ind['quifoy'] == 0), ", dont couple", sum(ind['quifoy'] == 1)
@@ -368,15 +368,13 @@ class DataTil(object):
         ind_exp['men'] += 10 
 
         # liens entre individus
-
-        tableA = ind_exp[['pere','mere','conj','id_rep']].reset_index()
         tableB = ind_exp[['id_rep','id_ini']]
         tableB['id_index'] = tableB.index
         #ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
         ind_exp[['pere', 'mere','conj']] = -1
         print("debut travail sur identifiant")
         def _align_link(link_name, table_exp):
-            tab = tableA.loc[:, [link_name,'id_rep','index']]
+            tab = table_exp[[link_name, 'id_rep']].reset_index()
             tab = tab.merge(tableB,left_on=[link_name,'id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
             tab = tab.drop([link_name], axis=1).rename(columns={'id_index': link_name})
             table_exp[link_name][tab.index.values] = tab[link_name].values
@@ -386,6 +384,9 @@ class DataTil(object):
         ind_exp = _align_link('pere', ind_exp)
         ind_exp = _align_link('mere', ind_exp)
         ind_exp = _align_link('conj', ind_exp)
+        
+        #TODO: add _align_link with 'pere' and 'mere' in child_out_ouf_house in order to swap expand 
+        # and creation_child_out_ouf_house, in the running order
 
         if foy is not None:
             #le plus simple est de repartir des quifoy, cela change du men
