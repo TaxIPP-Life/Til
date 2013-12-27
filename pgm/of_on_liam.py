@@ -94,16 +94,45 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
              
         ## Save results in the simulation or in a hdf5 table.
         deb_write =  time.clock()        
-        if output == '.h5':
+        if output != '.h5':
+            entities = simulation.entities
+            for entity in entities:
+                nom = entity.name
+                if nom in of_name_to_til:
+                    ent = of_name_to_til [nom]
+                    vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
+                    for var in vars:
+                        value = simu.output_table.table3[ent][var]
+                        #TODO: test the type
+                        if len(entity.array[var]) != len(value):
+                            print ent, nom, var, len(entity.array[var]),  len(value)
+                            pdb.set_trace()
+                        entity.array[var] = np.array(value)
+                #TODO: change that ad hoc solution
+                if nom == 'menage':
+                    ent = 'fam'
+                    vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
+                    if len(entity.array) == len(simu.output_table.table3[ent]) + 1 :
+                    #TODO: ad-hoc to remove a line id=0. Look where it comes from.
+                        entity.array =  entity.array[1:]
+                    for var in vars:
+                        value = simu.output_table.table3[ent][var]
+                        #TODO: test the type
+                        if len(entity.array[var]) != len(value):
+                            print ent, nom, var, len(entity.array[var]),  len(value)
+                            pdb.set_trace()
+                        entity.array[var] = np.array(value)
+                         
+        else:
             # chemin de sortie
             output = path_til + "/output/"
             output_h5 = tables.openFile(output+"simul_leg.h5",mode='w')
             output_entities = output_h5.createGroup("/", "entities",
                                                               "Entities")              
             for ent in ('ind','men','foy',"fam"):
-    #            #TODO: gerer un bon keep pour ne pas avoir trop de variable  
+#            #TODO: gerer un bon keep pour ne pas avoir trop de variable  
                 tab = simu.output_table.table3[ent]
-    ###  export par table     
+                ###  export par table     
                 if ent=='ind':
                     ident = ["idmen","quimen","idfam","quifam","idfoy","quifoy","noi"]
                 else:
@@ -141,36 +170,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
                     output_table = output_h5.createTable('/entities',nom,output_type)
                 output_table.append(tab.to_records(index=False))
                 output_table.flush() 
-            output_h5.close()
-            
-        else: 
-            entities = simulation.entities
-            for entity in entities:
-                nom = entity.name
-                if nom in of_name_to_til:
-                    ent = of_name_to_til [nom]
-                    vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
-                    for var in vars:
-                        value = simu.output_table.table3[ent][var]
-                        #TODO: test the type
-                        if len(entity.array[var]) != len(value):
-                            print ent, nom, var, len(entity.array[var]),  len(value)
-                            pdb.set_trace()
-                        entity.array[var] = np.array(value)
-                #TODO: change that ad hoc solution
-                if nom == 'menage':
-                    ent = 'fam'
-                    vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
-                    if len(entity.array) == len(simu.output_table.table3[ent]) + 1 :
-                    #TODO: ad-hoc to remove a line id=0. Look where it comes from.
-                        entity.array =  entity.array[1:]
-                    for var in vars:
-                        value = simu.output_table.table3[ent][var]
-                        #TODO: test the type
-                        if len(entity.array[var]) != len(value):
-                            print ent, nom, var, len(entity.array[var]),  len(value)
-                            pdb.set_trace()
-                        entity.array[var] = np.array(value)  
+            output_h5.close() 
                                                  
         tps_write = time.clock() - deb_write
         del simu
