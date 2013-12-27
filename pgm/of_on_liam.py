@@ -72,7 +72,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
           
         simu = SurveySimulation()
         simu.set_config(year = year, country = country)
-        #_load_parameters(annee_leg):
+        ## Load_parameters(annee_leg):
         date_str = str(annee_leg)+ '-01-01'
         date = dt.datetime.strptime(date_str ,"%Y-%m-%d").date()
         reader = XmlReader(simu.param_file, date)
@@ -81,10 +81,10 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
         simu.P_default.datesim = date
         simu.P = Tree2Object(rootNode, defaut=False)
         simu.P.datesim = date
-            
+        ## Translate table of liam for OF.
         table = liam2of.table_for_of(simulation, year, check_validity=True, save_tables=False)
         simu.set_config(survey_filename=table, num_table=3, print_missing=False)
-        
+        ## Run the legislation
         tps_charge = time.clock() - deb3
         print tps_charge, time.clock()
         deb_comp =  time.clock()
@@ -92,7 +92,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
         tps_comp = time.clock() - deb_comp
         print "total", time.clock() - deb3
              
-        # save results in the simulation or in a hdf5 table.
+        ## Save results in the simulation or in a hdf5 table.
         deb_write =  time.clock()        
         if output == '.h5':
             # chemin de sortie
