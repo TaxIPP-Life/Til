@@ -370,15 +370,14 @@ class DataTil(object):
         # liens entre individus
         tableB = ind_exp[['id_rep','id_ini']]
         tableB['id_index'] = tableB.index
-        #ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
-        ind_exp[['pere', 'mere','conj']] = -1
+#         ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
         print("debut travail sur identifiant")
         def _align_link(link_name, table_exp):
             tab = table_exp[[link_name, 'id_rep']].reset_index()
             tab = tab.merge(tableB,left_on=[link_name,'id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
             tab = tab.drop([link_name], axis=1).rename(columns={'id_index': link_name})
             table_exp[link_name][tab.index.values] = tab[link_name].values
-            #table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False) 
+#             table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False) 
             return table_exp
 
         ind_exp = _align_link('pere', ind_exp)
