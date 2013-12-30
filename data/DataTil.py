@@ -7,7 +7,7 @@ Alexis Eidelman
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
 from matching import Matching
-from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype, new_idmen
+from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype, new_idmen, count_dup
 from pgm.CONFIG import path_data_patr, path_til, path_liam
 import pandas as pd
 import numpy as np
@@ -33,7 +33,7 @@ variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy',
                  'foy': (['vous','men'],[]),
                  'futur':(['agem','sexe','men','quimen','foy','quifoy',
                          'pere','mere','conj','civilstate','findet',
-                         'workstate','xpr','anc'],['sali','rsti','choi']),
+                         'workstate','xpr','anc', 'deces'],['sali','rsti','choi']),
                  'past': ([],[])}
 
 class DataTil(object):
@@ -453,7 +453,7 @@ class DataTil(object):
 #             data = data.replace(-1, np.nan) #???! c'est quoi cette succesion ? 
 #             data = minimal_dtype(data)
 #             data.index = data['id']
-        futur = minimal_dtype(futur)
+
         tables = {}
         for name in ['ind', 'foy', 'men', 'futur', 'past']:
             table = eval(name)
@@ -492,6 +492,7 @@ class DataTil(object):
         men = self.men   
         ind = self.ind
         foy = self.foy
+        futur = self.futur
         
         if self.name == 'Destinie':
             men =  men[men['period']==self.survey_date]
@@ -518,7 +519,24 @@ class DataTil(object):
         assert ind_men['test_qui'].sum().max() == 1
         assert ind_men['test_qui'].sum().min() == 1
         assert ind['men'].isin(men['id']).all()
-        assert men['id'].isin(ind['men']).all()                       
+        assert men['id'].isin(ind['men']).all()  
+        
+        # Table futur bien construite
+        # -> On vérifie que persone ne nait pas dans le futur tout en étant présent dans les données intiales
+        id_ini = ind[['id']]
+        # 'naiss' != -1 <-> naissance
+        id_futur = futur.loc[(futur['naiss']!=-1) , ['id']]
+        id_ok = pd.concat([id_ini, id_futur], axis = 0)
+        assert count_dup(id_ok,'id') == 0
+        assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
+        if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
+            pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
+            print ('Nombre identifants problématiques dans la table futur: ', len(pb_id))
+            #pb_id.to_csv('pb_id_futur.csv')
+
+        print ("Nombre de personnes présentes dans la base " 
+                + str( len(id_ok)) + " ("+ str( len(id_ini)) 
+                + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")                   
         
     def _output_name(self):
         raise NotImplementedError()

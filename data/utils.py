@@ -189,7 +189,7 @@ def count_dup(data, var):
     df2 = pd.DataFrame(counts, columns = ['size'])
     var_rep = df2[df2.size>1]
     if len(var_rep) != 0 :
-        print ("Nombre de valeurs apparaissant plusieurs fois pour " +  var + " : " + str(len(var_rep)))
+        print ("Nombre de valeurs apparaissant plusieurs fois pour  : " + str(len(var_rep)))
     return len(var_rep)
 
 def drop_consecutive_row(data, var_dup): 

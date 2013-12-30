@@ -187,38 +187,34 @@ class Destinie(DataTil):
             futur = drop_consecutive_row(futur.sort(['id', 'period']), 
                                          ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
             print "Nombre de lignes sur le futur : " + str(len(futur)) + " (informations de " + str(futur['period'].min()) +" à " + str(futur['period'].max()) + ")"
-            
-            # On vérifie que persone ne nait pas dans le futur tout en étant présent dans les données intiales
-            id_ini = ind[['id']]
-            # 'naiss' != -1 <-> naissance
-            id_futur = futur.loc[(futur['naiss']!=-1) , ['id']]
-            id_ok = pd.concat([id_ini, id_futur], axis = 0)
-            assert count_dup(id_ok,'id') == 0
-            assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
-            if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
-                pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
-                print ('Nombre identifants problématiques : ', len(pb_id))
-                pb_id.to_csv('pb_id_futur.csv')
-                
-            print ("Nombre de personnes présentes dans la base " 
-                    + str( len(id_ok)) + " ("+ str( len(id_ini)) 
-                    + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")
-            assert len(deces) == len(id_ok)
+            futur['dead'] = 0
             
             # On rajoute une ligne par individu pour spécifier leur décès (seulement période != -1)
             dead = pd.DataFrame(index = deces.index.values, columns = futur.columns)
             dead['period'][deces.index.values] = deces.values
             dead['id'][deces.index.values] = deces.index.values
             dead = dead.fillna(-1)
+            dead['dead'] = 1
+
             futur = pd.concat([futur, dead], axis = 0, ignore_index = True)
-            futur = futur.sort(['period', 'id']).reset_index().drop('index', 1)
+            futur = futur.sort(['id', 'period','dead']).reset_index().drop('index', 1)
+            futur = futur.drop_duplicates(['id', 'period'])
+            dead = futur[['id', 'period']].drop_duplicates('id', take_last = True).index
+            futur['deces'] = -1
+            futur['deces'][dead] = 1
+            futur = futur.sort(['period', 'id']).reset_index().drop(['index', 'dead'], 1)
+            
+            # Types minimaux
+            futur = futur.replace(-1, np.nan)
+            futur = minimal_dtype(futur)
+            
             return futur
                        
         emp, deces = _Emp_clean(self.ind, self.emp)
         ind_total = _ind_total(self.BioFam, self.ind, emp)
         ind, past, futur = _ind_in_3(ind_total)
         futur = _work_on_futur(futur, ind, deces)
-
+        futur[futur['id'].isin(range(10))].to_csv('afut.csv')
         self.ind = ind
         self.past = past
         self.futur = futur
