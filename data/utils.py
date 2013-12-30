@@ -184,8 +184,14 @@ def minimal_dtype(table):
 
     return table
 
+def count_dup(data, var):
+    counts = data.groupby(var).size()
+    df2 = pd.DataFrame(counts, columns = ['size'])
+    var_rep = df2[df2.size>1]
+    if len(var_rep) != 0 :
+        print ("Nombre de valeurs apparaissant plusieurs fois pour " +  var + " : " + str(len(var_rep)))
+    return len(var_rep)
 
-    
 def drop_consecutive_row(data, var_dup): 
     '''
     Remove a row if it's the same than the previous one for all 

@@ -31,8 +31,9 @@ variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy',
                          'workstate','xpr','anc'],['sali','rsti','choi']),
                  'men': (['pref'],[]),
                  'foy': (['vous','men'],[]),
-                 'futur': (['sexe','pere','mere','conj','civilstate','findet',
-                         'workstate'],['sali']),
+                 'futur':(['agem','sexe','men','quimen','foy','quifoy',
+                         'pere','mere','conj','civilstate','findet',
+                         'workstate','xpr','anc'],['sali','rsti','choi']),
                  'past': ([],[])}
 
 class DataTil(object):
@@ -452,7 +453,7 @@ class DataTil(object):
 #             data = data.replace(-1, np.nan) #???! c'est quoi cette succesion ? 
 #             data = minimal_dtype(data)
 #             data.index = data['id']
-
+        futur = minimal_dtype(futur)
         tables = {}
         for name in ['ind', 'foy', 'men', 'futur', 'past']:
             table = eval(name)
@@ -476,7 +477,8 @@ class DataTil(object):
                 
         self.ind = tables['ind']
         self.men = tables['men']    
-        self.foy = tables['foy']   
+        self.foy = tables['foy']
+        self.futur = tables['futur']   
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
 #            links = ['id','pere','mere','conj','foy','men','pref','vous']
@@ -564,6 +566,7 @@ class DataTil(object):
                 ent_table = entity.to_records(index=False)
                 dtypes = ent_table.dtype
                 final_name = of_name_to_til[ent_name]
+                print final_name
                 table = h5file.createTable(ent_node, final_name, dtypes, title="%s table" % final_name)         
                 table.append(ent_table)
                 table.flush()    

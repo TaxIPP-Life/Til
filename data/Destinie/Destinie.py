@@ -11,7 +11,7 @@ Output :
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de Destinie -> Recup des infos dans Patrimoine
 
 from data.DataTil import DataTil
-from data.utils import minimal_dtype, drop_consecutive_row
+from data.utils import minimal_dtype, drop_consecutive_row, count_dup
 from pgm.CONFIG import path_data_destinie
 
 import pandas as pd
@@ -135,9 +135,11 @@ class Destinie(DataTil):
                 
         def _Emp_clean(ind, emp):
             ''' Mise en forme des données sur carrières:
-            Actualisation de la variable période  '''
+            Actualisation de la variable période 
+            Création de la table décès qui donne l'année de décès des individus (index = identifiant)  '''
             emp = merge(emp, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
             emp['period'] = emp['period'] + emp['naiss']
+            deces = emp.groupby('id')['period'].max()
             emp =  emp[['id','period','workstate','sali']]
             
             # Recodage des modalités
@@ -147,7 +149,7 @@ class Destinie(DataTil):
             # preret    <-  9
             emp['workstate'] = emp['workstate'].replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
                                                         [0, 3, 4, 5, 6, 7, 2, 1, 9, 8])
-            return emp
+            return emp, deces
          
         def _ind_total(BioFam, ind, emp):
             ''' fusion : BioFam + ind + emp -> ind '''
@@ -163,13 +165,12 @@ class Destinie(DataTil):
             '''division de la table total entre les informations passées, à la date de l'enquête et futures
             ind -> past, ind, futur '''
             survey_year = self.survey_year
-            list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
-            
             ind_survey = ind.loc[ind['period']==survey_year]
             ind_survey = ind_survey.fillna(-1)
             print "Nombre dindividus présents dans la base en " + str(survey_year) + " : " + str(len(ind_survey))
             
             past = ind[ind['period'] < survey_year]
+            list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
             past = past.drop(list_enf,axis = 1)
             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
             print "Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + str(past['period'].min()) +" à " + str(past['period'].max()) + ")"
@@ -177,15 +178,47 @@ class Destinie(DataTil):
             # La table futur doit contenir une ligne par changement de statut
             # Indications de l'année du changement + variables inchangées -> -1
             futur = ind[ind['period'] > survey_year]
+            return ind_survey, past, futur
+        
+        def _work_on_futur(futur, ind, deces):
+            list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
             futur = futur.drop(list_enf,axis = 1)
             futur = futur.fillna(-1)
-            futur = drop_consecutive_row(futur.sort(['id', 'period']), ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
+            futur = drop_consecutive_row(futur.sort(['id', 'period']), 
+                                         ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
             print "Nombre de lignes sur le futur : " + str(len(futur)) + " (informations de " + str(futur['period'].min()) +" à " + str(futur['period'].max()) + ")"
-            return ind_survey, past, futur
-  
-        emp = _Emp_clean(self.ind, self.emp)
+            
+            # On vérifie que persone ne nait pas dans le futur tout en étant présent dans les données intiales
+            id_ini = ind[['id']]
+            # 'naiss' != -1 <-> naissance
+            id_futur = futur.loc[(futur['naiss']!=-1) , ['id']]
+            id_ok = pd.concat([id_ini, id_futur], axis = 0)
+            assert count_dup(id_ok,'id') == 0
+            assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
+            if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
+                pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
+                print ('Nombre identifants problématiques : ', len(pb_id))
+                pb_id.to_csv('pb_id_futur.csv')
+                
+            print ("Nombre de personnes présentes dans la base " 
+                    + str( len(id_ok)) + " ("+ str( len(id_ini)) 
+                    + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")
+            assert len(deces) == len(id_ok)
+            
+            # On rajoute une ligne par individu pour spécifier leur décès (seulement période != -1)
+            dead = pd.DataFrame(index = deces.index.values, columns = futur.columns)
+            dead['period'][deces.index.values] = deces.values
+            dead['id'][deces.index.values] = deces.index.values
+            dead = dead.fillna(-1)
+            futur = pd.concat([futur, dead], axis = 0, ignore_index = True)
+            futur = futur.sort(['period', 'id']).reset_index().drop('index', 1)
+            return futur
+                       
+        emp, deces = _Emp_clean(self.ind, self.emp)
         ind_total = _ind_total(self.BioFam, self.ind, emp)
         ind, past, futur = _ind_in_3(ind_total)
+        futur = _work_on_futur(futur, ind, deces)
+
         self.ind = ind
         self.past = past
         self.futur = futur
@@ -401,7 +434,7 @@ if __name__ == '__main__':
     # (a) - Importation des données et corrections préliminaires
     data.load()
     data.format_initial()
-    
+
     # (b) - Travail sur la base initiale (données à l'année de l'enquête)
     ini_t = time.time()
     data.enf_to_par()
