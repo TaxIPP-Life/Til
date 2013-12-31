@@ -473,12 +473,8 @@ class DataTil(object):
                     table = table.fillna(-1)
                     table[var] = table[var].astype(np.float64)
                 table = table.sort_index(by=['period','id'])
-                tables[name] = table
+                setattr(self, name, table)
                 
-        self.ind = tables['ind']
-        self.men = tables['men']    
-        self.foy = tables['foy']
-        self.futur = tables['futur']   
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
 #            links = ['id','pere','mere','conj','foy','men','pref','vous']
@@ -522,21 +518,21 @@ class DataTil(object):
         assert men['id'].isin(ind['men']).all()  
         
         # Table futur bien construite
-        # -> On vérifie que persone ne nait pas dans le futur tout en étant présent dans les données intiales
-        id_ini = ind[['id']]
-        # 'naiss' != -1 <-> naissance
-        id_futur = futur.loc[(futur['naiss']!=-1) , ['id']]
-        id_ok = pd.concat([id_ini, id_futur], axis = 0)
-        assert count_dup(id_ok,'id') == 0
-        assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
-        if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
-            pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
-            print ('Nombre identifants problématiques dans la table futur: ', len(pb_id))
-            #pb_id.to_csv('pb_id_futur.csv')
-
-        print ("Nombre de personnes présentes dans la base " 
-                + str( len(id_ok)) + " ("+ str( len(id_ini)) 
-                + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")                   
+        if futur is not None:
+            # -> On vérifie que persone ne nait pas dans le futur tout en étant présent dans les données intiales
+            id_ini = ind[['id']]
+            # 'naiss' != -1 <-> naissance
+            id_futur = futur.loc[(futur['naiss']!=-1) , ['id']]
+            id_ok = pd.concat([id_ini, id_futur], axis = 0)
+            assert count_dup(id_ok,'id') == 0
+            assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
+            if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
+                pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
+                print ('Nombre identifants problématiques dans la table futur: ', len(pb_id))
+                
+            print ("Nombre de personnes présentes dans la base " 
+                    + str( len(id_ok)) + " ("+ str( len(id_ini)) 
+                    + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")                   
         
     def _output_name(self):
         raise NotImplementedError()
