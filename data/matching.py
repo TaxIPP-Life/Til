@@ -9,7 +9,6 @@ import pandas as pd
 import time
 import numpy as np
 import sys
-import random
 
 
 def _varname_or_index(word, list_col):

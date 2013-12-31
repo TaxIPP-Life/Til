@@ -5,20 +5,14 @@ Created on 25 Apr 2013
 @author: alexis_e
 '''
 
-from pandas import HDFStore, merge # DataFrame
+from pandas import HDFStore, merge, DataFrame
 import numpy as np
 import pdb
 import time
-
-import pandas as pd 
-import datetime as dt   
-import pandas.rpy.common as com     
-from rpy2.robjects import r
 import os
 
-from CONFIG import path_of, path_liam, path_til
+from CONFIG import path_til
 from utils import of_name_to_til, concatenated_ranges
-
 
 def table_for_of(simulation, period=None, check_validity=False, save_tables=False):
     temps = time.clock()    
@@ -35,7 +29,7 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
         return simulation.entities[position]
         
     ind = _get_entity('person')
-    table['ind'] = pd.DataFrame(ind.array.columns)
+    table['ind'] = DataFrame(ind.array.columns)
     table['ind'] = table['ind'].rename(columns={'men': 'idmen', 'foy': 'idfoy', 'id': 'noi', 'statmarit': 'civilstate'})
     
     # création de variable
@@ -70,7 +64,7 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
     for ent in ['men','foy']:
         entity = _get_entity(of_name_to_til[ent])
 
-        table[ent] = pd.DataFrame(entity.array.columns)
+        table[ent] = DataFrame(entity.array.columns)
         id = 'id' + ent
         qui = 'qui' + ent
         table[ent] = table[ent].rename(columns={'id': id})

@@ -6,30 +6,13 @@ Created on 13 december 2013
 
 Ce programme :
 - 
-
 Input : 
 Output :
-
 '''
 
-# 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
- 
- 
 from data.DataTil import DataTil, variables_til
-from data.matching import Matching
-from data.utils import recode, index_repeated, replicate, new_link_with_men, minimal_dtype
-from pgm.CONFIG import path_data_patr, path_til
-
-import pandas as pd
 import numpy as np
-
-from pandas import merge, notnull, DataFrame, Series
-from numpy.lib.stride_tricks import as_strided
-
-import pdb
-import gc
-
-
+from pandas import DataFrame
 
 class Cohort(DataTil):
     """
@@ -51,7 +34,7 @@ class Cohort(DataTil):
             vars_int, vars_float = variables_til[name_table]
             vars = ['id','period','pond'] + vars_int + vars_float
             
-            table = pd.DataFrame(index=range(size), columns=vars)
+            table = DataFrame(index=range(size), columns=vars)
             for var in vars_int:
                 table[var] = 0
             for var in vars_float:

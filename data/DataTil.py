@@ -6,18 +6,13 @@ Alexis Eidelman
 
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
-from matching import Matching
-from utils import recode, index_repeated, replicate, new_link_with_men, of_name_to_til, minimal_dtype, new_idmen, count_dup
-from pgm.CONFIG import path_data_patr, path_til, path_liam
-import pandas as pd
+from utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
+from pgm.CONFIG import path_til, path_liam
 import numpy as np
 import tables
 
-from pandas import merge, notnull, DataFrame, Series
-from numpy.lib.stride_tricks import as_strided
-
+from pandas import merge, notnull, DataFrame, concat
 import pdb
-import gc
 
 import sys 
 sys.path.append(path_liam)
@@ -187,7 +182,7 @@ class DataTil(object):
             nb_enf_mere = ind.groupby('mere').size()
             nb_enf_pere = ind.groupby('pere').size()
             # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
-            enf_tot = pd.concat([nb_enf_mere, nb_enf_pere], axis=0)
+            enf_tot = concat([nb_enf_mere, nb_enf_pere], axis=0)
             enf_tot = enf_tot.drop([-1])
             ind['nb_enf'] = 0
             ind['nb_enf'][enf_tot.index] = enf_tot.values
@@ -265,11 +260,11 @@ class DataTil(object):
         # Ajouts des 'communautés' dans la table foyer
         for k in [0]:
             if sum(ind['foy'] == k) !=0 :
-                to_add = pd.DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
+                to_add = DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
                 to_add['id'] = k
                 to_add['vous'] = -1
                 to_add['period'] = survey_year
-                foy = pd.concat([foy, to_add], axis = 0, ignore_index=True)
+                foy = concat([foy, to_add], axis = 0, ignore_index=True)
             
         foy.index = foy['id']
         assert sum(ind['foy']==-1) == 0
@@ -523,7 +518,7 @@ class DataTil(object):
             id_ini = ind[['id']]
             # 'naiss' != -1 <-> naissance
             id_futur = futur.loc[(futur['naiss']!=-1) , ['id']]
-            id_ok = pd.concat([id_ini, id_futur], axis = 0)
+            id_ok = concat([id_ini, id_futur], axis = 0)
             assert count_dup(id_ok,'id') == 0
             assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
             if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:

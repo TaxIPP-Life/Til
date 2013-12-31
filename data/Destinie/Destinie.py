@@ -11,15 +11,13 @@ Output :
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de Destinie -> Recup des infos dans Patrimoine
 
 from data.DataTil import DataTil
-from data.utils import minimal_dtype, drop_consecutive_row, count_dup
+from data.utils import minimal_dtype, drop_consecutive_row
 from pgm.CONFIG import path_data_destinie
 
-import pandas as pd
 import numpy as np
-from pandas import merge, notnull, DataFrame, Series, HDFStore
+from pandas import merge, DataFrame, concat, read_table
 
 import pdb
-import gc
 import time
 
 class Destinie(DataTil):  
@@ -50,7 +48,7 @@ class Destinie(DataTil):
             start_time = time.time()
             # TODO: revoir le colnames de BioEmp : le retirer ?
             colnames = list(range(longueur_carriere)) 
-            BioEmp = pd.read_table(path_data_destinie + 'BioEmp.txt', sep=';',
+            BioEmp = read_table(path_data_destinie + 'BioEmp.txt', sep=';',
                                    header=None, names=colnames)
             taille = len(BioEmp)/3
             BioEmp['id'] = BioEmp.index/3
@@ -84,14 +82,14 @@ class Destinie(DataTil):
             emp = np.zeros((len(sal), 4))
             emp[:,0:3] = statut
             emp[:,3] = sal
-            emp = pd.DataFrame(emp, columns=['id','period','workstate','sali'])
+            emp = DataFrame(emp, columns=['id','period','workstate','sali'])
             # Mise au format minimal
             emp = emp.fillna(np.nan).replace(-1, np.nan)
             emp = minimal_dtype(emp)
             return ind, emp
         
         def _lecture_BioFam():
-            BioFam = pd.read_table(path_data_destinie + 'BioFam.txt', sep=';',
+            BioFam = read_table(path_data_destinie + 'BioFam.txt', sep=';',
                                    header=None, names=['id','pere','mere','civilstate','conj',
                                                        'enf1','enf2','enf3','enf4','enf5','enf6'])   
             # Index limites pour changement de date
@@ -190,13 +188,13 @@ class Destinie(DataTil):
             futur['dead'] = 0
             
             # On rajoute une ligne par individu pour spécifier leur décès (seulement période != -1)
-            dead = pd.DataFrame(index = deces.index.values, columns = futur.columns)
+            dead = DataFrame(index = deces.index.values, columns = futur.columns)
             dead['period'][deces.index.values] = deces.values
             dead['id'][deces.index.values] = deces.index.values
             dead = dead.fillna(-1)
             dead['dead'] = 1
 
-            futur = pd.concat([futur, dead], axis = 0, ignore_index = True)
+            futur = concat([futur, dead], axis = 0, ignore_index = True)
             futur = futur.sort(['id', 'period','dead']).reset_index().drop('index', 1)
             futur = futur.drop_duplicates(['id', 'period'])
             dead = futur[['id', 'period']].drop_duplicates('id', take_last = True).index
@@ -374,10 +372,10 @@ class Destinie(DataTil):
         men = men.rename(columns= {'id': 'pref', 'men': 'id'})
         
         # Rajout des foyers fictifs
-        to_add = pd.DataFrame([np.zeros(len(men.columns))], columns = men.columns)
+        to_add = DataFrame([np.zeros(len(men.columns))], columns = men.columns)
         to_add['pref'] = -1
         to_add['id'] = 0
-        men = pd.concat([men,to_add], axis = 0, join='outer', ignore_index=True)
+        men = concat([men,to_add], axis = 0, join='outer', ignore_index=True)
 
         for var in ['loyer', 'tu', 'zeat', 'surface', 'resage', 'restype', 'reshlm', 'zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']:
             men[var] = 0
@@ -414,7 +412,7 @@ class Destinie(DataTil):
                     
         # On ajoute ces données aux informations de 2009
         # TODO: être sur que c'est bien. 
-        ind = pd.concat([ind, futur], axis=0, join='outer', ignore_index=True)
+        ind = concat([ind, futur], axis=0, join='outer', ignore_index=True)
         ind = ind.fillna(-1)
         men = men.fillna(-1)
         foy = foy.fillna(-1)

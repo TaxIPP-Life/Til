@@ -1,8 +1,6 @@
 import pdb
 
-import pandas as pd 
-from pandas import HDFStore, merge # DataFrame
-import datetime as dt   
+from pandas import HDFStore 
 import pandas.rpy.common as com     
 from rpy2.robjects import r
 

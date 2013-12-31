@@ -13,21 +13,14 @@ Output :
 '''
 
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
- 
- 
 from data.DataTil import DataTil
 from data.matching import Matching
-from data.utils import recode, index_repeated, replicate, new_link_with_men, minimal_dtype
-from pgm.CONFIG import path_data_patr, path_til
+from data.utils import recode, minimal_dtype
+from pgm.CONFIG import path_data_patr
 
-import pandas as pd
 import numpy as np
-
-from pandas import merge, notnull, DataFrame, Series
-from numpy.lib.stride_tricks import as_strided
-
+from pandas import merge, DataFrame, Series, concat, read_csv
 import pdb
-import gc
 
 # Patrimoine est définie comme une classe fille de DataTil
 class Patrimoine(DataTil):   
@@ -62,8 +55,8 @@ class Patrimoine(DataTil):
             
     def load(self):
         print "début de l'importation des données"
-        ind = pd.read_csv(path_data_patr + 'individu.csv')
-        men = pd.read_csv(path_data_patr + 'menage.csv')
+        ind = read_csv(path_data_patr + 'individu.csv')
+        men = read_csv(path_data_patr + 'menage.csv')
               
         #check parce qu'on a un probleme dans l'import au niveau de identmen(pas au format numérique)
         men['identmen'] = men['identmen'].apply(int)
@@ -101,7 +94,7 @@ class Patrimoine(DataTil):
             var = ["cyact","cydeb","cycaus","cytpto"]
             #Note : la solution ne semble pas être parfaite au sens qu'elle ne résout pas tout
             # cond : gens pour qui on a un probleme de date
-            cond1 = notnull(ind['cyact2']) & ~notnull(ind['cyact1'])  & \
+            cond1 = ind['cyact2'].notnull() & ind['cyact1'].isnull() & \
                 ((ind['cydeb1']==ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1']==(ind['cydeb2']-1)))
             cond1[8297] = True
             
@@ -114,13 +107,13 @@ class Patrimoine(DataTil):
                 
             
             # si le probleme n'est pas resolu, le souci était sur cycact seulement, on met une valeur
-            cond1 = notnull(ind['cyact2']) & ~notnull(ind['cyact1'])  & \
+            cond1 = ind['cyact2'].notnull() & ind['cyact1'].isnull() & \
                 ((ind['cydeb1']==ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1']==(ind['cydeb2']-1)))
             ind['modif'][cond1] = "cyact1 manq"
             ind.ix[ cond1 & (ind['cyact2'] != 4),'cyact1'] = 4
             ind.ix[ cond1 & (ind['cyact2'] == 4),'cyact1'] = 2  
             
-            cond2 = ~notnull(ind['cydeb1']) & ( notnull(ind['cyact1']) | notnull(ind['cyact2']))
+            cond2 = ind['cydeb1'].isnull() & ( ind['cyact1'].notnull() | ind['cyact2'].notnull())
             ind['modif'][cond1] = "jeact ou anfinetu manq"
             ind.ix[ cond2,'cydeb1'] =  ind.ix[ cond2,['jeactif','anfinetu']].max(axis=1)
             # quand l'ordre des dates n'est pas le bon on fait l'hypothèse que c'est la première date entre
@@ -362,9 +355,9 @@ class Patrimoine(DataTil):
         conj2 = conj2[conj2['id_x'] != conj2['id_y']]
         assert len(conj2) == len(conj)
         conj = conj2
-        test = pd.groupby(conj, ['men','lienpref']).size()
+        test = conj.groupby(['men','lienpref']).size()
         assert (max(test)==2) and (min(test)==2)
-        couple = pd.groupby(conj, 'id_x')
+        couple = conj.groupby('id_x')
         for id, potential in couple:
             if len(potential) == 1:
                 conj.loc[ conj['id_x']==id, 'id_y'] = potential['id_y']
@@ -464,7 +457,7 @@ class Patrimoine(DataTil):
         men = self.men      
         ind = self.ind
         #création brute de enfants hors du domicile
-        child_out_of_house = pd.DataFrame()
+        child_out_of_house = DataFrame()
         for k in range(1,13):
             k = str(k)
             # hodln : lien de parenté
@@ -473,7 +466,7 @@ class Patrimoine(DataTil):
             var_hod_rename=['hodln','sexe','anais','couple','dip6','nb_enf',
                             'hodemp','hodcho','hodpri','hodniv']
             var_hod_k = [var + k for var in var_hod]
-            temp = men.loc[notnull(men[var_hod_k[0]]), ['id']+ var_hod_k]
+            temp = men.loc[men[var_hod_k[0]].notnull(), ['id']+ var_hod_k]
             dict_rename = {'id': 'men'}
             for num_varname in range(len(var_hod_rename)):
                 dict_rename[var_hod_k[num_varname]] = var_hod_rename[num_varname]
@@ -564,16 +557,16 @@ class Patrimoine(DataTil):
         nb_enf_mere_dom = ind.groupby('mere').size()
         nb_enf_pere_dom= ind.groupby('pere').size()
         # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
-        enf_tot_dom = pd.concat([nb_enf_mere_dom, nb_enf_pere_dom], axis=0)
+        enf_tot_dom = concat([nb_enf_mere_dom, nb_enf_pere_dom], axis=0)
         enf_tot_dom = enf_tot_dom.drop([-1])
         
         # -- Hors domicile
         nb_enf_mere_hdom = child_out_of_house.groupby('mere').size()
         nb_enf_pere_hdom = child_out_of_house.groupby('pere').size()
-        enf_tot_hdom = pd.concat([nb_enf_mere_hdom, nb_enf_pere_hdom], axis=0)
+        enf_tot_hdom = concat([nb_enf_mere_hdom, nb_enf_pere_hdom], axis=0)
         enf_tot_hdom = enf_tot_hdom.drop([-1])
         
-        enf_tot = pd.concat([enf_tot_dom, enf_tot_hdom], axis = 1).fillna(0)
+        enf_tot = concat([enf_tot_dom, enf_tot_hdom], axis = 1).fillna(0)
         enf_tot = enf_tot[0] + enf_tot[1]
         # Sélection des parents ayant des enfants (enf_tot) à qui on veut associer des parents (enf_look_par)
         enf_tot = enf_tot.ix[enf_tot.index.isin(enf_look_par.index)].astype(int)
@@ -644,9 +637,9 @@ class Patrimoine(DataTil):
                 
         ## nb d'enfant
         ind.index = ind['id']
-        nb_enf_mere = pd.DataFrame(ind.groupby('mere').size(), columns = ['nb_enf'])
+        nb_enf_mere = DataFrame(ind.groupby('mere').size(), columns = ['nb_enf'])
         nb_enf_mere['id'] = nb_enf_mere.index.values
-        nb_enf_pere = pd.DataFrame(ind.groupby('pere').size(), columns = ['nb_enf'])
+        nb_enf_pere = DataFrame(ind.groupby('pere').size(), columns = ['nb_enf'])
         nb_enf_pere['id'] = nb_enf_pere.index
         # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
         enf_tot = nb_enf_mere[nb_enf_mere['id'] != -1].append( nb_enf_pere[nb_enf_pere['id'] != -1]).astype(int)
@@ -672,8 +665,8 @@ class Patrimoine(DataTil):
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.loc[match_found.values,'conj'] =  match_found.index
         ind.loc[match_found.index,'conj'] =  match_found.values
-        ind.loc[men_libre & ~notnull(ind['conj']),['civilstate','couple']] =  [1,3]
-        ind.loc[women_libre & ~notnull(ind['conj']),['civilstate','couple']] =  [1,3]  
+        ind.loc[men_libre & ind['conj'].isnull(),['civilstate','couple']] =  [1,3]
+        ind.loc[women_libre & ind['conj'].isnull(),['civilstate','couple']] =  [1,3]  
     
         self.ind = ind   
         self.drop_variable({'ind':['couple']})        

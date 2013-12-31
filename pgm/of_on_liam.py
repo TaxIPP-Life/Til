@@ -6,11 +6,13 @@ Created on 25 Apr 2013
 @author: alexis_e
 '''
 
-from pandas import HDFStore, merge # DataFrame
+from pandas import HDFStore, DataFrame, Series
 import numpy as np
 import pdb
 import tables
 import time
+import gc
+import datetime as dt   
 
 from utils import of_name_to_til
 import liam2of
@@ -18,19 +20,14 @@ from CONFIG import path_of, path_liam, path_til
 
 import sys
 sys.path.append(path_of)
-sys.path.remove('C:\\liam2')
-# sys.path.remove(path__liam)
+sys.path.remove(path_liam)
 try:
     sys.modules.pop('src')
     from src.lib.simulation import SurveySimulation
     from src.parametres.paramData import XmlReader, Tree2Object
 except:
     pdb.set_trace()
-import pandas as pd 
-import datetime as dt   
-import pandas.rpy.common as com     
-from rpy2.robjects import r
-import gc
+
 
 ### list des variable que l'on veut conserver
 ### Note plus vraiment utile
@@ -53,7 +50,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
 #    #### initialisation, si on veut une grosse table de sortie
 #    for ent in ('ind','men','foy','fam'):
 #        del output_h5[ent]
-#        output_h5[ent]=pd.DataFrame() 
+#        output_h5[ent]=DataFrame() 
   
     ## on recupere la liste des annees en entree
     if annee_base is not None:
@@ -142,7 +139,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
                     renam[nom+'_'+ent] = nom
                 tab = tab.rename(columns=renam)
                 tab = tab[listkeep[ent]+ident]
-                tab['period'] = pd.Series(np.ones(len(tab)) * int(year),dtype=int)
+                tab['period'] = Series(np.ones(len(tab)) * int(year),dtype=int)
                  
                 ident = 'id'+ent
                 if ent=='ind':

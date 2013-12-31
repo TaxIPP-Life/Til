@@ -8,12 +8,6 @@ from pandas import HDFStore, merge # DataFrame
 import numpy as np
 import pdb
 import time
-from src.lib.simulation import SurveySimulation 
-from src.parametres.paramData import XmlReader, Tree2Object
-import pandas as pd 
-import datetime as dt   
-import pandas.rpy.common as com     
-from rpy2.robjects import r
 
 from utils import til_name_to_of
 
