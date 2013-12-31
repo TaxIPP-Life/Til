@@ -700,7 +700,6 @@ if __name__ == '__main__':
     
     # des petites verifs finales 
     ind = data.ind
-    ind.to_csv('finalcheck.csv')
     ind['en_couple'] = ind['conj']>-1 
     test = ind['conj']>-1   
     print ind.groupby(['civilstate','en_couple']).size()

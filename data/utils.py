@@ -94,8 +94,6 @@ def new_link_with_men(table, table_exp, link_name):
     nb_by_table = np.asarray(table.groupby(link_name).size())
     #TODO: améliorer avec numpy et groupby ? 
     group_old_id = table_exp.loc[table_exp['id_ini'].isin(table[link_name]),['id_ini','id']].groupby('id_ini').groups.values()
-    pd.DataFrame(group_old_id).to_csv('oldnew.csv')
-    
     group_old_id = np.array(group_old_id)
     group_old_id =  group_old_id.repeat(nb_by_table)
     new_id = []

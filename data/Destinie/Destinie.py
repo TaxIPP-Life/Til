@@ -212,7 +212,6 @@ class Destinie(DataTil):
         ind_total = _ind_total(self.BioFam, self.ind, emp)
         ind, past, futur = _ind_in_3(ind_total)
         futur = _work_on_futur(futur, ind, deces)
-        futur[futur['id'].isin(range(10))].to_csv('afut.csv')
         self.ind = ind
         self.past = past
         self.futur = futur
