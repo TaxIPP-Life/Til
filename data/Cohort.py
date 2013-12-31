@@ -47,7 +47,7 @@ class Cohort(DataTil):
     def load(self):
         print "création de l'importation des données"
         size = self.size
-        for name_table in variables_til:
+        for name_table in ['men','foy','ind']:
             vars_int, vars_float = variables_til[name_table]
             vars = ['id','period','pond'] + vars_int + vars_float
             
