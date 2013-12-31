@@ -6,7 +6,7 @@ Alexis Eidelman
 
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
-from utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
+from utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
 from pgm.CONFIG import path_til, path_liam
 import numpy as np
 import tables

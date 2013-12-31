@@ -11,7 +11,7 @@ Output :
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de Destinie -> Recup des infos dans Patrimoine
 
 from data.DataTil import DataTil
-from data.utils import minimal_dtype, drop_consecutive_row
+from data.utils.utils import minimal_dtype, drop_consecutive_row
 from pgm.CONFIG import path_data_destinie
 
 import numpy as np

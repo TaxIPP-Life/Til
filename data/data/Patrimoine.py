@@ -4,18 +4,12 @@ Created on 2 août 2013
 
 @author: a.eidelman
 
-Ce programme :
-- 
-
-Input : 
-Output :
-
 '''
 
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
 from data.DataTil import DataTil
-from data.matching import Matching
-from data.utils import recode, minimal_dtype
+from data.utils.matching import Matching
+from data.utils.utils import recode, minimal_dtype
 from pgm.CONFIG import path_data_patr
 
 import numpy as np
