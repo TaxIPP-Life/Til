@@ -416,7 +416,7 @@ class DataTil(object):
         
         for data in [ind, men, foy] : 
             if data is not None:
-                data['period'] =  self.survey_year 
+                data['period'] =  self.survey_year*100 + 1 
         
         if ('age' not in ind.columns) & ('anais' in ind.columns):
             ind['age'] = self.survey_date//100 - ind['anais']
@@ -425,10 +425,6 @@ class DataTil(object):
         if 'agem' not in ind.columns :
             ind['agem'] = ind['age'].astype(np.int16)
             ind.loc[ind['agem'] !=-1, 'agem'] = ind.loc[ind['agem'] !=-1, 'agem'] * 12
-                    
-        for data in [ind, men, foy, futur, past] : 
-            if data is not None:
-                data['period'] =  data['period']*100 +1 
 
         ind_men = ind.groupby('men')       
         ind = ind.set_index('men')
@@ -443,15 +439,10 @@ class DataTil(object):
         if 'lienpref' in ind.columns :
             self.drop_variable({'ind':['lienpref','anais','mnais']}) 
 
-#         for data in [ind, men, foy] :
-#             data = data.fillna(-1)
-#             data = data.replace(-1, np.nan) #???! c'est quoi cette succesion ? 
-#             data = minimal_dtype(data)
-#             data.index = data['id']
-
-        tables = {}
         for name in ['ind', 'foy', 'men', 'futur', 'past']:
             table = eval(name)
+            print(name)
+            pdb.set_trace()
             if table is not None:
                 vars_int, vars_float = variables_til[name]
                 for var in vars_int + ['id','period']:
