@@ -169,38 +169,46 @@ class Destinie(DataTil):
             
             past = ind[ind['period'] < survey_year]
             list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
-            past = past.drop(list_enf,axis = 1)
+            list_intraseques = ['sexe','naiss','findet','tx_prime_fct']
+            list_to_drop = list_intraseques + list_enf
+            past = past.drop(list_to_drop, axis=1)
             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
-            print "Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + str(past['period'].min()) +" à " + str(past['period'].max()) + ")"
+            print ("Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + \
+                    str(past['period'].min()) +" à " + str(past['period'].max()) + ")")
             
-            # La table futur doit contenir une ligne par changement de statut
+            # La table futur doit contenir une ligne par changement de statut à partir de l'année n+1, on garde l'année n, pour 
+            # voir si la situation change entre n et n+1
             # Indications de l'année du changement + variables inchangées -> -1
-            futur = ind[ind['period'] > survey_year]
+            futur = ind[ind['period'] >= survey_year]
+            futur = futur.drop(list_enf,axis=1)
+            futur = futur.fillna(-1)
+            futur = drop_consecutive_row(futur.sort(['id', 'period']), 
+                             ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
             return ind_survey, past, futur
         
         def _work_on_futur(futur, ind, deces):
-            list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
-            futur = futur.drop(list_enf,axis = 1)
-            futur = futur.fillna(-1)
-            futur = drop_consecutive_row(futur.sort(['id', 'period']), 
-                                         ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
-            print "Nombre de lignes sur le futur : " + str(len(futur)) + " (informations de " + str(futur['period'].min()) +" à " + str(futur['period'].max()) + ")"
-            futur['dead'] = 0
-            
+            ''' ajoute l'info sur la date de décès '''
+            futur['dead'] = -1
+            pdb.set_trace()
             # On rajoute une ligne par individu pour spécifier leur décès (seulement période != -1)
             dead = DataFrame(index = deces.index.values, columns = futur.columns)
             dead['period'][deces.index.values] = deces.values
             dead['id'][deces.index.values] = deces.index.values
             dead = dead.fillna(-1)
-            dead['dead'] = 1
+            dead['death'] = dead['period']
 
-            futur = concat([futur, dead], axis = 0, ignore_index = True)
-            futur = futur.sort(['id', 'period','dead']).reset_index().drop('index', 1)
+            dead = DataFrame(deces)
+            dead['id'] = dead.index
+            dead['death'] = dead['period']
+            
+            futur = concat([futur, dead], axis=0, ignore_index=True)
+            futur = futur.fillna(-1)
+            futur = futur.sort(['id','period','dead']).reset_index().drop('index', 1)
             futur = futur.drop_duplicates(['id', 'period'])
-            dead = futur[['id', 'period']].drop_duplicates('id', take_last = True).index
-            futur['deces'] = -1
+            dead = futur[['id','period']].drop_duplicates('id', take_last=True).index
+            futur['deces'] = -1   
             futur['deces'][dead] = 1
-            futur = futur.sort(['period', 'id']).reset_index().drop(['index', 'dead'], 1)
+            futur = futur.sort(['period','id']).reset_index().drop(['index','dead'], 1)
             
             # Types minimaux
             futur = futur.replace(-1, np.nan)
@@ -209,9 +217,13 @@ class Destinie(DataTil):
             return futur
                        
         emp, deces = _Emp_clean(self.ind, self.emp)
+        deces = deces[deces != self.last_year]
+        #TODO: check why so many 2059 values : deces.value_counts()
         ind_total = _ind_total(self.BioFam, self.ind, emp)
         ind, past, futur = _ind_in_3(ind_total)
+        pdb.set_trace()
         futur = _work_on_futur(futur, ind, deces)
+        pdb.set_trace()
         self.ind = ind
         self.past = past
         self.futur = futur
@@ -246,7 +258,7 @@ class Destinie(DataTil):
             #     par_ini = identifiant du parent déclaré par l'enfant
             #     id = identifiant de l'enfant (déclaré ou déclarant)
             par_ini = par_ini[par_ini[par] != -1]
-            link = ind.loc[(ind['enf1'] != -1 )& (ind['sexe'] == sexe),  list_enf]
+            link = ind.loc[(ind['enf1'] != -1) & (ind['sexe'] == sexe),  list_enf]
             link = link.stack().reset_index().rename(columns={'id': par, 'level_1': 'link', 0 :'id'})[[par,'id']].astype(int)
             link = link[link['id'] != -1]
             link = merge(link, par_ini, on = 'id', suffixes=('_decla', '_ini'), 
@@ -368,7 +380,7 @@ class Destinie(DataTil):
         
         # 6eme étape : création de la table men
         men = ind.loc[ind['quimen'] == 0, ['id', 'men']]
-        men = men.rename(columns= {'id': 'pref', 'men': 'id'})
+        men = men.rename(columns={'id': 'pref', 'men': 'id'})
         
         # Rajout des foyers fictifs
         to_add = DataFrame([np.zeros(len(men.columns))], columns = men.columns)
@@ -376,7 +388,8 @@ class Destinie(DataTil):
         to_add['id'] = 0
         men = concat([men,to_add], axis = 0, join='outer', ignore_index=True)
 
-        for var in ['loyer', 'tu', 'zeat', 'surface', 'resage', 'restype', 'reshlm', 'zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']:
+        for var in ['loyer', 'tu', 'zeat', 'surface', 'resage', 'restype', 'reshlm',
+                     'zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']:
             men[var] = 0
             
         men['pond'] = 1

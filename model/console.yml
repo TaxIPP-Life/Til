@@ -71,7 +71,7 @@ simulation:
     input:
         # file: expanded2009.h5
         # file: exp50_2009.h5
-        file: Cohort_1000.h5
+        file: Destinie.h5
         
     output:
         file: simul2.h5
