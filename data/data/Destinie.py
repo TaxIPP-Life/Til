@@ -137,17 +137,17 @@ class Destinie(DataTil):
             Création de la table décès qui donne l'année de décès des individus (index = identifiant)  '''
             emp = merge(emp, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
             emp['period'] = emp['period'] + emp['naiss']
-            deces = emp.groupby('id')['period'].max()
+            #deces = emp.groupby('id')['period'].max()
             emp =  emp[['id','period','workstate','sali']]
             
             # Recodage des modalités
             # TO DO : A terme faire une fonction propre à cette étape -> _rename(var)
             # inactif   <-  1  # chomeur   <-  2   # non_cadre <-  3  # cadre     <-  4
             # fonct_a   <-  5  # fonct_s   <-  6   # indep     <-  7  # avpf      <-  8
-            # preret    <-  9
+            # preret    <-  9 #  décès, ou immigré pas encore arrivé en France <- 0
             emp['workstate'] = emp['workstate'].replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
                                                         [0, 3, 4, 5, 6, 7, 2, 1, 9, 8])
-            return emp, deces
+            return emp #, deces
          
         def _ind_total(BioFam, ind, emp):
             ''' fusion : BioFam + ind + emp -> ind '''
@@ -166,7 +166,6 @@ class Destinie(DataTil):
             ind_survey = ind.loc[ind['period']==survey_year]
             ind_survey = ind_survey.fillna(-1)
             print "Nombre dindividus présents dans la base en " + str(survey_year) + " : " + str(len(ind_survey))
-            
             past = ind[ind['period'] < survey_year]
             list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
             list_intraseques = ['sexe','naiss','findet','tx_prime_fct']
@@ -184,31 +183,50 @@ class Destinie(DataTil):
             futur = futur.fillna(-1)
             futur = drop_consecutive_row(futur.sort(['id', 'period']), 
                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
+            futur = futur[futur['period']> survey_year]
             return ind_survey, past, futur
         
-        def _work_on_futur(futur, ind, deces):
+        def _work_on_futur(futur, ind):
             ''' ajoute l'info sur la date de décès '''
-            futur['dead'] = -1
-            pdb.set_trace()
             # On rajoute une ligne par individu pour spécifier leur décès (seulement période != -1)
-            dead = DataFrame(index = deces.index.values, columns = futur.columns)
-            dead['period'][deces.index.values] = deces.values
-            dead['id'][deces.index.values] = deces.index.values
-            dead = dead.fillna(-1)
-            dead['death'] = dead['period']
-
-            dead = DataFrame(deces)
-            dead['id'] = dead.index
-            dead['death'] = dead['period']
             
-            futur = concat([futur, dead], axis=0, ignore_index=True)
-            futur = futur.fillna(-1)
-            futur = futur.sort(['id','period','dead']).reset_index().drop('index', 1)
-            futur = futur.drop_duplicates(['id', 'period'])
-            dead = futur[['id','period']].drop_duplicates('id', take_last=True).index
-            futur['deces'] = -1   
-            futur['deces'][dead] = 1
-            futur = futur.sort(['period','id']).reset_index().drop(['index','dead'], 1)
+            def __deces_indicated_lastyearoflife():
+                dead = DataFrame(index = deces.index.values, columns = futur.columns)
+                dead['period'][deces.index.values] = deces.values
+                dead['id'][deces.index.values] = deces.index.values
+                dead = dead.fillna(-1)
+                dead['death'] = dead['period']
+    
+                dead = DataFrame(deces)
+                dead['id'] = dead.index
+                dead['death'] = dead['period']
+                
+                futur = concat([futur, dead], axis=0, ignore_index=True)
+                futur = futur.fillna(-1)
+                futur = futur.sort(['id','period','dead']).reset_index().drop('index', 1)
+                futur = futur.drop_duplicates(['id', 'period'])
+                dead = futur[['id','period']].drop_duplicates('id', take_last=True).index
+                futur['deces'] = -1   
+                futur['deces'][dead] = 1
+                futur = futur.sort(['period','id']).reset_index().drop(['index','dead'], 1)
+                return futur
+            
+            def __death_unic_event(futur):
+                futur = futur.sort(['id', 'period'])
+                no_last = futur.duplicated('id', take_last = True)
+                futur['death'] = -1 
+                cond_death =  (no_last == False) & ((futur['workstate'] == 0) | (futur['period'] != 2060))
+                futur.loc[cond_death, 'death' ] = futur.loc[ cond_death, 'period' ]
+                futur.loc[(futur['workstate'] != 0) & (futur['death'] != -1), 'death' ] += 1 
+                add_lines = futur.loc[(futur['period']> futur['death']) & (futur['death'] != -1), 'id']
+                if len(add_lines) != 0 :
+                    # TODO: prévoir de rajouter une ligne quand il n'existe pas de ligne associée à la date de mort.
+                    print len(add_lines)
+                    pdb.set_trace()
+            
+                return futur
+
+            futur =__death_unic_event(futur)
             
             # Types minimaux
             futur = futur.replace(-1, np.nan)
@@ -216,14 +234,11 @@ class Destinie(DataTil):
             
             return futur
                        
-        emp, deces = _Emp_clean(self.ind, self.emp)
-        deces = deces[deces != self.last_year]
-        #TODO: check why so many 2059 values : deces.value_counts()
+        emp = _Emp_clean(self.ind, self.emp)
+
         ind_total = _ind_total(self.BioFam, self.ind, emp)
         ind, past, futur = _ind_in_3(ind_total)
-        pdb.set_trace()
-        futur = _work_on_futur(futur, ind, deces)
-        pdb.set_trace()
+        futur = _work_on_futur(futur, ind)
         self.ind = ind
         self.past = past
         self.futur = futur

@@ -441,8 +441,6 @@ class DataTil(object):
 
         for name in ['ind', 'foy', 'men', 'futur', 'past']:
             table = eval(name)
-            print(name)
-            pdb.set_trace()
             if table is not None:
                 vars_int, vars_float = variables_til[name]
                 for var in vars_int + ['id','period']:
