@@ -18,16 +18,10 @@ from utils import of_name_to_til
 import liam2of
 from CONFIG import path_of, path_liam, path_til
 
-import sys
-sys.path.append(path_of)
-sys.path.remove(path_liam)
-try:
-    sys.modules.pop('src')
-    from src.lib.simulation import SurveySimulation
-    from src.parametres.paramData import XmlReader, Tree2Object
-except:
-    pdb.set_trace()
 
+
+from openfisca_core.simulations import SurveySimulation
+from openfisca_core.parameters import XmlReader, Tree2Object
 
 ### list des variable que l'on veut conserver
 ### Note plus vraiment utile
