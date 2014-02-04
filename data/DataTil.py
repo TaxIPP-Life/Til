@@ -106,20 +106,20 @@ class DataTil(object):
                 # (a) - l'un des deux se déclare célibataire -> le second le devient
                 celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
                                             ['id_x', 'civilstate_y']]
-                if celib_y:
-                    ind['civilstate'][celib_y['id_x'].values]= celib_y['civilstate_y']
-                    ind['conj'][celib_y['id_x'].values] = np.nan
+                if len(celib_y)>0:
+                    ind.loc[celib_y['id_x'].values, 'civilstate']= celib_y['civilstate_y']
+                    ind.loc[celib_y['id_x'].values, 'conj'] = np.nan
     
                 celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
                                             ['id_y','civilstate_x']]
-                if celib_x:
-                    ind['civilstate'][celib_x['id_y'].values]= celib_x['civilstate_x']
-                    ind['conj'][celib_x['id_y'].values] = -1
+                if len(celib_x>0):
+                    ind.loc[celib_x['id_y'].values, 'civilstate'] = celib_x['civilstate_x']
+                    ind[celib_x['id_y'].values, 'conj'] = -1
     
                 # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
                 # -> Conjoint réattribué à qui de droit
                 no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
-                if no_conj:
+                if len(no_conj)>0:
                     print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
                     ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
                     ind = ind.fillna(-1)
@@ -133,7 +133,7 @@ class DataTil(object):
         
         # 2.a - Confusion mariage/pacs
         confusion = test[(test['id_y']> test['id_x'])& (test['civilstate_y']!= test['civilstate_x']) & ~test['civilstate_y'].isin([3,4]) &  ~test['civilstate_x'].isin([3,4])]
-        if confusion:
+        if len(confusion)>0:
             print "Nombre de confusions sur l'état civil (corrigées) : ", len(confusion)
             # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
             ind['civilstate'][confusion['id_y'].values] = ind['civilstate'][confusion['id_x'].values]
@@ -142,7 +142,7 @@ class DataTil(object):
         # 2.b - Un déclarant marié/pacsé l'autre veuf/divorcé -> marié/pacsé devient célibataire
         conf = test[(test['civilstate_y']!= test['civilstate_x']) & (test['civilstate_y'].isin([3,4]) |  test['civilstate_x'].isin([3,4]))]
         confusion = conf[conf['civilstate_y'].isin([3,4]) & conf['civilstate_x'].isin([2,5]) ]
-        if confusion:
+        if len(confusion)>0:
             print "Nombre de couples marié/veuf (corrigés) : ", len(confusion)
             ind['civilstate'][confusion['id_x'].values] = 1
         

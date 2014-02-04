@@ -139,19 +139,20 @@ def minimal_dtype(table):
             if len(col.value_counts()) == 2:
                 min = col.min()
                 col = col.fillna(value=min)
-                try:
-                    col = col - min
-                except:
-                    pdb.set_trace()
+                col = col - int(min)
                 #modif['boolean'].append(colname)
                 #table[colname] = col.astype(np.bool)
                 table[colname] = col.astype(np.int8)
             else:
                 try:
                     if (col[col.notnull()].astype(int) == col[col.notnull()]).all():
-                        col[col.notnull()] = col[col.notnull()].astype(int)
+                        try:
+                            col[col.notnull()] = col[col.notnull()].astype(int)
+                        except:
+                            #dans ce cas, col est déjà un int et même plus petit que int32
+                            pass
                         if col.min() >= 0 or col.max() <= 0 : # un seul signe pour les valeurs 
-                            sign =1-2*(max(col) < 0)
+                            sign = 1-2*(max(col) < 0)
                             col = col.fillna(value=-1*sign)
                             modif['int_one_sign'].append(colname)
                             table[colname] = _MinType_col_int_pos(col)

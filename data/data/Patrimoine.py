@@ -250,7 +250,7 @@ class Patrimoine(DataTil):
             recode(ind,'situa','workstate', list_situa_work ,'isin')
 #           Note:  ind['workstate'][ ind['situa']==3] =  0 : etudiant -> NA
             #precision inactif
-            ind['workstate'][ind['preret']==1]  = 9
+            ind.loc[ind['preret']==1, 'workstate'] = 9
             # precision AVPF
             #TODO: "vous pouverz bénéficier de l'AVPF si vous n'exercez aucune activité 
             # professionnelle (ou seulement à temps partiel) et avez 
@@ -259,15 +259,15 @@ class Patrimoine(DataTil):
             #en particulier c'est de la législation l'avpf finalement.
             cond =  (men['paje']==1) | (men['complfam']==1) | (men['allocpar']==1) | (men['asf']==1)
             avpf = men.ix[cond,:].index.values + 1 
-            ind['workstate'][(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2]))] = 8
+            ind.loc[(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2])), 'workstate'] = 8
             # public, privé, indépendant
-            ind['workstate'][ ind['statut'].isin([1,2])] = 5
-            ind['workstate'][ ind['statut']==7] =  7
+            ind.loc[ind['statut'].isin([1,2]), 'workstate'] = 5
+            ind.loc[ind['statut']==7, 'workstate'] =  7
             # cadre, non cadre
-            ind['workstate'][ (ind['classif']==6)  & (ind['workstate']==5)] = 6
-            ind['workstate'][ (ind['classif']==7)  & (ind['workstate']==3)] = 4
+            ind.loc[(ind['classif']==6)  & (ind['workstate']==5), 'workstate'] = 6
+            ind.loc[(ind['classif']==7)  & (ind['workstate']==3), 'workstate'] = 4
             #retraite
-            ind['workstate'][ (ind['anais'] < 2009-64)  & (ind['workstate']==1)] = 10
+            ind.loc[(ind['anais'] < 2009-64)  & (ind['workstate']==1), 'workstate'] = 10
             # print ind.groupby(['workstate','statut']).size()
             # print ind.groupby(['workstate','situa']).size()
             return ind['workstate']
@@ -315,7 +315,7 @@ class Patrimoine(DataTil):
             return ind
         ind['sexe'] = _recode_sexe(ind['sexe'])
         ind['workstate'] = _work_on_workstate(ind)
-        ind['workstate'].dtype = np.int8
+        ind['workstate'] = ind['workstate'].fillna('-1').astype(np.int8)
         ind = _work_on_couple(ind)
         self.men = men
         self.ind = ind
@@ -335,16 +335,16 @@ class Patrimoine(DataTil):
         '''     
         print ("Travail sur les conjoints")
         ind = self.ind
-        conj = ind.loc[ind['couple']==1,['men','lienpref','id', 'civilstate']]
+        conj = ind.loc[ind['couple']==1, ['men','lienpref','id','civilstate']]
         print "Nombre d'individus se déclarant en couple dans la table initiale : ", len(conj)
         # Personnes en couple vivant dans le même ménage (8230)
-        conj.loc[conj['lienpref']==1,'lienpref'] = 0
+        conj.loc[conj['lienpref']==1, 'lienpref'] = 0
         # Couples fils/belle-fille (ou recip.) vivant ds ménage parents (18)
         # Rq : il y a aussi 39 couples vivant chez leur enfant (35 ref + 4conj)
-        conj.loc[conj['lienpref']==31,'lienpref'] = 2
-        conj.loc[conj['lienpref']==32,'lienpref'] = 3
+        conj.loc[conj['lienpref']==31, 'lienpref'] = 2
+        conj.loc[conj['lienpref']==32, 'lienpref'] = 3
         # frères, soeurs et liens indéterminés (4)
-        conj.loc[conj['lienpref']==50,'lienpref'] = 10
+        conj.loc[conj['lienpref']==50, 'lienpref'] = 10
         conj2 = merge(conj, conj, on=['men','lienpref'], how= 'outer')
         conj2 = conj2[conj2['id_x'] != conj2['id_y']]
         assert len(conj2) == len(conj)
@@ -354,7 +354,7 @@ class Patrimoine(DataTil):
         couple = conj.groupby('id_x')
         for id, potential in couple:
             if len(potential) == 1:
-                conj.loc[ conj['id_x']==id, 'id_y'] = potential['id_y']
+                conj.loc[conj['id_x']==id, 'id_y'] = potential['id_y'].values[0]
             else:
                 pdb.set_trace()
                 # TODO: pas de probleme, bizarre
@@ -362,7 +362,7 @@ class Patrimoine(DataTil):
         ind = merge(ind, conj[['id','conj']], on='id', how='left')
         test_conj = merge(ind[['conj','id']],ind[['conj','id']],
                              left_on='id',right_on='conj').astype(int)
-        test_conj = test_conj.loc[test_conj['id_x']< test_conj['conj_x'] ]
+        test_conj = test_conj.loc[test_conj['id_x']< test_conj['conj_x']]
         self.ind = ind
         assert sum(test_conj['id_y'] != test_conj['conj_x']) == 0
         print ("Fin du travail sur les conjoints")
@@ -476,8 +476,8 @@ class Patrimoine(DataTil):
             
             temp['classif'] = Series()
             prive = temp['hodpri'].isin([1,2,3,4])
-            temp['classif'][prive] = temp['hodpri'][prive]
-            temp['classif'][~prive] = temp['hodniv'][~prive]
+            temp.loc[prive, 'classif'] = temp.loc[prive, 'hodpri']
+            temp.loc[~prive, 'classif'] = temp.loc[~prive, 'hodniv']
         
             child_out_of_house = child_out_of_house.append(temp)
             len_ini = len(child_out_of_house)
