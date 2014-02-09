@@ -499,7 +499,13 @@ class DataTil(object):
         assert ind_men['test_qui'].sum().max() == 1
         assert ind_men['test_qui'].sum().min() == 1
         assert ind['men'].isin(men['id']).all()
-        assert men['id'].isin(ind['men']).all()  
+        assert men['id'].isin(ind['men']).all() 
+        
+        # si on est quimen = 1 alors on a son conjoint avec soi
+        #TODO: 
+        qui1 = ind['quimen']==1
+        conj = ind.loc[qui1, 'conj'].values
+        assert ind[] 
         
         # Table futur bien construite
         if futur is not None:

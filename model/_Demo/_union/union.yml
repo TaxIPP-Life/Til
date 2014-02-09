@@ -54,12 +54,14 @@ entities:
                 - dur_out_couple: if(INCOUPLE, 0, dur_out_couple)    
                 # note : dur_out_couple is incremented in union                
              
-            move_together:               
+            move_together:         
                 # on emmenage en fonction de la durée du couple (faire jouer l'age ?)
                 # si un des deux est pref et pas l'autre ou si on est un homme et que l'autre est pref
             
+                - to_move_together: (INCOUPLE and dur_in_couple > 1)
                 # on s'assure qu'on ne vit pas déjà ensemble
-                - to_move_together: INCOUPLE and dur_in_couple > 1 and not (quimen==1 or l_conj.quimen==1)
+                - to_move_together: if(quimen==1 or l_conj.quimen==1 ,False, to_move_together)
+                - to_move_together: if(quimen==2 and l_conj.quimen==2 and men==l_conj.men ,False, to_move_together)
                 # - csv(dump(id, to_move_together, sexe, l_conj.id, l_conj.age, dur_in_couple, quimen , l_conj.dur_in_couple, l_conj.quimen,  l_conj.to_move_together, l_conj.conj))
                 - assertEqual( count(to_move_together) , count(l_conj.to_move_together))
                 - assertTrue( count(to_move_together) % 2 == 0 )
@@ -94,12 +96,26 @@ entities:
                 - new_men: if(l_pere.to_move_together and (new_men==men),
                             if(l_pere.men==men, l_pere.new_men, new_men),
                             new_men) 
+# id,sexe,l_conj.id,l_conj.age,dur_in_couple,quimen,l_conj.quimen,  l_conj.conj,pere,mere,  men,new_men,  who_pref,to_move_out,to_move_in
+# 6407,1,6408,78,55.0,0,1,  6407,-1,8039, 3094,22238,  True,False,False
+# 6408,2,6407,72,55.0,1,0,  6408,-1,-1, 3095,22238,  False,False,True
+# 6409,1,-1,-1,0.0,0,-1,    -1,6407,6408, 3095,22238,  False,False,False
+# 6410,1,6411,78,55.0,0,1,  6410,-1,-1, 3096,22239, True,False,False
+# 6411,2,6410,72,55.0,1,0,  6411,-1,-1, 3097,22239, False,False,True
+# 6412,1,-1,-1,0.0,0,-1,    -1,6410,6411, 3097,22239, False,False,False
+     # On a un problème de men différent pour un, encore en couple qui a un enfant. 6408 doit ou bien être dans 
+     # le ménage de 6407 ou bien avoir quimen = 2 (son fils étant pref) 
+                - csv(dump(id, sexe, l_conj.id, l_conj.age, dur_in_couple, quimen ,l_conj.quimen, l_conj.conj, 
+                     pere, mere, men, new_men, who_pref, to_move_out, to_move_in, to_move_together), fname='perso_{period}.csv')   
                 # autres, qui ne sont pas a new_men == men parce que leur parent est reste
                 # penser aux petits enfants
                 - new_men: if( (quimen > 1) and (new_men==men),
                                 l_men.l_pref.new_men, 
                                 new_men) 
-                - men:   new_men
+                - men: new_men
+                - test : l_men.get(persons.count(quimen==0))
+                - csv(dump(id, to_move_together, sexe, l_conj.id, l_conj.age, dur_in_couple, quimen , l_conj.dur_in_couple, l_conj.quimen,  l_conj.to_move_together, l_conj.conj, 
+                      test, pere, mere, men, filter=(test!=1)), fname='perso2_{period}.csv') 
                 - assertEqual(max(l_men.get(persons.count(quimen==0))),1)
                 - assertTrue(min(men)>=0)
                                 
