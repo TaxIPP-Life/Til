@@ -17,6 +17,7 @@ from pgm.CONFIG import path_data_destinie
 import numpy as np
 from pandas import merge, DataFrame, concat, read_table
 
+from src.links import CountLink
 import pdb
 import time
 
@@ -106,7 +107,7 @@ class Destinie(DataTil):
             BioFam['period'] = period
             list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
             BioFam[list_enf + ['pere','mere', 'conj']] -= 1
-            BioFam['id'] = BioFam['id'].astype(int) - 1
+            BioFam.loc[:,'id'] = BioFam.loc[:,'id'].astype(int) - 1
             for var in ['pere','mere', 'conj'] + list_enf:
                 BioFam.loc[BioFam[var] < 0 , var] = -1
             BioFam = BioFam.fillna(-1)
@@ -350,7 +351,7 @@ class Destinie(DataTil):
         print "   dont " + str(len (ind[ind['quimen'] == 1])) +  " couples "   # 9410
 
         # 2eme étape : attribution du numéro de ménage grâce aux têtes de ménage
-        nb_men = len(ind[ind['quimen'] == 0]) 
+        nb_men = len(ind.loc[(ind['quimen'] == 0), :]) 
         # Rq : les 10 premiers ménages correspondent à des institutions et non des ménages ordianires
         # 0 -> DASS, 1 -> 
         ind.loc[ind['quimen'] == 0, 'men'] = range(10, nb_men +10)
@@ -413,6 +414,8 @@ class Destinie(DataTil):
         ind = ind.fillna(-1)
         
         assert sum((ind['men']==-1)) == 0 # Tout le monde a un ménage : on est content!
+        assert sum((ind['quimen'] < 0)) == 0
+        assert max(ind.loc[ind['quimen']==0, :].groupby('men')['quimen'].count())== 1 # vérifie que le nombre de tête de ménage n'excède pas 1 par ménage
         print 'Taille de la table men :', len(men)
         self.ind = ind
         self.men = men

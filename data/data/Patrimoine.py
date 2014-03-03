@@ -544,7 +544,7 @@ class Patrimoine(DataTil):
         
         recode(enf_look_par, 'dip14', 'dip6', [[30,5], [41,4], [43,3], [50,2], [60,1]] , method='geq')
         recode(enf_look_par, 'classif', 'classif2', [ [[1,2,3],4], [[4,5],2], [[6,7],1], [[8,9], 3], [[10],0]], method='isin')
-        enf_look_par['classif'] = enf_look_par['classif2']
+        enf_look_par.loc[:,'classif'] = enf_look_par.loc[:,'classif2']
 
         ## nb d'enfant
         # -- Au sein du domicile

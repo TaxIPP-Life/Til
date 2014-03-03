@@ -201,7 +201,7 @@ class DataTil(object):
         print str(sum(spouse)) + " personnes en couples"
         
         # 2eme étape : rôles au sein du foyer fiscal
-        # selection du conjoint qui va être le vousrant : pas d'incidence en théorie
+        # selection du conjoint qui va être le vousrant (= déclarant principal du foyer fiscal) : pas d'incidence en théorie
         decl = spouse & ( ind['conj'] > ind['id'])
         conj = spouse & ( ind['conj'] < ind['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
@@ -505,7 +505,6 @@ class DataTil(object):
         #TODO: 
         qui1 = ind['quimen']==1
         conj = ind.loc[qui1, 'conj'].values
-        assert ind[] 
         
         # Table futur bien construite
         if futur is not None:
