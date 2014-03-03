@@ -56,7 +56,7 @@ simulation:
         - person: [divorce]
         - menage: [men_composition]
         - declar: [cases,empty_declar]
-        - person: [ineducation, outwork, inwork, retire, chomage, retraite, salaire
+        - person: [ineducation, outwork, inwork, retire, chomage, salaire #, retraite
 #            dump_all            
         ]
         - menage: [init_value,consumption,saving]
@@ -69,8 +69,7 @@ simulation:
     # final_stat: True
     
     input:
-        # file: expanded2009.h5
-        # file: exp50_2009.h5
+        #file: Patrimoine_400.h5
         file: Destinie.h5
         
     output:

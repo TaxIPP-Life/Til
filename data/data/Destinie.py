@@ -328,7 +328,7 @@ class Destinie(DataTil):
         care = {}
         for par in ['mere', 'pere']:
             care_par = ind.loc[(ind['men_' + par] == 1), ['id', par]].astype(int)
-            par_care = ind.loc[(ind['age'] >74) & (ind['id'].isin(care_par[par].values)), ['id']]
+            par_care = ind.loc[(ind['age'] >74) & (ind['id'].isin(care_par[par].values) & (ind['conj'] == -1)), ['id']]
             care_par = merge(care_par, par_care, left_on = par, 
                              right_on='id', how = 'inner', 
                              suffixes = ('_enf', '_'+par))[['id_enf', 'id_'+par]]
