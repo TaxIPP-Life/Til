@@ -485,26 +485,29 @@ class DataTil(object):
         print "Nombre de personnes dans ménages ordinaires : ", sum(ind['men']>9)
         print "Nombre de personnes vivant au sein de collectivités : ", sum(ind['men']<10)
         
-        ## lien foy : bien présent, un et un seul quifoy=0 par foy
-        ind['test_qui'] = (ind['quifoy'] == 0).astype(int)
-        ind_foy = ind[ind['foy']>9].groupby('foy') # on exclut les collectivités
-        assert ind_foy['test_qui'].sum().max() == 1
-        assert ind_foy['test_qui'].sum().min() == 1
-        assert ind['foy'].isin(foy['id']).all()
-        assert foy['id'].isin(ind['foy']).all()
-                
-        ## de même pour lien men 
-        ind['test_qui'] = (ind['quimen'] == 0).astype(int)
-        ind_men = ind[ind['men']>9].groupby('men') # on exclut les collectivités
-        assert ind_men['test_qui'].sum().max() == 1
-        assert ind_men['test_qui'].sum().min() == 1
-        assert ind['men'].isin(men['id']).all()
-        assert men['id'].isin(ind['men']).all() 
-        
-        # si on est quimen = 1 alors on a son conjoint avec soi
-        #TODO: 
-        qui1 = ind['quimen']==1
-        conj = ind.loc[qui1, 'conj'].values
+        ## On vérifie qu'on a un et un seul qui = 0 et au plus un qui = 1 pour foy et men
+        for ent in ['men', 'foy']: 
+            ind['qui0'] = (ind['qui' + ent] == 0).astype(int)
+            ind['qui1'] = (ind['qui' + ent] == 1).astype(int)
+            ind0 = ind[ind[ent]>9].groupby(ent) # on exclut les collectivités
+            # on vérifie qu'on a un et un seul qui = 0 
+            assert ind0['qui0'].sum().max() == 1
+            assert ind0['qui0'].sum().min() == 1
+            # on vérifie qu'on a au plus un qui = 1
+            assert ind0['qui1'].sum().max() == 1
+            # on vérifie que les noms d'identité sont bien dans la table entity et réciproquement
+            list_id = eval(ent)['id']
+            assert ind[ent].isin(list_id).all()
+            assert list_id.isin(ind[ent]).all()
+            # si on est un 2
+
+            # si on est quimen = 1 alors on a son conjoint avec soi
+            qui1 = ind['qui' + ent]==1
+            conj = ind.loc[qui1, 'conj'].values
+            conj_ent = ind.iloc[conj] 
+            conj_ent = conj_ent[ent]
+            qui1_ent = ind.loc[qui1, ent]
+            assert (qui1_ent == conj_ent).all()
         
         # Table futur bien construite
         if futur is not None:
