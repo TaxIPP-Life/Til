@@ -11,11 +11,10 @@ fichier= path_til + 'Model\\console.yml'
 
 
 simulation = Simulation.from_yaml( fichier,
-                     input_dir=None,
-                    input_file=None,
-                    output_dir=path_til + '//output',                    
-                    output_file=None)
-
+                    input_dir = None,
+                    input_file = None,
+                    output_dir = path_til + '//output',                    
+                    output_file = None)
 simulation.run(False)
 
 # import cProfile

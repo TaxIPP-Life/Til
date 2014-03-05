@@ -40,7 +40,7 @@ class Destinie(DataTil):
         self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_conjoint', 'creation_menage', 'creation_foy', 'var_sup', 'add_futur', 'store_to_liam']
        
     def _output_name(self):
-        return 'Destinie.h5'
+        return 'Destinie2.h5'
             
     def load(self):
         def _BioEmp_in_2():
@@ -368,17 +368,19 @@ class Destinie(DataTil):
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
 
         # (c) - Rattachements des éventuels parents à charge
+        ind['tuteur'] = -1
         for par in ['mere', 'pere']:
             care_par = care[par]
             care_par = ind.loc[ind['id'].isin(care_par['id_enf'].values) & (ind['men'] != -1), par]
             ind['men'][care_par.values] = ind['men'][care_par.index.values]
+            ind['tuteur'][care_par.values] = care_par.index.values
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
             # Rétablissement de leur quimen
             ind['quimen'] = ind['quimen'].replace(-2, 2)
         # Rq : il faut également rattaché le deuxième parent :
         conj_dep = ind.loc[(ind['men'] == -1) & (ind['conj'] != -1), ['id', 'conj']]
         ind['men'][conj_dep['id'].values] = ind['men'][conj_dep['conj'].values]
-
+        assert ind.loc[(ind['tuteur'] != -1), 'age'].min() > 70
         # 4eme étape : création d'un ménage fictif résiduel :
         # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = 0
         print 'Nombres denfants à la DASS : ', len(ind.loc[ (ind['men']== -1) & (ind['age']<18), 'men' ])
@@ -472,7 +474,6 @@ if __name__ == '__main__':
     data.format_to_liam()
     data.final_check()
     data.store_to_liam()
-
     print ("Temps Destiny.py : " + str(time.time() - start_t) + "s, dont " +
             str(futur_t - ini_t) + "s pour les mises en formes/corrections initiales et " +
          str(time.time() - futur_t ) + "s pour l'ajout des informations futures et la mise au format Liam")

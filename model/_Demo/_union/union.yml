@@ -102,12 +102,13 @@ entities:
                 - new_men: if( (quimen > 1) and (new_men==men),
                                 l_men.l_pref.new_men, 
                                 new_men) 
-                - csv(dump(id, sexe, age, l_conj.id, l_conj.age, dur_in_couple, quimen ,l_conj.quimen, l_conj.conj, 
-                     pere, mere, men, new_men, who_pref, to_move_out, to_move_in, to_move_together, filter = id>6406 and id<6410 ), fname='perso_{period}.csv')   
+                - new_men: if(l_tuteur.to_move_together and (new_men==men),
+                              if(l_tuteur.men==men, l_tuteur.new_men, new_men),
+                            new_men) 
                 - men: new_men
                 - test : l_men.get(persons.count(quimen==0))
-                - csv(dump(id, to_move_together, age, sexe, l_conj.id, l_conj.age, dur_in_couple, quimen , l_conj.dur_in_couple, l_conj.quimen,  l_conj.to_move_together, l_conj.conj, 
-                      test, pere, mere, men, filter=(test!=1)), fname='perso2_{period}.csv') 
+                #- csv(dump(id, to_move_together, age, sexe, l_conj.id, l_conj.age, dur_in_couple, quimen , l_conj.dur_in_couple, l_conj.quimen,  l_conj.to_move_together, l_conj.conj, 
+                #      test, pere, mere, men, filter=(test!=1)), fname='perso2_{period}.csv') 
                 - assertEqual(max(l_men.get(persons.count(quimen==0))),1)
                 - assertTrue(min(men)>=0)
                                 
@@ -120,8 +121,7 @@ entities:
                 - assertEqual( count(to_move_together) , count(l_conj.to_move_together))
                 - assertTrue( count(to_move_together) % 2 == 0 )
       
-                - to_move_in: if(to_move_together,True,False) 
-# check liam2 bug was corrected and that to_move_together is copied                
+                - to_move_in: if(to_move_together,True,False)    
                 - to_move_in: if(to_move_together and l_conj.quifoy == 0, 
                                         if(quifoy >0, 
                                             True,

@@ -61,7 +61,7 @@ simulation:
         ]
         - menage: [init_value,consumption,saving]
         - companies: [rien]
-        # - legislation: [2009] #[annee leg]
+        #- legislation: [2009] #[annee leg] = année de départ de la simulation
         # - register: [alive]
         # - register: [sum_indiv]
         - person: [stat_period]
@@ -70,10 +70,10 @@ simulation:
     
     input:
         #file: Patrimoine_400.h5
-        file: Destinie.h5
+        file: Destinie2.h5
         
     output:
-        file: simul2.h5
+        file: simul.h5
         
     skip_shows: True
     timings: False
