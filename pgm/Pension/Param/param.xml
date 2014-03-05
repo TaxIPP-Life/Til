@@ -9,7 +9,7 @@ plus sur l'année de naissance) pour :
 On a donc : varcontrol="year[age_min]"
 -->
 
-<NODE description= "Retraites">
+<NODE description= "Retraites" code="ret">
 	<NODE description="Retraites de base" code="ret_base" >
 		<NODE description="Régime général" code="RG" >
 			<CODE description="Taux plein" code="tx_plein"  format="percent">
@@ -20,16 +20,58 @@ On a donc : varcontrol="year[age_min]"
 				<VALUE valeur="840" deb="2010-01-01" fin="2100-12-31"/>
 				<VALUE valeur="780" deb="1945-01-01" fin="2009-12-31"/>
 			</CODE>  			
-	   		<VALBYTRANCHES description="Age legal de depart à la retraite (en mois)" code="age_min"  format="integer">
+	   		<VALBYTRANCHES description="Age legal de depart à la retraite (en mois)" code="age_min" format="integer">
 	   			<VARCONTROL>
-	   				<CODE code='naiss' deb="2011-07-01" fin="2100-12-31" format="date"/>
+	   				<CONTROL code='naiss' deb="2011-07-01" fin="2100-12-31" format="date"/>
 	   			</VARCONTROL> 
-	   			<VALUE valeur="720" valeurcontrol="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
-				<VALUE valeur="724" valeurcontrol="1951-07-01" deb="2011-07-01" fin="2100-12-31"/>
-				<VALUE valeur="729" valeurcontrol="1952-01-01" deb="2011-07-01" fin="2100-12-31"/>
-				<VALUE valeur="734" valeurcontrol="1953-01-01" deb="2011-07-01" fin="2100-12-31"/>
-				<VALUE valeur="739" valeurcontrol="1954-01-01" deb="2011-07-01" fin="2100-12-31"/>
-				<VALUE valeur="744" valeurcontrol="1955-01-01" deb="2011-07-01" fin="2100-12-31"/>
+	   			<TRANCHE code ="tranche1">
+	   				<SEUIL>
+	   					<VALUE valeur="1900-01-01" deb="1945-01-01" fin="2100-12-31"/>
+	   				</SEUIL>
+	   				<VALEUR>
+	   					<VALUE valeur="720" deb="1945-01-01" fin="2100-12-31"/>
+	   				</VALEUR>
+	   			</TRANCHE>
+	   			<TRANCHE code ="tranche2">
+	   				<SEUIL>
+	   					<VALUE valeur="1951-07-01" deb="2011-07-01" fin="2100-12-31"/>
+	   				</SEUIL>
+	   				<VALEUR>
+	   					<VALUE valeur="724" deb="2011-07-01" fin="2100-12-31"/>
+	   				</VALEUR>
+	   			</TRANCHE>
+	   			<TRANCHE code ="tranche3">
+	   				<SEUIL>
+	   					<VALUE valeur="1952-07-01" deb="2011-07-01" fin="2100-12-31"/>
+	   				</SEUIL>
+	   				<VALEUR>
+	   					<VALUE valeur="729" deb="2011-07-01" fin="2100-12-31"/>
+	   				</VALEUR>
+	   			</TRANCHE>
+	   			<TRANCHE code ="tranche4">
+	   				<SEUIL>
+	   					<VALUE valeur="1953-01-01" deb="2011-07-01" fin="2100-12-31"/>
+	   				</SEUIL>
+	   				<VALEUR>
+	   					<VALUE valeur="734" deb="2011-07-01" fin="2100-12-31"/>
+	   				</VALEUR>
+	   			</TRANCHE>
+	   			<TRANCHE code ="tranche5">
+	   				<SEUIL>
+	   					<VALUE valeur="1954-01-01" deb="2011-07-01" fin="2100-12-31"/>
+	   				</SEUIL>
+	   				<VALEUR>
+	   					<VALUE valeur="739" deb="2011-07-01" fin="2100-12-31"/>
+	   				</VALEUR>
+	   			</TRANCHE>
+	   			<TRANCHE code ="tranche6">
+	   				<SEUIL>
+	   					<VALUE valeur="1955-01-01" deb="2011-07-01" fin="2100-12-31"/>
+	   				</SEUIL>
+	   				<VALEUR>
+	   					<VALUE valeur="744" deb="2011-07-01" fin="2100-12-31"/>
+	   				</VALEUR>
+	   			</TRANCHE>
 			</VALBYTRANCHES>
 			<VALBYTRANCHES description="Age d'annulation de la décote (en mois) " code="age_dec" format="integer">
 	   			<VARCONTROL>

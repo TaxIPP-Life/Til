@@ -27,25 +27,30 @@ import collections
 import copy
 import datetime as dt
 import gc
+import h5py
 import itertools
 import os
+import pandas as pd
 import pickle
 import sys
 
-from datetime import datetime
 from xml.etree import ElementTree
 from pandas import DataFrame, HDFStore
 
+from pgm.CONFIG import path_til
 from pgm.Pension.Param import legislations_add_pension as legislations
 from pgm.Pension.Param import legislationsxml_add_pension as  legislationsxml
 from openfisca_core import conv, model
 #from .columns import EnumCol, EnumPresta
-#from .datatables import DataTable
+from openfisca_core.datatables import DataTable
 #from .taxbenefitsystems import TaxBenefitSystem
 
+import openfisca_france
+openfisca_france.init_country()
 
 class Simulation(object):
     """
+    Class from OF
     A simulation object contains all parameters to compute a simulation from a
     test-case household (scenario) or a survey-like dataset
 
@@ -74,6 +79,7 @@ class Simulation(object):
     def __init__(self):
         self.io_column_by_label = collections.OrderedDict()
         self.io_column_by_name = collections.OrderedDict()
+
 
     def __getstate__(self):
         def should_pickle(v):
@@ -108,8 +114,8 @@ class Simulation(object):
             print "Absence de paramètres législatifs"
 
         # Sets required country specific classes
-        #self.column_by_name = model.column_by_name
-        #self.prestation_by_name = model.prestation_by_name
+        self.column_by_name = model.column_by_name
+        self.prestation_by_name = model.prestation_by_name
 
         return remaining
 
@@ -148,7 +154,7 @@ class Simulation(object):
 
     def _initialize_input_table(self):
         self.input_table = DataTable(self.column_by_name, datesim=self.datesim, num_table = self.num_table,
-            subset=self.subset, print_missing=self.verbose)
+                                     subset=self.subset, print_missing=self.verbose)
 
     def _compute(self, **kwargs):
         """
@@ -167,11 +173,9 @@ class Simulation(object):
         #self.clear()
 
         output_table, output_table_default = self.output_table, self.output_table_default
-
         for key, val in kwargs.iteritems():
             setattr(output_table, key, val)
             setattr(output_table_default, key, val)
-
         data = output_table.calculate()
         if self.reforme:
             output_table_default.reset()
@@ -253,13 +257,18 @@ class Simulation(object):
             pickle.dump(self, output)
 
 
-class SurveySimulation(Simulation):
+class PensionSimulation(Simulation):
     """
-    A Simulation class tailored to deal with survey data
+    A Simulation class tailored to compute pensions (deal with survey data )
     """
     descr = None
-    survey_filename = None
-
+     
+    def __init__(self, futur = None, past = None, survey_filename = None):
+        Simulation.__init__(self)
+        self.futur = futur
+        self.past =past
+        self.survey_filename = survey_filename
+                
     def set_config(self, **kwargs):
         """
         Configures the SurveySimulation
@@ -272,7 +281,7 @@ class SurveySimulation(Simulation):
         """
         # Setting general attributes and getting the specific ones
         specific_kwargs = self._set_config(**kwargs)
-
+        survey_filename = self.survey_filename
         for key, val in specific_kwargs.iteritems():
             if hasattr(self, key):
                 setattr(self, key, val)
@@ -292,103 +301,33 @@ class SurveySimulation(Simulation):
         if not isinstance(self.chunks_count, int):
             raise Exception("Chunks count must be an integer")
 
-    def inflate_survey(self, inflators):
-        """
-        Inflate some variable of the survey data
-
-        Parameters
-        ----------
-        inflators : dict or DataFrame
-                    keys or a variable column should contain the variables to
-                    inflate and values of the value column the value of the inflator
-        """
-
-        if self.input_table is None:
-            self.initialize_input_table()
-            self.input_table.load_data_from_survey(self.survey_filename,
-                                               num_table = self.num_table,
-                                               subset=self.subset,
-                                               print_missing=self.verbose)
-
-        if isinstance(inflators, DataFrame):
-            for varname in inflators['variable']:
-                inflators.set_index('variable')
-                inflator = inflators.get_value(varname, 'value')
-                self.input_table.inflate(varname, inflator)
-        if isinstance(inflators, dict):
-            for varname, inflator in inflators.iteritems():
-                self.input_table.inflate(varname, inflator)
-
-
-    def initialize_input_table(self):
-        """
-        Initialize the input_table for a survey based simulation
-        """
-        self.clear()
-        self._initialize_input_table()
-
-        io_column_by_label = self.io_column_by_label
-        io_column_by_name = self.io_column_by_name
-        io_column_by_label.clear()
-        io_column_by_name.clear()
-        for column_name, column in self.input_table.column_by_name.iteritems():
-            io_column_by_label[column.label] = column
-            io_column_by_name[column_name] = column
 
     def compute(self):
         """
         Computes the output_table for a survey based simulation
         """
         self.clear()
-        if self.input_table is None:
-            self.initialize_input_table()
-            self.input_table.load_data_from_survey(self.survey_filename,
-                                               num_table = self.num_table,
-                                               subset=self.subset,
-                                               print_missing=self.verbose)
-
-        if self.chunks_count == 1:
-            self._compute()
-        # Note: subset has already be applied
-        else:
-            num = self.num_table
-            #TODO: replace 'idmen' by something not france-specific : the biggest entity
-            if num == 1:
-                list_men = self.input_table.table['idmen'].unique()
-            if num == 3:
-                list_men = self.input_table.table3['ind']['idmen'].unique()
-
-            len_tot = len(list_men)
-            chunk_length = int(len_tot / self.chunks_count) + 1
-
-            for chunk_index in range(0, self.chunks_count):
-                start= chunk_index * chunk_length
-                end = (chunk_index + 1) * chunk_length
-
-                subsimu = SurveySimulation()
-                subsimu.__dict__ = self.__dict__.copy()
-                subsimu.subset = list_men[start:end]
-                subsimu.chunks_count = 1
-                subsimu.compute()
-                simu_chunk = subsimu
-                print("compute chunk %d / %d" %(chunk_index + 1, self.chunks_count))
-
-                if self.output_table is not None:
-                    self.output_table = self.output_table + simu_chunk.output_table
-                else:
-                    self.output_table = simu_chunk.output_table
-
-            # as set_imput didn't run, we do it now
-            self.output_table.index = self.input_table.index
-            self.output_table._inputs = self.input_table
-            self.output_table._nrows = self.input_table._nrows
+ 
 
 if __name__ == '__main__':    
-    Pension = Simulation()
-    Pension.param_file = 'param.xml'
-    Pension.datesim = datetime.strptime("2013-01-02", "%Y-%m-%d").date()
+    Pension = PensionSimulation()
     
+    # 0 - Préparation de la table d'input
+    filename = os.path.join(path_til + '/model', 'Destinie2.h5')
+    table = pd.read_hdf(filename, 'entities//person')
+    past = pd.read_hdf(filename, 'entities//past')
+    futur = pd.read_hdf(filename, 'entities//futur')
+    
+    dic_rename = {'id': 'ind', 'foy': 'idfoy', 'men': 'idmen'}
+    table = table.rename(columns = dic_rename)
+    table[['quifam', 'idfam']] = table[['quimen', 'idmen']]
+   
     # I - Chargement des paramètres de la législation -> stockage au format .json type OF
+    Pension.set_config( year = 2013,
+                        survey_filename = table,
+                        data_past = past,
+                        data_futur = futur, 
+                        param_file = 'param.xml')
     Pension.set_param()
     _P =  Pension.P.ret_base.RG
     print "\n Exemple de variable type 'Paramètre' : "
@@ -399,3 +338,4 @@ if __name__ == '__main__':
     print _P.deduc
     
     # II - Lancement des calculs
+    
