@@ -44,6 +44,7 @@ class DataTil(object):
         self.foy = None
         self.futur = None
         self.past = None
+        self.longitudinal = None
         self.child_out_of_house = None
         self.seuil= None
         
@@ -528,7 +529,16 @@ class DataTil(object):
         
     def _output_name(self):
         raise NotImplementedError()
-             
+    
+    def longitudinal_data(self):
+        ''' It's a bit strange because that data where in the right shape 
+        at first but it more general like that '''
+        table = self.longitudinal
+        self.longitudinal = {}
+        for varname in ['sali', 'workstate']:
+            self.longitudinal[varname] = \
+                table.pivot(index='id', columns='period', values=varname)
+
     def store_to_liam(self):
         '''
         Sauvegarde des données au format utilisé ensuite par le modèle Til
@@ -572,7 +582,6 @@ class DataTil(object):
                 ent_table = entity.to_records(index=False)
                 dtypes = ent_table.dtype
                 final_name = of_name_to_til[ent_name]
-                print final_name
                 table = h5file.createTable(ent_node, final_name, dtypes, title="%s table" % final_name)         
                 table.append(ent_table)
                 table.flush()    
@@ -591,6 +600,12 @@ class DataTil(object):
                     table.append(ent_table2)
                     table.flush()  
         h5file.close()
+                    
+        # 3 - table longitudinal
+        # Note: on conserve le format pandas ici
+        ent_node = h5file.createGroup("/", "longitudinal", "longitudinal")
+        for varname, tab in self.longitudinal.iteritems():
+            tab.to_hdf(path, 'longitudinal/' + varname)
             
     def store(self):
         self.men.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/men')
