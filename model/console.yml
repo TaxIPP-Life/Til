@@ -70,7 +70,7 @@ simulation:
     
     input:
         #file: Patrimoine_400.h5
-        file: Destinie2.h5
+        file: Destinie.h5
         
     output:
         file: simul.h5

@@ -41,7 +41,7 @@ class Destinie(DataTil):
                                'var_sup', 'longitudinal', 'add_futur', 'store_to_liam']
        
     def _output_name(self):
-        return 'Destinie2.h5'
+        return 'Destinie.h5'
             
     def load(self):
         def _BioEmp_in_2():
