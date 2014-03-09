@@ -11,7 +11,7 @@ from pgm.CONFIG import path_til, path_liam
 import numpy as np
 import tables
 
-from pandas import merge, notnull, DataFrame, concat
+from pandas import merge, notnull, DataFrame, concat, HDFStore
 import pdb
 
 import sys 
@@ -603,10 +603,16 @@ class DataTil(object):
                     
         # 3 - table longitudinal
         # Note: on conserve le format pandas ici
-        ent_node = h5file.createGroup("/", "longitudinal", "longitudinal")
+        store = HDFStore(path)
         for varname, tab in self.longitudinal.iteritems():
-            tab.to_hdf(path, 'longitudinal/' + varname)
+            #format to liam
+            table = tab
+            table.columns = [x*100+1 for x in table.columns]
+            table['id'] = table.index
             
+            store.append('longitudinal/' + varname, table)
+        store.close()
+        
     def store(self):
         path = path_til +'model\\' + self._output_name()
         self.men.to_hdf(path, 'entites/men')
