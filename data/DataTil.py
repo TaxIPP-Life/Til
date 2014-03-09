@@ -608,9 +608,10 @@ class DataTil(object):
             tab.to_hdf(path, 'longitudinal/' + varname)
             
     def store(self):
-        self.men.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/men')
-        self.ind.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/ind')
-        self.foy.to_hdf(path_til + 'model\\patrimoine.h5', 'entites/foy')
+        path = path_til +'model\\' + self._output_name()
+        self.men.to_hdf(path, 'entites/men')
+        self.ind.to_hdf(path, 'entites/ind')
+        self.foy.to_hdf(path, 'entites/foy')
 
     def run_all(self):
         for method in self.methods_order:
