@@ -1,0 +1,15 @@
+<CODE description= "Plafond de ressources - couple" code="plaf_couple" format="float">
+<VALUE valeur= "14667.32" deb="2013-04-01" fin="2014-12-01"/>
+<VALUE valeur= "14479.1" deb="2012-04-01" fin="2013-03-31"/>
+<VALUE valeur= "14181.3" deb="2011-04-01" fin="2012-03-31"/>
+<VALUE valeur= "13889.62" deb="2010-04-01" fin="2011-03-31"/>
+<VALUE valeur= "13765.73" deb="2009-04-01" fin="2010-03-31"/>
+<VALUE valeur= "13629.44" deb="2008-09-01" fin="2009-03-31"/>
+<VALUE valeur= "13521.27" deb="2008-01-01" fin="2008-08-31"/>
+<VALUE valeur= "13374.16" deb="2007-01-01" fin="2007-12-31"/>
+<VALUE valeur= "13137.69" deb="2006-01-01" fin="2006-12-31"/>
+<VALUE valeur= "12905.41" deb="2005-01-01" fin="2005-12-31"/>
+<VALUE valeur= "12652.36" deb="2004-01-01" fin="2004-12-31"/>
+<VALUE valeur= "12440.87" deb="2003-01-01" fin="2003-12-31"/>
+<VALUE valeur= "12257.01" deb="2002-01-01" fin="2002-12-31"/>
+</CODE>
