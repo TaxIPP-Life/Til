@@ -91,7 +91,7 @@ entities:
                              if(BEGINER, 0.7*sali, rsti), 
                           0)
                 - salaire_annee_derniere : lag(sali,1)
-                - rsti: retraite(salaire_annee_derniere)
+                - pension: pension_func()
                 - test : count(rsti>0)
                 
                           
