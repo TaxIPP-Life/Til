@@ -50,22 +50,22 @@ openfisca_france.init_country()
 
     
 def run_pension(sali, workstate, example=False):
-
     Pension = PensionSimulation()
-    # I - Chargement des paramètres de la législation -> stockage au format .json type OF
+    # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
+    # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
     param_file = path_til + 'pgm\\Pension\\Param\\' + 'param.xml' #TODO: Amelioration
     if example:
         param_file =  'param_example.xml'
+
     config = {'year' : 2013, 'workstate': workstate, 'sali': sali, 'param_file' : param_file}
     Pension.set_config(**config)
     Pension.set_param()
-
     # II - Lancement des calculs
     # II/a - Régime général
     _P =  Pension.P.RG.ret_base
     RG = Regime_general(param_regime = _P, param_common = Pension.P.common)
     RG.set_config(**config)
-    RG._nb_trim()
+    RG._nb_trim_cot()
     return Pension.P
 
 if __name__ == '__main__':    

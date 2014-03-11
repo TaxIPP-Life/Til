@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 #import pandas as pd
-#import numpy as np
+import numpy as np
 from pgm.CONFIG import path_data_destinie
 from datetime import datetime
 from pgm.Pension.SimulPension import PensionSimulation
@@ -18,13 +18,32 @@ class Regime_general(PensionSimulation):
         self.workstate  = None
         self.sali = None
 
-    def _nb_trim(self):
+    def _nb_trim_cot(self):
         ''' Nombre de trimestres côtisés pour le régime général 
-        ref : code de la sécurité sociale, article R351-9'''
-        workstate = self.workstate
-        sali = self.sali
+        ref : code de la sécurité sociale, article R351-9
+        TODO :
+        1) Sur données annuelles pour l'instant. A adapter sur pas mensuel : 
+            - condition sur workstate : si a cotiser au moins un mois au régime
+            - condition sur sali : la même mais traduire sali en sal(annuel) sommant que les salaires RG
+         2) Construction de sal_mini : commence en 1949 mais voir avant (légilsation plus complexe) 
+         3) Check revalorisation'''
+        workstate = self.workstate[194901:]
+        sali = self.sali[194901:]
         datesim = self.datesim 
-        print datesim
+        P = self._Pcom
+        sal_min = 0
+        import pdb
+        pdb.set_trace()
+        def _calculate_trim_cot(data):
+            ''' fonction de calcul effectif à partir d'une matrice contenant les salaires annuels cotisés au RG
+            lignes : individus / colonnes : date '''
+            print "test"
+            
+        workstate_selection = (workstate == 3 | workstate == 4 ).astype(int)
+        sali_selection = np.greater_equal(sali, sal_min).astype(int)
+        sal_cot = sali * workstate_selection * sali_selection
+        nb_trim_cot = sal_cot.apply(_calculate_trim_cot)
+        return nb_trim_cot
         
 
     ######
