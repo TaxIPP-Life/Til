@@ -7,8 +7,7 @@ entities:
                 - productivity: 0
                 # destinie (1991)
                 # Roux (jusque 2002)
-                - mincer : 7.6 + 0.08 * findet + 0.04 * xpr - 0.0006 * xpr*xpr   
-               
+                - mincer : 7.6 + 0.08 * findet + 0.04 * xpr - 0.0006 * xpr*xpr           
                 - productivity: if( sali>0,
                             sali*0.5 - 1820*mincer, 
                             0)
@@ -91,7 +90,7 @@ entities:
                              if(BEGINER, 0.7*sali, rsti), 
                           0)
                 - salaire_annee_derniere : lag(sali,1)
-                - rsti: retraite(salaire_annee_derniere)
+                - pension: pension_func() #filter=(age>61)
                 - test : count(rsti>0)
                 
                           

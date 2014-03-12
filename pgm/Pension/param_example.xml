@@ -10,8 +10,29 @@ On a donc : varcontrol="year[age_min]"
 -->
 
 <NODE description= "Retraites" code="ret">
-	<NODE description="Retraites de base" code="ret_base" >
-		<NODE description="Régime général" code="RG" >
+  <NODE description="Commun à tous les régimes" code="common" >
+    <CODE description="SMIC horaire brut" code="smic_h_b" format="float" type="monetary">
+	  <VALUE valeur="9.53" deb="2014-01-01" fin="2014-12-31"/>
+	  <VALUE valeur="9.43" deb="2013-01-01" fin="2013-12-31"/>
+	  <VALUE valeur="9.40" deb="2012-07-01" fin="2012-12-31"/>
+	  <VALUE valeur="9.22" deb="2012-01-01" fin="2012-06-30"/>
+	  <VALUE valeur="9.19" deb="2011-12-01" fin="2011-12-31"/>
+	  <VALUE valeur="9.00" deb="2011-01-01" fin="2011-11-30"/>
+	  <VALUE valeur="8.86" deb="2010-01-01" fin="2010-12-31"/>
+	  <VALUE valeur="8.82" deb="2009-07-01" fin="2009-12-31"/>
+	  <VALUE valeur="8.71" deb="2008-07-01" fin="2009-06-30"/>
+	  <VALUE valeur="8.63" deb="2008-05-01" fin="2008-06-30"/>
+	  <VALUE valeur="8.44" deb="2007-07-01" fin="2008-04-30"/>
+	  <VALUE valeur="8.27" deb="2006-07-01" fin="2007-06-30"/>
+	  <VALUE valeur="8.03" deb="2005-07-01" fin="2006-06-30"/>
+	  <VALUE valeur="7.61" deb="2004-07-01" fin="2005-06-30"/>
+	  <VALUE valeur="7.19" deb="2003-07-01" fin="2004-06-30"/>
+	  <VALUE valeur="6.83" deb="2002-07-01" fin="2003-06-30"/>
+	  <VALUE valeur="6.67" deb="2001-08-01" fin="2002-06-30"/>
+    </CODE>
+  </NODE>
+  <NODE description="Régime général" code="RG" >
+    <NODE description="Retraites de base" code="ret_base" >
 			<CODE description="Taux plein" code="tx_plein"  format="percent">
   				<VALUE valeur=".40" deb="1945-01-01" fin="1971-12-31"/>
   				<VALUE valeur=".50" deb="1972-01-01" fin="2100-12-31"/>
