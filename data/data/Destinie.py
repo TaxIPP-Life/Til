@@ -29,14 +29,8 @@ class Destinie(DataTil):
         self.survey_year = 2009
         self.last_year = 2060
         self.survey_date = 100*self.survey_year + 1
-        self.ind = None
-        self.men = None
-        self.foy = None
-        self.futur = None
-        self.past = None
         # TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         # TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
-        self.done = []
         self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_conjoint', 'creation_menage', 'creation_foy',
                                'var_sup', 'longitudinal', 'add_futur', 'store_to_liam']
        

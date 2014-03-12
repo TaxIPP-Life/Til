@@ -27,7 +27,6 @@ class Patrimoine(DataTil):
         self.survey_date = 100*self.survey_year + 1
         #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
-        self.done = []
         self.methods_order = ['load','correction_initial','drop_variable','format_initial','conjoint','enfants',
                       'expand_data','creation_child_out_of_house','matching_par_enf','matching_couple_hdom',
                       'creation_foy','mise_au_format','var_sup','store_to_liam']
