@@ -4,8 +4,8 @@ entities:
             death:
                 ############# Tirage ###########
                 - dead: if(ISMALE,
-                           logit_regr(0.0, align='data\\p_dead_m.csv'),
-                           logit_regr(0.0, align='data\\p_dead_f.csv'))
+                           logit_regr(0.0, align='data\\hyp_mortaliteH.csv'),
+                           logit_regr(0.0, align='data\\hyp_mortaliteF.csv'))
                        
                 # - test_dead: age/100
                 # - test_log: logistic((age-50)/10)

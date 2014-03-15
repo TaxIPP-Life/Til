@@ -8,8 +8,9 @@ entities:
                 # Note, on n'a pas de jumeaux
                 - to_give_birth: logit_regr(0.0,
                                             filter=ISFEMALE and (age >= 15) and (age <= 50) and before_max,
-                                            align='data\\p_birth.csv')
-                #TODO: faire un bon qui en fonction des gens attribue et bien gerer la declaration
+                                            align='data\\Hyp_fecondite.csv')
+                 
+                # le niveau d'études de l'enfant est pré-determinée
                 - annee: trunc(period/100)
                 - temp_pere: if( conj>0, l_conj.findet + (l_conj.age>35+annee-2009) + (l_conj.age>45+annee-2009) + (l_conj.age>55+annee-2009), 0)
                 - temp_mere: findet + (l_mere.age>35+annee-2009) + (l_mere.age>45+annee-2009) + (l_mere.age>55+annee-2009)
@@ -22,7 +23,7 @@ entities:
                       conj = UNSET,
                       civilstate = SINGLE,
                       workstate = STUDENT,
-                      sexe = choice([MALE,FEMALE], [0.512, 0.488]),
+                      sexe = choice([MALE,FEMALE], [0.5122, 0.4878]),
                       productivity = 0,
                       sali = 0,
                       rsti = 0,
@@ -34,8 +35,6 @@ entities:
                       wprm_init = wprm_init,
                       quifoy = 2
                       )   
-
-                
                 - new('register', filter=(age == 0) ,
                         id=id, sexe=sexe, pere=pere, mere=mere, vivant=True, naiss=period, findet=findet)
                 
