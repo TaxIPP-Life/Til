@@ -44,7 +44,7 @@ class DataTil(object):
         self.foy = None
         self.futur = None
         self.past = None
-        self.longitudinal = None
+        self.longitudinal = {}
         self.child_out_of_house = None
         self.seuil= None
         
