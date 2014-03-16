@@ -114,6 +114,15 @@ class Destinie(DataTil):
         print "Début de l'importation des données"
         start_time = time.time()
         self.ind, self.emp = _BioEmp_in_2()
+        
+        def _recode_sexe(sexe):
+            ''' devrait etre dans format mais plus pratique ici'''
+            if sexe.max() == 2:
+                sexe = sexe.replace(1,0)
+                sexe = sexe.replace(2,1)
+            return sexe
+        
+        self.ind['sexe'] = _recode_sexe(self.ind['sexe'])
         self.BioFam = _lecture_BioFam()
         print "Temps d'importation des données : " + str(time.time() - start_time) + "s" 
         print "fin de l'importation des données"
@@ -126,6 +135,8 @@ class Destinie(DataTil):
         '''
         print "Début de la mise en forme initiale"
         start_time = time.time()
+        
+
                 
         def _Emp_clean(ind, emp):
             ''' Mise en forme des données sur carrières:
