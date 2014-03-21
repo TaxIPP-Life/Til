@@ -45,7 +45,8 @@ from openfisca_core import conv
 #from .taxbenefitsystems import TaxBenefitSystem
 
 import openfisca_france
-openfisca_france.init_country()
+TaxBenefitSystem = openfisca_france.init_country()
+tax_benefit_system = TaxBenefitSystem()
 
 class Simulation(object):
     """
@@ -127,14 +128,14 @@ class Simulation(object):
             _, legislation_json = legislationsxml.transform_node_xml_json_to_json(legislation_xml_json)
             dated_legislation_json = legislations.generate_dated_legislation_json(legislation_json, self.datesim)
             compact_legislation = legislations.compact_dated_node_json(dated_legislation_json)
-
+            compact_legislation_long = legislations.compact_long_dated_node_json(dated_legislation_json)
         if param_default is None:
             self.P_default = copy.deepcopy(compact_legislation)
         else:
             self.P_default = param_default
-
         if param is None:
             self.P = compact_legislation
+            self.P_long = compact_legislation_long
         else:
             self.P = param
 

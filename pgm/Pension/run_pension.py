@@ -63,7 +63,7 @@ def run_pension(sali, workstate, example=False):
     # II - Lancement des calculs
     # II/a - Régime général
     _P =  Pension.P.RG.ret_base
-    RG = Regime_general(param_regime = _P, param_common = Pension.P.common)
+    RG = Regime_general(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     RG.set_config(**config)
     RG._nb_trim_cot()
     return Pension.P

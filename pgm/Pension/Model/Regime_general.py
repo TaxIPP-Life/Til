@@ -2,19 +2,22 @@
 
 #import pandas as pd
 import numpy as np
+
+from pandas import DataFrame
 from pgm.CONFIG import path_data_destinie
 from datetime import datetime
 from pgm.Pension.SimulPension import PensionSimulation
 
 class Regime_general(PensionSimulation):
     
-    def __init__(self, param_regime, param_common):
+    def __init__(self, param_regime, param_common, param_longitudinal):
         PensionSimulation.__init__(self)
         self.regime = 'RG'
         self.ret_base = None
         self.ret_comp = None
         self._P = param_regime
         self._Pcom = param_common
+        self._Plongitudinal = param_longitudinal
         self.workstate  = None
         self.sali = None
 
@@ -25,13 +28,51 @@ class Regime_general(PensionSimulation):
         1) Sur données annuelles pour l'instant. A adapter sur pas mensuel : 
             - condition sur workstate : si a cotiser au moins un mois au régime
             - condition sur sali : la même mais traduire sali en sal(annuel) sommant que les salaires RG
-         2) Construction de sal_mini : commence en 1949 mais voir avant (légilsation plus complexe) 
-         3) Check revalorisation'''
+         2) Construction de sal_mini : 
+             - commence en 1949 mais voir avant (légilsation plus complexe) 
+             - éviter la sélection aléatoire dans _build_sal_min
+         3) Check revalorisation
+         '''
         workstate = self.workstate[194901:]
         sali = self.sali[194901:]
-        datesim = self.datesim 
+        yearsim = self.datesim.year
         P = self._Pcom
         sal_min = 0
+
+        def _build_salmin(yearsim, smic, avts):
+            '''
+            salaire annuel de référence minimum 
+            '''
+            salmin = DataFrame( {'year' : range(1949, yearsim + 1), 'sal' : - np.ones(yearsim - 1949 +1)} )
+            avts_year = []
+            smic_year = []
+            for year in range(1949,1972):
+                avts_old = avts_year
+                avts_year = []
+                for key in avts.keys():
+                    if str(year) in key:
+                        avts_year.append(key)
+                if not avts_year:
+                    avts_year = avts_old
+                salmin.loc[salmin['year'] == year, 'sal'] = avts[avts_year[0]] 
+                
+            for year in range(1972,yearsim + 1):
+                smic_old = smic_year
+                smic_year = []
+                for key in smic.keys():
+                    if str(year) in key:
+                        smic_year.append(key)
+                if not smic_year:
+                    smic_year = smic_old
+                salmin.loc[salmin['year'] == year, 'sal'] = smic[smic_year[0]] * 200 * 4
+                if year <= 2001 :
+                     salmin.loc[salmin['year'] == year, 'sal'] = smic[smic_year[0]] * 200 * 4 / 6.5596
+            print salmin.to_string()
+            return salmin['sal']
+        
+        smic_long = self._Plongitudinal.common.smic
+        avts_long = self._Plongitudinal.common.avts.montant
+        salref = _build_salmin(yearsim, smic_long, avts_long)
         import pdb
         pdb.set_trace()
         def _calculate_trim_cot(data):
