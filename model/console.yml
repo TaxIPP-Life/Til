@@ -43,7 +43,7 @@ simulation:
         - register: [rien]
         - person: [ageing]
         - person: [death]
-        - person: [migration]
+#        - person: [migration]
         - person: [independance]
         - person: [birth]
         - menage: [men_composition]

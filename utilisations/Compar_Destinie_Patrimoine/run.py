@@ -14,9 +14,6 @@ from pandas import read_hdf, HDFStore
 import tables
 import numpy as np
 from scipy.stats import mstats
-from scipy.stats.mstats_basic import mquantiles
-from functools import partial
-
 
 path_data = path_til + 'Model\\'
 
@@ -33,8 +30,6 @@ table = pat
 
 table1 = 'Patrimoine_300'
 table2 = 'Destinie'
-
-
 
 def quantile10(x):    return x.quantile(0.1)
 def quantile25(x):    return x.quantile(0.25)
@@ -71,10 +66,7 @@ class Comparaison_bases(object):
             sous_cat = ['Total']
 
         tab0, tab1 = self.tables
-        tab0[list_var_qual+ sous_cat].groupby(sous_cat).agg([len, sum])
-        tab0[list_var_qual+ sous_cat].groupby(sous_cat).agg([len, sum])
-        
-        pdb.set_trace()
+
         return [tab0[list_var_num + sous_cat].groupby(sous_cat).agg(stat_on_numeric),
                  tab1[list_var_num + sous_cat].groupby(sous_cat).agg(stat_on_numeric)]
        
