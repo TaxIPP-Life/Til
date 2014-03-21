@@ -12,25 +12,387 @@ TODO : Checker les paramètres importés de ParamSociaux (plaf_ss, indice des pr
 
 <NODE description= "Retraites" code="ret">
   <NODE description="Commun à tous les régimes" code="common" >
-    <CODE description="SMIC horaire brut" code="smic_h_b" format="float" type="monetary">
-	  <VALUE valeur="9.53" deb="2014-01-01" fin="2014-12-31"/>
-	  <VALUE valeur="9.43" deb="2013-01-01" fin="2013-12-31"/>
-	  <VALUE valeur="9.40" deb="2012-07-01" fin="2012-12-31"/>
-	  <VALUE valeur="9.22" deb="2012-01-01" fin="2012-06-30"/>
-	  <VALUE valeur="9.19" deb="2011-12-01" fin="2011-12-31"/>
-	  <VALUE valeur="9.00" deb="2011-01-01" fin="2011-11-30"/>
-	  <VALUE valeur="8.86" deb="2010-01-01" fin="2010-12-31"/>
-	  <VALUE valeur="8.82" deb="2009-07-01" fin="2009-12-31"/>
-	  <VALUE valeur="8.71" deb="2008-07-01" fin="2009-06-30"/>
-	  <VALUE valeur="8.63" deb="2008-05-01" fin="2008-06-30"/>
-	  <VALUE valeur="8.44" deb="2007-07-01" fin="2008-04-30"/>
-	  <VALUE valeur="8.27" deb="2006-07-01" fin="2007-06-30"/>
-	  <VALUE valeur="8.03" deb="2005-07-01" fin="2006-06-30"/>
-	  <VALUE valeur="7.61" deb="2004-07-01" fin="2005-06-30"/>
-	  <VALUE valeur="7.19" deb="2003-07-01" fin="2004-06-30"/>
-	  <VALUE valeur="6.83" deb="2002-07-01" fin="2003-06-30"/>
-	  <VALUE valeur="6.67" deb="2001-08-01" fin="2002-06-30"/>
-    </CODE>
+	<CODE description= "Montant du smic horaire" code="smic" format="float" longitudinal="true">
+	  <VALUE valeur= "9.53" deb="2014-01-01" fin="2100-12-01"/>
+	  <VALUE valeur= "9.43" deb="2013-01-01" fin="2013-12-31"/>
+	  <VALUE valeur= "9.4" deb="2012-07-01" fin="2012-12-31"/>
+	  <VALUE valeur= "9.22" deb="2012-01-01" fin="2012-06-30"/>
+	  <VALUE valeur= "9.19" deb="2011-12-01" fin="2011-12-31"/>
+	  <VALUE valeur= "9" deb="2011-01-01" fin="2011-11-30"/>
+	  <VALUE valeur= "8.86" deb="2010-01-01" fin="2010-12-31"/>
+	  <VALUE valeur= "8.82" deb="2009-07-01" fin="2009-12-31"/>
+	  <VALUE valeur= "8.71" deb="2008-07-01" fin="2009-06-30"/>
+	  <VALUE valeur= "8.63" deb="2008-05-01" fin="2008-06-30"/>
+	  <VALUE valeur= "8.44" deb="2007-07-01" fin="2008-04-30"/>
+	  <VALUE valeur= "8.27" deb="2006-07-01" fin="2007-06-30"/>
+	  <VALUE valeur= "8.03" deb="2005-07-01" fin="2006-06-30"/>
+	  <VALUE valeur= "7.61" deb="2004-07-01" fin="2005-06-30"/>
+	  <VALUE valeur= "7.19" deb="2003-07-01" fin="2004-06-30"/>
+	  <VALUE valeur= "6.83" deb="2002-07-01" fin="2003-06-30"/>
+	  <VALUE valeur= "6.67" deb="2002-01-01" fin="2002-06-30"/>
+	  <VALUE valeur= "43.72" deb="2001-07-01" fin="2001-12-31"/>
+	  <VALUE valeur= "42.02" deb="2000-07-01" fin="2001-06-30"/>
+	  <VALUE valeur= "40.72" deb="1999-07-01" fin="2000-06-30"/>
+	  <VALUE valeur= "40.22" deb="1998-07-01" fin="1999-06-30"/>
+	  <VALUE valeur= "39.43" deb="1997-07-01" fin="1998-06-30"/>
+	  <VALUE valeur= "37.91" deb="1996-07-01" fin="1997-06-30"/>
+	  <VALUE valeur= "37.72" deb="1996-05-01" fin="1996-06-30"/>
+	  <VALUE valeur= "36.98" deb="1995-07-01" fin="1996-04-30"/>
+	  <VALUE valeur= "35.56" deb="1994-07-01" fin="1995-06-30"/>
+	  <VALUE valeur= "34.83" deb="1993-07-01" fin="1994-06-30"/>
+	  <VALUE valeur= "34.06" deb="1992-07-01" fin="1993-06-30"/>
+	  <VALUE valeur= "33.31" deb="1992-03-01" fin="1992-06-30"/>
+	  <VALUE valeur= "32.66" deb="1991-07-01" fin="1992-02-29"/>
+	  <VALUE valeur= "31.94" deb="1990-12-01" fin="1991-06-30"/>
+	  <VALUE valeur= "31.28" deb="1990-07-01" fin="1990-11-30"/>
+	  <VALUE valeur= "30.51" deb="1990-04-01" fin="1990-06-30"/>
+	  <VALUE valeur= "29.91" deb="1989-07-01" fin="1990-03-31"/>
+	  <VALUE valeur= "29.36" deb="1989-03-01" fin="1989-06-30"/>
+	  <VALUE valeur= "28.76" deb="1988-07-01" fin="1989-02-28"/>
+	  <VALUE valeur= "28.48" deb="1988-06-01" fin="1988-06-30"/>
+	  <VALUE valeur= "27.84" deb="1987-07-01" fin="1988-05-31"/>
+	  <VALUE valeur= "27.57" deb="1987-03-01" fin="1987-06-30"/>
+	  <VALUE valeur= "26.92" deb="1986-07-07" fin="1987-02-28"/>
+	  <VALUE valeur= "26.59" deb="1986-06-01" fin="1986-07-06"/>
+	  <VALUE valeur= "26.04" deb="1985-07-01" fin="1986-05-31"/>
+	  <VALUE valeur= "25.54" deb="1985-05-01" fin="1985-06-30"/>
+	  <VALUE valeur= "24.9" deb="1985-04-01" fin="1985-04-30"/>
+	  <VALUE valeur= "24.36" deb="1984-11-01" fin="1985-03-31"/>
+	  <VALUE valeur= "23.84" deb="1984-07-01" fin="1984-10-31"/>
+	  <VALUE valeur= "23.56" deb="1984-05-01" fin="1984-06-30"/>
+	  <VALUE valeur= "22.78" deb="1984-01-01" fin="1984-04-30"/>
+	  <VALUE valeur= "22.33" deb="1983-10-01" fin="1983-12-31"/>
+	  <VALUE valeur= "21.89" deb="1983-07-01" fin="1983-09-30"/>
+	  <VALUE valeur= "21.65" deb="1983-06-01" fin="1983-06-30"/>
+	  <VALUE valeur= "21.02" deb="1983-03-01" fin="1983-05-31"/>
+	  <VALUE valeur= "20.29" deb="1982-12-01" fin="1983-02-28"/>
+	  <VALUE valeur= "19.64" deb="1982-07-01" fin="1982-11-30"/>
+	  <VALUE valeur= "19.03" deb="1982-05-01" fin="1982-06-30"/>
+	  <VALUE valeur= "18.62" deb="1982-03-01" fin="1982-04-30"/>
+	  <VALUE valeur= "18.15" deb="1982-01-01" fin="1982-02-28"/>
+	  <VALUE valeur= "17.76" deb="1981-11-01" fin="1981-12-31"/>
+	  <VALUE valeur= "17.34" deb="1981-09-01" fin="1981-10-31"/>
+	  <VALUE valeur= "16.72" deb="1981-06-01" fin="1981-08-31"/>
+	  <VALUE valeur= "15.2" deb="1981-03-01" fin="1981-05-31"/>
+	  <VALUE valeur= "14.79" deb="1980-12-01" fin="1981-02-28"/>
+	  <VALUE valeur= "14.29" deb="1980-09-01" fin="1980-11-30"/>
+	  <VALUE valeur= "14" deb="1980-07-01" fin="1980-08-31"/>
+	  <VALUE valeur= "13.66" deb="1980-05-01" fin="1980-06-30"/>
+	  <VALUE valeur= "13.37" deb="1980-03-01" fin="1980-04-30"/>
+	  <VALUE valeur= "12.93" deb="1979-12-01" fin="1980-02-29"/>
+	  <VALUE valeur= "12.42" deb="1979-09-01" fin="1979-11-30"/>
+	  <VALUE valeur= "12.15" deb="1979-07-01" fin="1979-08-31"/>
+	  <VALUE valeur= "11.6" deb="1979-04-01" fin="1979-06-30"/>
+	  <VALUE valeur= "11.31" deb="1978-12-01" fin="1979-03-31"/>
+	  <VALUE valeur= "11.07" deb="1978-09-01" fin="1978-11-30"/>
+	  <VALUE valeur= "10.85" deb="1978-07-01" fin="1978-08-31"/>
+	  <VALUE valeur= "10.45" deb="1978-05-01" fin="1978-06-30"/>
+	  <VALUE valeur= "10.06" deb="1977-12-01" fin="1978-04-30"/>
+	  <VALUE valeur= "9.79" deb="1977-10-01" fin="1977-11-30"/>
+	  <VALUE valeur= "9.58" deb="1977-07-01" fin="1977-09-30"/>
+	  <VALUE valeur= "9.34" deb="1977-06-01" fin="1977-06-30"/>
+	  <VALUE valeur= "9.14" deb="1977-04-01" fin="1977-05-31"/>
+	  <VALUE valeur= "8.94" deb="1976-12-01" fin="1977-03-31"/>
+	  <VALUE valeur= "8.76" deb="1976-10-01" fin="1976-11-30"/>
+	  <VALUE valeur= "8.58" deb="1976-07-01" fin="1976-09-30"/>
+	  <VALUE valeur= "8.08" deb="1976-04-01" fin="1976-06-30"/>
+	  <VALUE valeur= "7.89" deb="1976-01-01" fin="1976-03-31"/>
+	  <VALUE valeur= "7.71" deb="1975-10-01" fin="1975-12-31"/>
+	  <VALUE valeur= "7.55" deb="1975-07-01" fin="1975-09-30"/>
+	  <VALUE valeur= "7.12" deb="1975-06-01" fin="1975-06-30"/>
+	  <VALUE valeur= "6.95" deb="1975-03-01" fin="1975-05-31"/>
+	  <VALUE valeur= "6.75" deb="1974-12-01" fin="1975-02-28"/>
+	  <VALUE valeur= "6.55" deb="1974-09-01" fin="1974-11-30"/>
+	  <VALUE valeur= "6.4" deb="1974-07-01" fin="1974-08-31"/>
+	  <VALUE valeur= "5.95" deb="1974-05-01" fin="1974-06-30"/>
+	  <VALUE valeur= "5.6" deb="1974-03-01" fin="1974-04-30"/>
+	  <VALUE valeur= "5.43" deb="1973-12-01" fin="1974-02-28"/>
+	  <VALUE valeur= "5.32" deb="1973-10-01" fin="1973-11-30"/>
+	  <VALUE valeur= "5.2" deb="1973-07-01" fin="1973-09-30"/>
+	  <VALUE valeur= "4.64" deb="1973-02-01" fin="1973-06-30"/>
+	  <VALUE valeur= "4.55" deb="1972-11-01" fin="1973-01-31"/>
+	  <VALUE valeur= "4.3" deb="1972-07-01" fin="1972-10-31"/>
+	  <VALUE valeur= "4.1" deb="1972-05-01" fin="1972-06-30"/>
+	  <VALUE valeur= "3.94" deb="1971-12-01" fin="1972-04-30"/>
+	  <VALUE valeur= "3.85" deb="1971-07-01" fin="1971-11-30"/>
+	  <VALUE valeur= "3.68" deb="1971-04-01" fin="1971-06-30"/>
+	  <VALUE valeur= "3.63" deb="1971-01-01" fin="1971-03-31"/>
+	  <VALUE valeur= "3.5" deb="1970-07-01" fin="1970-12-31"/>
+	  <VALUE valeur= "3.36" deb="1970-03-01" fin="1970-06-30"/>
+	  <VALUE valeur= "3.27" deb="1970-01-01" fin="1970-02-28"/>
+	</CODE>
+	<CODE description= "Montant du smic horaire projeté" code="smic_proj" format="float" longitudinal="true" projection="smpt">
+	  <VALUE valeur= "33.013512226" deb="2100-01-01" fin="2100-12-01"/>
+	  <VALUE valeur= "32.5256278088" deb="2099-01-01" fin="2099-12-31"/>
+	  <VALUE valeur= "32.0449535062" deb="2098-01-01" fin="2098-12-31"/>
+	  <VALUE valeur= "31.5713827648" deb="2097-01-01" fin="2097-12-31"/>
+	  <VALUE valeur= "31.1048106057" deb="2096-01-01" fin="2096-12-31"/>
+	  <VALUE valeur= "30.6451336017" deb="2095-01-01" fin="2095-12-31"/>
+	  <VALUE valeur= "30.1922498539" deb="2094-01-01" fin="2094-12-31"/>
+	  <VALUE valeur= "29.7460589693" deb="2093-01-01" fin="2093-12-31"/>
+	  <VALUE valeur= "29.3064620387" deb="2092-01-01" fin="2092-12-31"/>
+	  <VALUE valeur= "28.8733616145" deb="2091-01-01" fin="2091-12-31"/>
+	  <VALUE valeur= "28.4466616892" deb="2090-01-01" fin="2090-12-31"/>
+	  <VALUE valeur= "28.0262676741" deb="2089-01-01" fin="2089-12-31"/>
+	  <VALUE valeur= "27.6120863784" deb="2088-01-01" fin="2088-12-31"/>
+	  <VALUE valeur= "27.2040259886" deb="2087-01-01" fin="2087-12-31"/>
+	  <VALUE valeur= "26.8019960478" deb="2086-01-01" fin="2086-12-31"/>
+	  <VALUE valeur= "26.4059074363" deb="2085-01-01" fin="2085-12-31"/>
+	  <VALUE valeur= "26.015672351" deb="2084-01-01" fin="2084-12-31"/>
+	  <VALUE valeur= "25.6312042867" deb="2083-01-01" fin="2083-12-31"/>
+	  <VALUE valeur= "25.2524180165" deb="2082-01-01" fin="2082-12-31"/>
+	  <VALUE valeur= "24.8792295729" deb="2081-01-01" fin="2081-12-31"/>
+	  <VALUE valeur= "24.5115562295" deb="2080-01-01" fin="2080-12-31"/>
+	  <VALUE valeur= "24.1493164822" deb="2079-01-01" fin="2079-12-31"/>
+	  <VALUE valeur= "23.7924300317" deb="2078-01-01" fin="2078-12-31"/>
+	  <VALUE valeur= "23.4408177653" deb="2077-01-01" fin="2077-12-31"/>
+	  <VALUE valeur= "23.0944017392" deb="2076-01-01" fin="2076-12-31"/>
+	  <VALUE valeur= "22.7531051618" deb="2075-01-01" fin="2075-12-31"/>
+	  <VALUE valeur= "22.4168523761" deb="2074-01-01" fin="2074-12-31"/>
+	  <VALUE valeur= "22.0855688435" deb="2073-01-01" fin="2073-12-31"/>
+	  <VALUE valeur= "21.7591811266" deb="2072-01-01" fin="2072-12-31"/>
+	  <VALUE valeur= "21.4376168735" deb="2071-01-01" fin="2071-12-31"/>
+	  <VALUE valeur= "21.1208048014" deb="2070-01-01" fin="2070-12-31"/>
+	  <VALUE valeur= "20.8086746812" deb="2069-01-01" fin="2069-12-31"/>
+	  <VALUE valeur= "20.5011573214" deb="2068-01-01" fin="2068-12-31"/>
+	  <VALUE valeur= "20.1981845531" deb="2067-01-01" fin="2067-12-31"/>
+	  <VALUE valeur= "19.8996892149" deb="2066-01-01" fin="2066-12-31"/>
+	  <VALUE valeur= "19.6056051378" deb="2065-01-01" fin="2065-12-31"/>
+	  <VALUE valeur= "19.3158671308" deb="2064-01-01" fin="2064-12-31"/>
+	  <VALUE valeur= "19.0304109664" deb="2063-01-01" fin="2063-12-31"/>
+	  <VALUE valeur= "18.7491733659" deb="2062-01-01" fin="2062-12-31"/>
+	  <VALUE valeur= "18.4720919861" deb="2061-01-01" fin="2061-12-31"/>
+	  <VALUE valeur= "18.199105405" deb="2060-01-01" fin="2060-12-31"/>
+	  <VALUE valeur= "17.9301531084" deb="2059-01-01" fin="2059-12-31"/>
+	  <VALUE valeur= "17.6651754762" deb="2058-01-01" fin="2058-12-31"/>
+	  <VALUE valeur= "17.4041137697" deb="2057-01-01" fin="2057-12-31"/>
+	  <VALUE valeur= "17.1469101179" deb="2056-01-01" fin="2056-12-31"/>
+	  <VALUE valeur= "16.8935075053" deb="2055-01-01" fin="2055-12-31"/>
+	  <VALUE valeur= "16.643849759" deb="2054-01-01" fin="2054-12-31"/>
+	  <VALUE valeur= "16.3978815359" deb="2053-01-01" fin="2053-12-31"/>
+	  <VALUE valeur= "16.1555483112" deb="2052-01-01" fin="2052-12-31"/>
+	  <VALUE valeur= "15.9167963658" deb="2051-01-01" fin="2051-12-31"/>
+	  <VALUE valeur= "15.6815727741" deb="2050-01-01" fin="2050-12-31"/>
+	  <VALUE valeur= "15.4498253932" deb="2049-01-01" fin="2049-12-31"/>
+	  <VALUE valeur= "15.2215028505" deb="2048-01-01" fin="2048-12-31"/>
+	  <VALUE valeur= "14.9965545325" deb="2047-01-01" fin="2047-12-31"/>
+	  <VALUE valeur= "14.7749305739" deb="2046-01-01" fin="2046-12-31"/>
+	  <VALUE valeur= "14.5565818462" deb="2045-01-01" fin="2045-12-31"/>
+	  <VALUE valeur= "14.341459947" deb="2044-01-01" fin="2044-12-31"/>
+	  <VALUE valeur= "14.1295171892" deb="2043-01-01" fin="2043-12-31"/>
+	  <VALUE valeur= "13.9207065903" deb="2042-01-01" fin="2042-12-31"/>
+	  <VALUE valeur= "13.7149818624" deb="2041-01-01" fin="2041-12-31"/>
+	  <VALUE valeur= "13.5122974013" deb="2040-01-01" fin="2040-12-31"/>
+	  <VALUE valeur= "13.3126082772" deb="2039-01-01" fin="2039-12-31"/>
+	  <VALUE valeur= "13.1158702238" deb="2038-01-01" fin="2038-12-31"/>
+	  <VALUE valeur= "12.9220396294" deb="2037-01-01" fin="2037-12-31"/>
+	  <VALUE valeur= "12.7310735265" deb="2036-01-01" fin="2036-12-31"/>
+	  <VALUE valeur= "12.5429295828" deb="2035-01-01" fin="2035-12-31"/>
+	  <VALUE valeur= "12.3575660914" deb="2034-01-01" fin="2034-12-31"/>
+	  <VALUE valeur= "12.174941962" deb="2033-01-01" fin="2033-12-31"/>
+	  <VALUE valeur= "11.9950167113" deb="2032-01-01" fin="2032-12-31"/>
+	  <VALUE valeur= "11.8177504545" deb="2031-01-01" fin="2031-12-31"/>
+	  <VALUE valeur= "11.643103896" deb="2030-01-01" fin="2030-12-31"/>
+	  <VALUE valeur= "11.4710383212" deb="2029-01-01" fin="2029-12-31"/>
+	  <VALUE valeur= "11.3015155874" deb="2028-01-01" fin="2028-12-31"/>
+	  <VALUE valeur= "11.1344981157" deb="2027-01-01" fin="2027-12-31"/>
+	  <VALUE valeur= "10.9699488824" deb="2026-01-01" fin="2026-12-31"/>
+	  <VALUE valeur= "10.8078314113" deb="2025-01-01" fin="2025-12-31"/>
+	  <VALUE valeur= "10.6481097648" deb="2024-01-01" fin="2024-12-31"/>
+	  <VALUE valeur= "10.4907485367" deb="2023-01-01" fin="2023-12-31"/>
+	  <VALUE valeur= "10.3153869584" deb="2022-01-01" fin="2022-12-31"/>
+	  <VALUE valeur= "10.1529399197" deb="2021-01-01" fin="2021-12-31"/>
+	  <VALUE valeur= "10.0028964726" deb="2020-01-01" fin="2020-12-31"/>
+	  <VALUE valeur= "9.85507041639" deb="2019-01-01" fin="2019-12-31"/>
+	  <VALUE valeur= "9.69033472605" deb="2018-01-01" fin="2018-12-31"/>
+	  <VALUE valeur= "9.53773102957" deb="2017-01-01" fin="2017-12-31"/>
+	  <VALUE valeur= "9.47143101249" deb="2016-01-01" fin="2016-12-31"/>
+	  <VALUE valeur= "9.4055918694" deb="2015-01-01" fin="2015-12-31"/>
+	  <VALUE valeur= "9.3494949" deb="2014-01-01" fin="2014-12-31"/>
+	</CODE>
+	<CODE description= "SMPT - Hypothèse d'évolution selon le scénario C du COR + inflation" code="smpt" format="float">
+	  <VALUE valeur= "117151.515598" deb="2100-01-01" fin="2100-12-01"/>
+	  <VALUE valeur= "115420.212411" deb="2099-01-01" fin="2099-12-31"/>
+	  <VALUE valeur= "113714.494987" deb="2098-01-01" fin="2098-12-31"/>
+	  <VALUE valeur= "112033.985209" deb="2097-01-01" fin="2097-12-31"/>
+	  <VALUE valeur= "110378.31055" deb="2096-01-01" fin="2096-12-31"/>
+	  <VALUE valeur= "108747.10399" deb="2095-01-01" fin="2095-12-31"/>
+	  <VALUE valeur= "107140.003931" deb="2094-01-01" fin="2094-12-31"/>
+	  <VALUE valeur= "105556.65412" deb="2093-01-01" fin="2093-12-31"/>
+	  <VALUE valeur= "103996.703566" deb="2092-01-01" fin="2092-12-31"/>
+	  <VALUE valeur= "102459.806469" deb="2091-01-01" fin="2091-12-31"/>
+	  <VALUE valeur= "100945.622137" deb="2090-01-01" fin="2090-12-31"/>
+	  <VALUE valeur= "99453.8149133" deb="2089-01-01" fin="2089-12-31"/>
+	  <VALUE valeur= "97984.0541018" deb="2088-01-01" fin="2088-12-31"/>
+	  <VALUE valeur= "96536.0138934" deb="2087-01-01" fin="2087-12-31"/>
+	  <VALUE valeur= "95109.373294" deb="2086-01-01" fin="2086-12-31"/>
+	  <VALUE valeur= "93703.8160532" deb="2085-01-01" fin="2085-12-31"/>
+	  <VALUE valeur= "92319.0305943" deb="2084-01-01" fin="2084-12-31"/>
+	  <VALUE valeur= "90954.7099451" deb="2083-01-01" fin="2083-12-31"/>
+	  <VALUE valeur= "89610.5516701" deb="2082-01-01" fin="2082-12-31"/>
+	  <VALUE valeur= "88286.257803" deb="2081-01-01" fin="2081-12-31"/>
+	  <VALUE valeur= "86981.5347813" deb="2080-01-01" fin="2080-12-31"/>
+	  <VALUE valeur= "85696.0933806" deb="2079-01-01" fin="2079-12-31"/>
+	  <VALUE valeur= "84429.6486508" deb="2078-01-01" fin="2078-12-31"/>
+	  <VALUE valeur= "83181.919853" deb="2077-01-01" fin="2077-12-31"/>
+	  <VALUE valeur= "81952.6303971" deb="2076-01-01" fin="2076-12-31"/>
+	  <VALUE valeur= "80741.5077804" deb="2075-01-01" fin="2075-12-31"/>
+	  <VALUE valeur= "79548.2835275" deb="2074-01-01" fin="2074-12-31"/>
+	  <VALUE valeur= "78372.6931305" deb="2073-01-01" fin="2073-12-31"/>
+	  <VALUE valeur= "77214.4759906" deb="2072-01-01" fin="2072-12-31"/>
+	  <VALUE valeur= "76073.3753602" deb="2071-01-01" fin="2071-12-31"/>
+	  <VALUE valeur= "74949.1382859" deb="2070-01-01" fin="2070-12-31"/>
+	  <VALUE valeur= "73841.5155527" deb="2069-01-01" fin="2069-12-31"/>
+	  <VALUE valeur= "72750.2616282" deb="2068-01-01" fin="2068-12-31"/>
+	  <VALUE valeur= "71675.1346091" deb="2067-01-01" fin="2067-12-31"/>
+	  <VALUE valeur= "70615.8961666" deb="2066-01-01" fin="2066-12-31"/>
+	  <VALUE valeur= "69572.3114942" deb="2065-01-01" fin="2065-12-31"/>
+	  <VALUE valeur= "68544.1492554" deb="2064-01-01" fin="2064-12-31"/>
+	  <VALUE valeur= "67531.1815324" deb="2063-01-01" fin="2063-12-31"/>
+	  <VALUE valeur= "66533.1837757" deb="2062-01-01" fin="2062-12-31"/>
+	  <VALUE valeur= "65549.9347544" deb="2061-01-01" fin="2061-12-31"/>
+	  <VALUE valeur= "64581.2165068" deb="2060-01-01" fin="2060-12-31"/>
+	  <VALUE valeur= "63626.8142924" deb="2059-01-01" fin="2059-12-31"/>
+	  <VALUE valeur= "62686.5165443" deb="2058-01-01" fin="2058-12-31"/>
+	  <VALUE valeur= "61760.1148219" deb="2057-01-01" fin="2057-12-31"/>
+	  <VALUE valeur= "60847.4037655" deb="2056-01-01" fin="2056-12-31"/>
+	  <VALUE valeur= "59948.1810497" deb="2055-01-01" fin="2055-12-31"/>
+	  <VALUE valeur= "59062.2473396" deb="2054-01-01" fin="2054-12-31"/>
+	  <VALUE valeur= "58189.4062459" deb="2053-01-01" fin="2053-12-31"/>
+	  <VALUE valeur= "57329.4642817" deb="2052-01-01" fin="2052-12-31"/>
+	  <VALUE valeur= "56482.2308194" deb="2051-01-01" fin="2051-12-31"/>
+	  <VALUE valeur= "55647.5180487" deb="2050-01-01" fin="2050-12-31"/>
+	  <VALUE valeur= "54825.1409347" deb="2049-01-01" fin="2049-12-31"/>
+	  <VALUE valeur= "54014.917177" deb="2048-01-01" fin="2048-12-31"/>
+	  <VALUE valeur= "53216.6671695" deb="2047-01-01" fin="2047-12-31"/>
+	  <VALUE valeur= "52430.2139601" deb="2046-01-01" fin="2046-12-31"/>
+	  <VALUE valeur= "51655.3832119" deb="2045-01-01" fin="2045-12-31"/>
+	  <VALUE valeur= "50892.0031644" deb="2044-01-01" fin="2044-12-31"/>
+	  <VALUE valeur= "50139.9045955" deb="2043-01-01" fin="2043-12-31"/>
+	  <VALUE valeur= "49398.9207837" deb="2042-01-01" fin="2042-12-31"/>
+	  <VALUE valeur= "48668.8874717" deb="2041-01-01" fin="2041-12-31"/>
+	  <VALUE valeur= "47949.6428292" deb="2040-01-01" fin="2040-12-31"/>
+	  <VALUE valeur= "47241.0274179" deb="2039-01-01" fin="2039-12-31"/>
+	  <VALUE valeur= "46542.8841556" deb="2038-01-01" fin="2038-12-31"/>
+	  <VALUE valeur= "45855.0582814" deb="2037-01-01" fin="2037-12-31"/>
+	  <VALUE valeur= "45177.3973216" deb="2036-01-01" fin="2036-12-31"/>
+	  <VALUE valeur= "44509.7510557" deb="2035-01-01" fin="2035-12-31"/>
+	  <VALUE valeur= "43851.9714835" deb="2034-01-01" fin="2034-12-31"/>
+	  <VALUE valeur= "43203.9127916" deb="2033-01-01" fin="2033-12-31"/>
+	  <VALUE valeur= "42565.4313218" deb="2032-01-01" fin="2032-12-31"/>
+	  <VALUE valeur= "41936.3855387" deb="2031-01-01" fin="2031-12-31"/>
+	  <VALUE valeur= "41316.6359987" deb="2030-01-01" fin="2030-12-31"/>
+	  <VALUE valeur= "40706.0453189" deb="2029-01-01" fin="2029-12-31"/>
+	  <VALUE valeur= "40104.4781467" deb="2028-01-01" fin="2028-12-31"/>
+	  <VALUE valeur= "39511.8011298" deb="2027-01-01" fin="2027-12-31"/>
+	  <VALUE valeur= "38927.8828865" deb="2026-01-01" fin="2026-12-31"/>
+	  <VALUE valeur= "38352.5939768" deb="2025-01-01" fin="2025-12-31"/>
+	  <VALUE valeur= "37785.8068737" deb="2024-01-01" fin="2024-12-31"/>
+	  <VALUE valeur= "37227.3959347" deb="2023-01-01" fin="2023-12-31"/>
+	  <VALUE valeur= "36605.1090803" deb="2022-01-01" fin="2022-12-31"/>
+	  <VALUE valeur= "36028.6506696" deb="2021-01-01" fin="2021-12-31"/>
+	  <VALUE valeur= "35496.2075563" deb="2020-01-01" fin="2020-12-31"/>
+	  <VALUE valeur= "34971.6330604" deb="2019-01-01" fin="2019-12-31"/>
+	  <VALUE valeur= "34387.0531567" deb="2018-01-01" fin="2018-12-31"/>
+	  <VALUE valeur= "33845.5247605" deb="2017-01-01" fin="2017-12-31"/>
+	  <VALUE valeur= "33610.2529896" deb="2016-01-01" fin="2016-12-31"/>
+	  <VALUE valeur= "33376.6166729" deb="2015-01-01" fin="2015-12-31"/>
+	  <VALUE valeur= "33177.5513647" deb="2014-01-01" fin="2014-12-31"/>
+	  <VALUE valeur= "32881.6168134" deb="2013-01-01" fin="2013-12-31"/>
+	  <VALUE valeur= "32718.02668" deb="2012-01-01" fin="2012-12-31"/>
+	  <VALUE valeur= "32045.08" deb="2011-01-01" fin="2011-12-31"/>
+	  <VALUE valeur= "31265.96" deb="2010-01-01" fin="2010-12-31"/>
+	  <VALUE valeur= "30669.19" deb="2009-01-01" fin="2009-12-31"/>
+	  <VALUE valeur= "30271.82" deb="2008-01-01" fin="2008-12-31"/>
+	  <VALUE valeur= "29497.63" deb="2007-01-01" fin="2007-12-31"/>
+	  <VALUE valeur= "28753.35" deb="2006-01-01" fin="2006-12-31"/>
+	  <VALUE valeur= "27823.59" deb="2005-01-01" fin="2005-12-31"/>
+	  <VALUE valeur= "26992.57" deb="2004-01-01" fin="2004-12-31"/>
+	  <VALUE valeur= "26043.72" deb="2003-01-01" fin="2003-12-31"/>
+	  <VALUE valeur= "25420.68" deb="2002-01-01" fin="2002-12-31"/>
+	  <VALUE valeur= "24537.65" deb="2001-01-01" fin="2001-12-31"/>
+	  <VALUE valeur= "23813.72" deb="2000-01-01" fin="2000-12-31"/>
+	  <VALUE valeur= "23089.97" deb="1999-01-01" fin="1999-12-31"/>
+	  <VALUE valeur= "22633.66" deb="1998-01-01" fin="1998-12-31"/>
+	  <VALUE valeur= "22220.18" deb="1997-01-01" fin="1997-12-31"/>
+	  <VALUE valeur= "21844.78" deb="1996-01-01" fin="1996-12-31"/>
+	  <VALUE valeur= "21452.55" deb="1995-01-01" fin="1995-12-31"/>
+	  <VALUE valeur= "20954.69" deb="1994-01-01" fin="1994-12-31"/>
+	  <VALUE valeur= "20723.67" deb="1993-01-01" fin="1993-12-31"/>
+	  <VALUE valeur= "20257.66" deb="1992-01-01" fin="1992-12-31"/>
+	  <VALUE valeur= "19594.09" deb="1991-01-01" fin="1991-12-31"/>
+	  <VALUE valeur= "18831.44" deb="1990-01-01" fin="1990-12-31"/>
+	  <VALUE valeur= "17818.03" deb="1989-01-01" fin="1989-12-31"/>
+	  <VALUE valeur= "17112.97" deb="1988-01-01" fin="1988-12-31"/>
+	  <VALUE valeur= "16422.81" deb="1987-01-01" fin="1987-12-31"/>
+	  <VALUE valeur= "15966.44" deb="1986-01-01" fin="1986-12-31"/>
+	  <VALUE valeur= "15318.55" deb="1985-01-01" fin="1985-12-31"/>
+	  <VALUE valeur= "14543.58" deb="1984-01-01" fin="1984-12-31"/>
+	  <VALUE valeur= "13560.41" deb="1983-01-01" fin="1983-12-31"/>
+	  <VALUE valeur= "12440.4" deb="1982-01-01" fin="1982-12-31"/>
+	  <VALUE valeur= "10991.89" deb="1981-01-01" fin="1981-12-31"/>
+	  <VALUE valeur= "9668.84" deb="1980-01-01" fin="1980-12-31"/>
+	  <VALUE valeur= "8446.05" deb="1979-01-01" fin="1979-12-31"/>
+	  <VALUE valeur= "7569.35" deb="1978-01-01" fin="1978-12-31"/>
+	  <VALUE valeur= "6750.7" deb="1977-01-01" fin="1977-12-31"/>
+	  <VALUE valeur= "6052.36" deb="1976-01-01" fin="1976-12-31"/>
+	  <VALUE valeur= "5303.77" deb="1975-01-01" fin="1975-12-31"/>
+	  <VALUE valeur= "4538.7" deb="1974-01-01" fin="1974-12-31"/>
+	  <VALUE valeur= "3862.02" deb="1973-01-01" fin="1973-12-31"/>
+	  <VALUE valeur= "3424.48" deb="1972-01-01" fin="1972-12-31"/>
+	  <VALUE valeur= "3108.87" deb="1971-01-01" fin="1971-12-31"/>
+	  <VALUE valeur= "2792.9" deb="1970-01-01" fin="1970-12-31"/>
+	  <VALUE valeur= "2518.36" deb="1969-01-01" fin="1969-12-31"/>
+	  <VALUE valeur= "2273.58" deb="1968-01-01" fin="1968-12-31"/>
+	  <VALUE valeur= "2033.22" deb="1967-01-01" fin="1967-12-31"/>
+	  <VALUE valeur= "1909.98" deb="1966-01-01" fin="1966-12-31"/>
+	  <VALUE valeur= "1801.89" deb="1965-01-01" fin="1965-12-31"/>
+	  <VALUE valeur= "1695.79" deb="1964-01-01" fin="1964-12-31"/>
+	  <VALUE valeur= "1561.41" deb="1963-01-01" fin="1963-12-31"/>
+	  <VALUE valeur= "1396.89" deb="1962-01-01" fin="1962-12-31"/>
+	  <VALUE valeur= "1252.34" deb="1961-01-01" fin="1961-12-31"/>
+	  <VALUE valeur= "1146.68" deb="1960-01-01" fin="1960-12-31"/>
+	  <VALUE valeur= "1062.3" deb="1959-01-01" fin="1959-12-31"/>
+	  <VALUE valeur= "971.7" deb="1958-01-01" fin="1958-12-31"/>
+	  <VALUE valeur= "856.52" deb="1957-01-01" fin="1957-12-31"/>
+	  <VALUE valeur= "782.04" deb="1956-01-01" fin="1956-12-31"/>
+	  <VALUE valeur= "713.82" deb="1955-01-01" fin="1955-12-31"/>
+	  <VALUE valeur= "675.11" deb="1954-01-01" fin="1954-12-31"/>
+	  <VALUE valeur= "633.43" deb="1953-01-01" fin="1953-12-31"/>
+	  <VALUE valeur= "612.53" deb="1952-01-01" fin="1952-12-31"/>
+	  <VALUE valeur= "515.87" deb="1951-01-01" fin="1951-12-31"/>
+	  <VALUE valeur= "411.7" deb="1950-01-01" fin="1950-12-31"/>
+	  <VALUE valeur= "374.95" deb="1949-01-01" fin="1949-12-31"/>
+	  <VALUE valeur= "325.537984496" deb="1948-01-01" fin="1948-12-31"/>
+	  <VALUE valeur= "237.613662791" deb="1947-01-01" fin="1947-12-31"/>
+	  <VALUE valeur= "141.69622093" deb="1946-01-01" fin="1946-12-31"/>
+	  <VALUE valeur= "152.595930233" deb="1945-01-01" fin="1945-12-31"/>
+	  <VALUE valeur= "75.5713178295" deb="1944-01-01" fin="1944-12-31"/>
+	  <VALUE valeur= "61.038372093" deb="1943-01-01" fin="1943-12-31"/>
+	  <VALUE valeur= "61.038372093" deb="1942-01-01" fin="1942-12-31"/>
+	  <VALUE valeur= "39.2389534884" deb="1941-01-01" fin="1941-12-31"/>
+	  <VALUE valeur= "26.1593023256" deb="1940-01-01" fin="1940-12-31"/>
+	  <VALUE valeur= "26.1593023256" deb="1939-01-01" fin="1939-12-31"/>
+	  <VALUE valeur= "23.9793604651" deb="1938-01-01" fin="1938-12-31"/>
+	  <VALUE valeur= "21.7994186047" deb="1937-01-01" fin="1937-12-31"/>
+	  <VALUE valeur= "17.4395348837" deb="1936-01-01" fin="1936-12-31"/>
+	  <VALUE valeur= "15.6955813953" deb="1935-01-01" fin="1935-12-31"/>
+	  <VALUE valeur= "15.6955813953" deb="1934-01-01" fin="1934-12-31"/>
+	  <VALUE valeur= "15.6955813953" deb="1933-01-01" fin="1933-12-31"/>
+	  <VALUE valeur= "15.6955813953" deb="1932-01-01" fin="1932-12-31"/>
+	  <VALUE valeur= "15.6955813953" deb="1931-01-01" fin="1931-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1930-01-01" fin="1930-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1929-01-01" fin="1929-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1928-01-01" fin="1928-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1927-01-01" fin="1927-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1926-01-01" fin="1926-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1925-01-01" fin="1925-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1924-01-01" fin="1924-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1923-01-01" fin="1923-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1922-01-01" fin="1922-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1921-01-01" fin="1921-12-31"/>
+	  <VALUE valeur= "7.84779069767" deb="1920-01-01" fin="1920-12-31"/>
+	</CODE>
     <CODE description= "Plafond de la sécurité sociale" code="plaf_ss" format="float">
 	  <VALUE valeur= "131004.945715" deb="2100-01-01" fin="2100-12-01"/>
 	  <VALUE valeur= "129068.912034" deb="2099-01-01" fin="2099-12-31"/>
@@ -310,7 +672,7 @@ TODO : Checker les paramètres importés de ParamSociaux (plaf_ss, indice des pr
 	  <VALUE valeur= "0.00273463621843" deb="1920-01-01" fin="1920-12-31"/>
 	</CODE>
     <NODE description="Allocation aux vieux travailleurs salariés" code="avts" >
-	<CODE description= "Montant de l'allocations aux vieux travailleurs salariés" code="montant" format="float">
+	<CODE description= "Montant de l'allocations aux vieux travailleurs salariés (avnt 1962 : métropole plus de 5000 hab)" code="montant" format="float" longitudinal="true">
 	  <VALUE valeur= "3359.8" deb="2013-04-01" fin="2100-12-01"/>
 	  <VALUE valeur= "3316.69" deb="2012-04-01" fin="2013-03-31"/>
 	  <VALUE valeur= "3248.48" deb="2011-04-01" fin="2012-03-31"/>
@@ -391,8 +753,22 @@ TODO : Checker les paramètres importés de ParamSociaux (plaf_ss, indice des pr
 	  <VALUE valeur= "167.693152021" deb="1965-07-01" fin="1965-12-31"/>
 	  <VALUE valeur= "152.44832002" deb="1964-11-01" fin="1965-06-30"/>
 	  <VALUE valeur= "137.203488018" deb="1964-01-01" fin="1964-10-31"/>
-	  <VALUE valeur= "121.958656016" deb="1963-07-01" fin="1963-12-31"/>
-	  <VALUE valeur= "121.958656016" deb="1962-04-01" fin="1963-06-30"/>
+	  <VALUE valeur= "121.958656016" deb="1962-04-01" fin="1963-12-31"/>
+	  <VALUE valeur= "110.34209403" deb="1960-01-01" fin="2100-12-01"/>
+	  <VALUE valeur= "110.34209403" deb="1956-01-01" fin="1959-12-31"/>
+	  <VALUE valeur= "100.310994573" deb="1954-01-01" fin="1955-12-31"/>
+	  <VALUE valeur= "91.1640953717" deb="1951-10-01" fin="1953-12-31"/>
+	  <VALUE valeur= "79.2731264101" deb="1951-01-01" fin="1951-09-30"/>
+	  <VALUE valeur= "68.6017440088" deb="1950-01-01" fin="1950-12-31"/>
+	  <VALUE valeur= "59.4548448076" deb="1949-04-01" fin="1949-12-31"/>
+	  <VALUE valeur= "51.8324288066" deb="1948-10-01" fin="1949-03-31"/>
+	  <VALUE valeur= "44.2100128057" deb="1948-07-01" fin="1948-09-30"/>
+	  <VALUE valeur= "33.5386304043" deb="1948-01-01" fin="1948-06-30"/>
+	  <VALUE valeur= "27.4406976035" deb="1947-08-01" fin="1947-12-31"/>
+	  <VALUE valeur= "22.8672480029" deb="1946-07-01" fin="1947-07-31"/>
+	  <VALUE valeur= "16.4644185621" deb="1946-01-01" fin="1946-06-30"/>
+	  <VALUE valeur= "10.9762790414" deb="1945-01-01" fin="1945-12-31"/>
+	  <VALUE valeur= "5.4881395207" deb="1941-01-01" fin="1944-12-31"/>
 	</CODE>
 	<CODE description= "Plafond de ressources - personne seul" code="plaf_seul" format="float">
 	  <VALUE valeur= "9447.21" deb="2013-04-01" fin="2100-12-01"/>

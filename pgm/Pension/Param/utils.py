@@ -114,10 +114,18 @@ if __name__ == '__main__':
         data = np.array(data, dtype = np.float)
         data[ix:] = data[ix:] / 6.5596
         return data
+    
+    def _oldfrancs_to_francs(data,ix):
+        data = [w.replace(',', '.') for w in data.astype(str)] 
+        data = [w.replace('AF', '')  for w in data]
+        data = [w.replace(' ', '') for w in data]
+        data = np.array(data, dtype = np.float)
+        data[ix:] = data[ix:] /  100
+        return data
         # 1 -- Importation des Barmes IPP
     xlsxfile = pd.ExcelFile('Bareme_retraite.xlsx')
     # AVTS
-    data = xlsxfile.parse('AVTS_montants (1962-2012)', index_col = None)
+    data = xlsxfile.parse('AVTS_montants (1962-2013)', index_col = None)
     #print data.ix[1:14, 'date'].to_string()
     dates = np.array(data.ix[1:, 'date'])
     avts = data.ix[1:, 'avts']
@@ -129,8 +137,13 @@ if __name__ == '__main__':
     
     #from_excel_to_xml(data = avts, description = "Montant de l'allocations aux vieux travailleurs salariés", code = "montant", format = "float", data_date = dates)
     #from_excel_to_xml(data = plaf_avts_seul, description = "Plafond de ressources - personne seul", code = "plaf_seul", format = "float", data_date = dates)
-    from_excel_to_xml(data = plaf_avts_couple, description = "Plafond de ressources - couple", code = "plaf_couple", format = "float", data_date = dates)
-    
+    #from_excel_to_xml(data = plaf_avts_couple, description = "Plafond de ressources - couple", code = "plaf_couple", format = "float", data_date = dates)
+    data = xlsxfile.parse('AVTS2', index_col = None)
+    dates = np.array(data.ix[1:, 'date'])
+    avtsold = data.ix[1:, 'avts2']
+    avtsold = _oldfrancs_to_francs(avtsold, 2)
+    avtsold = _francs_to_euro(avtsold, 0)
+    from_excel_to_xml(data = avtsold, description = "AVTS", code = "avtsold", format = "float", data_date = dates)
     
         # 2 -- Importation du Excel ParamSociaux
     xlsxfile = pd.ExcelFile('ParamSociaux.xls')
@@ -142,3 +155,17 @@ if __name__ == '__main__':
     
     plaf_ss =  np.array(data['Plafond SS'])
     #from_excel_to_xml(data = plaf_ss, description = "Plafond de la sécurité sociale", code = "plaf_ss", format = "float", data_date = dates, ascendant_date = True, format_date = 'year')
+    
+    smic = np.array(data['SMIC']/2028)
+    #from_excel_to_xml(data = smic, description = "SMIC horaire projeté à partir du SMPT", code = "smic_proj", format = "float", data_date = dates, ascendant_date = True, format_date = 'year')
+    
+    smpt = np.array(data['SMPT '])
+    #from_excel_to_xml(data = smpt, description = "SMPT - Hypothèse d'évolution selon le scénario C du COR + inflation", code = "smpt", format = "float", data_date = dates, ascendant_date = True, format_date = 'year')
+    
+        # 3 -- Importation du Excel Bareme_Emploi
+    xlsxfile = pd.ExcelFile('Bareme_Emploi.xlsx')
+    # Paramètres généraux
+    data = xlsxfile.parse('SMIC', index_col = None, header = True)
+    smic =  np.array(data['Smic brut (horaire)'][:107])
+    dates = np.array(data["Date d'effet"][:107])
+    #from_excel_to_xml(data = smic, description = "Montant du smic horaire", code = "smic", format = "float", data_date = dates)
