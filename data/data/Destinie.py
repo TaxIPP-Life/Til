@@ -272,10 +272,10 @@ class Destinie(DataTil):
             #a -Définition des tables initiales:  
             if par == 'pere':
                 par_ini = pere_ini
-                sexe = 1
+                sexe = 0
             else :
                 par_ini = mere_ini
-                sexe = 2    
+                sexe = 1    
             # b -> construction d'une table a trois entrées : 
             #     par_decla = identifiant du parent déclarant l'enfant
             #     par_ini = identifiant du parent déclaré par l'enfant
