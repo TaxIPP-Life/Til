@@ -27,17 +27,13 @@ import collections
 import copy
 import datetime as dt
 import gc
-import h5py
-import itertools
+import numpy as np
 import os
 import pandas as pd
-import pickle
-import sys
+
 
 from xml.etree import ElementTree
-from pandas import DataFrame, HDFStore
 
-from pgm.CONFIG import path_til
 from pgm.Pension.Param import legislations_add_pension as legislations
 from pgm.Pension.Param import legislationsxml_add_pension as  legislationsxml
 from openfisca_core import conv
@@ -47,6 +43,11 @@ from openfisca_core import conv
 import openfisca_france
 TaxBenefitSystem = openfisca_france.init_country()
 tax_benefit_system = TaxBenefitSystem()
+
+
+# TO DO : Add as parameters
+chomage = 2
+avpf = 8
 
 class Simulation(object):
     """
@@ -218,3 +219,130 @@ class PensionSimulation(Simulation):
         """
         Computes the output_table for a survey based simulation
         """
+def interval_years(table):
+    table = pd.DataFrame(table)
+    if 'id' in table.columns:
+        table = table.drop(['id'], axis = 1)
+    table = table.reindex_axis(sorted(table.columns), axis=1)
+    year_start = int(str(table.columns[0])[0:4])
+    year_end = int(str(table.columns[-1])[0:4])
+    return year_start, year_end + 1
+
+def years_to_months(table, division = False):
+    ''' 
+    input : yearly-table 
+    output: monthly-table with :
+        - division == False : val[yyyymm] = val[yyyy]
+        - division == True : val[yyyymm] = val[yyyy] / 12
+    '''
+    year_start, year_end = interval_years(table)
+    for year in range(year_start, year_end) :
+        for i in range(2,13):
+            date = year * 100 + i
+            table[date] = table[ year * 100 + 1 ]
+    if 'id' in table.columns:
+        table = table.drop(['id'], axis = 1)
+    table = table.reindex_axis(sorted(table.columns), axis=1)
+    table = np.array(table)
+    if division == True:
+        table = np.around(np.divide(table, 12), decimals = 3)
+    return table
+
+def months_to_years(table):
+    year_start, year_end = interval_years(table)
+    new_table = pd.DataFrame(index = table.index, columns = [(year * 100 + 1) for year in range(year_start, year_end)]).fillna(0)
+    for year in range(year_start, year_end) :
+        year_data = table[ year * 100 + 1 ]
+        for i in range(2,13):
+            date = year * 100 + i
+            year_data += table[date]
+        new_table.loc[:, year * 100 + 1] = year_data
+    return new_table.astype(float)
+
+def workstate_selection(table, code_regime = None, input_step = 'month', output_step = 'month', option = 'dummy'):
+    ''' Input : monthly or yearly-table (lines: indiv, col: dates 'yyyymm') 
+    Output : (0/1)-pandas matrix with 1 = indiv has worked at least one month during the civil year in this regime if yearly-table'''
+    if not code_regime:
+        print "Indiquer le code identifiant du régime"
+    if input_step == output_step:
+        selection = table.isin(code_regime).astype(int)
+        table_code = table
+    else: 
+        year_start, year_end = interval_years(table)
+        selected_dates = []
+        for y in range(year_start, year_end): 
+            #selected_dates += [(str(y * 100 + m), 'int') for m in range(1,13 * (output_step == 'month'))]
+            selected_dates += [y * 100 + m for m in range(1,13 * (output_step == 'month'))]
+        #selection = np.zeros((table.shape[0],nb_col_output), dtype = selected_dates)
+        selection = pd.DataFrame(index = table.index, columns = selected_dates)
+        table_code = pd.DataFrame(index = table.index, columns = selected_dates)
+        for year in range(year_start, year_end) :
+            code_selection = table[year * 100 + 1].isin(code_regime)
+            table_code[year * 100 + 1] = table[year * 100 + 1]
+            if input_step == 'month' and output_step == 'year': 
+                for i in range(2,13):
+                    date = year * 100 + i
+                    code_selection = code_selection  * table[date].isin(code_regime)
+                selection[year * 100 + 1] = code_selection.astype(int)
+            elif input_step == 'year' and output_step == 'month':
+                for i in range(1,13):
+                    date = year * 100 + i
+                    selection[date] = code_selection.astype(int) 
+                    table_code[date] = table[year * 100 + 1]             
+    if option == 'code':
+        selection = table_code * selection
+    return selection
+    
+
+def unemployment_trimesters(table, code_regime = None, input_step = 'month'):
+    ''' Input : monthly or yearly-table (lines: indiv, col: dates 'yyyymm') 
+    Output : vector with number of trimesters for unemployment'''
+    if not code_regime:
+        print "Indiquer le code identifiant du régime"
+        
+    def _select_unemployment(data, code_regime, option = 'dummy'):
+        ''' Ne conserve que les périodes de chomage succédant directement à une période de cotisation au RG 
+        TODO: A améliorer car boucle for très moche '''
+        data_col = data.columns[1:]
+        previous_col = data.columns[0]
+        for col in data_col:
+            data.loc[(data[previous_col] == 0) & (data[col] == chomage), col] = 0
+            previous_col = col
+        if option == 'code':
+            data = data.replace(code_regime,0)
+        else:
+            assert option == 'dummy'
+            data = data.isin([5]).astype(int)
+        return data
+    
+    def _calculate_trim_unemployment(data, step, code_regime):
+        ''' Détermination du vecteur d'output '''
+        unemp_trim = _select_unemployment(table, code_regime)
+        nb_trim = unemp_trim.sum(axis = 1)
+        
+        if step == 'month':
+            return np.divide(nb_trim, 3).round()
+        else:
+            assert step == 'year'
+            return 4 * nb_trim
+
+    table = workstate_selection(table, code_regime = code_regime + [chomage], input_step = input_step, output_step = input_step, option = 'code')
+    nb_trim_chom = _calculate_trim_unemployment(table, step = input_step, code_regime = code_regime)
+    return nb_trim_chom
+
+def calculate_trim_cot(sal_cot, salref):
+    ''' fonction de calcul effectif des trimestres d'assurance à partir d'une matrice contenant les salaires annuels cotisés au régime
+    salcot : table ne contenant que les salaires annuels cotisés au sein du régime (lignes : individus / colonnes : date)
+    salref : vecteur des salaires minimum (annuels) à comparer pour obtenir le nombre de trimestre'''
+    sal_cot = sal_cot.fillna(0)
+    nb_trim_cot = np.minimum(np.divide(sal_cot,salref).astype(int), 4)
+    nb_trim_cot = nb_trim_cot.sum(axis=1)
+    return nb_trim_cot
+
+if __name__ == '__main__':
+    
+    # Exemple d'utilisation d'unemployment_trimesters()
+    table = pd.DataFrame(np.array([1,2,5,5,1,1,5, 1,0,5,5,1,1,5, 1,2,5,5,1,1,5, 1,2,5,5,1,1,5, 1,0,5,5,1,1,5, 1,2,5,5,1,1,5, 1,2,5,7,5,6,5,5,5, 1,2,5,5,1,1,5, 1,0,5,5,1,1,5, 1,2,5,5,1,1,5]).reshape((3,24)),
+                      columns = [201201,201202,201203,201204,201205,201206,201207,201208,201209,201210,201211,201212,201301,201302,201303,201304,201305, 201306,201307,201308,201309,201310,201311,201312])
+    unemp_trim = unemployment_trimesters(table, code_regime = [2], input_step = 'month')
+    
