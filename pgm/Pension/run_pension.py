@@ -22,20 +22,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-import collections
-import copy
-import datetime as dt
-import gc
-import h5py
-import itertools
 import os
 import pandas as pd
 import pickle
 import sys
 
-from xml.etree import ElementTree
-from pandas import DataFrame, HDFStore
 
 from pgm.CONFIG import path_til
 from pgm.Pension.Param import legislations_add_pension as legislations
@@ -49,7 +40,7 @@ import openfisca_france
 openfisca_france.init_country()
 
     
-def run_pension(sali, workstate, example=False):
+def run_pension(sali, workstate, info_child_father, info_child_mother, yearsim = 2009, example=False):
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
@@ -57,7 +48,7 @@ def run_pension(sali, workstate, example=False):
     if example:
         param_file =  'param_example.xml'
 
-    config = {'year' : 2013, 'workstate': workstate, 'sali': sali, 'param_file' : param_file}
+    config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
     Pension.set_config(**config)
     Pension.set_param()
     # II - Lancement des calculs
@@ -65,7 +56,12 @@ def run_pension(sali, workstate, example=False):
     _P =  Pension.P.RG.ret_base
     RG = Regime_general(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     RG.set_config(**config)
-    RG._nb_trim_cot()
+    RG.load()
+    trim_cot_RG = RG.nb_trim_cot()
+    trim_ass_RG = RG.nb_trim_ass()
+    trim_maj_RG = RG.nb_trim_maj()
+    import pdb
+    pdb.set_trace()
     return Pension.P
 
 if __name__ == '__main__':    
@@ -79,7 +75,7 @@ if __name__ == '__main__':
     table = table.rename(columns = dic_rename)
     table[['quifam', 'idfam']] = table[['quimen', 'idmen']]
     
-    P = run_pension(past, futur, example=True)
+    P = run_pension(past, futur) #, example=True)
     _P = P.RG.ret_base
     print "\n Exemple de variable type 'Paramètre' : "
     print _P.age_max

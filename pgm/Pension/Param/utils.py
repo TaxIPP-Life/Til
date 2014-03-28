@@ -82,12 +82,13 @@ def from_excel_to_xml(data, code, data_date, description, xml = 'test_xml', form
             if format_date == "/":
                 debut = _format_date(debut)
                 fin = _format_date(fin)
-            to_write ='  <VALUE valeur= "' + str(data[i]) + '" deb="' + debut + '" fin="' + fin + '"/>\n'
+            to_write ='  <VALUE valeur="' + str(data[i]) + '" deb="' + debut + '" fin="' + fin + '"/>\n'
             f.write(to_write)
         to_write = '</CODE>\n'
         f.write(to_write)
         # Corps du dofile
         f.close()
+        
 if __name__ == '__main__': 
     # Examples  
     example = False
@@ -122,7 +123,8 @@ if __name__ == '__main__':
         data = np.array(data, dtype = np.float)
         data[ix:] = data[ix:] /  100
         return data
-        # 1 -- Importation des Barmes IPP
+    
+    # 1 -- Importation des Baremes IPP
     xlsxfile = pd.ExcelFile('Bareme_retraite.xlsx')
     # AVTS
     data = xlsxfile.parse('AVTS_montants (1962-2013)', index_col = None)
