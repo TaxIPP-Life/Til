@@ -23,14 +23,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import calendar
 import collections
 import copy
 import datetime as dt
 import gc
 import numpy as np
-import os
 import pandas as pd
-
 
 from xml.etree import ElementTree
 
@@ -339,6 +338,49 @@ def calculate_trim_cot(sal_cot, salref):
     nb_trim_cot = nb_trim_cot.sum(axis=1)
     return nb_trim_cot
 
+
+def substract_months(sourcedate,months):
+    ''' fonction soustrayant le nombre de "months" donné à la "sourcedate" indiquée '''
+    month = sourcedate.month - 1 - months
+    year = sourcedate.year + month / 12
+    month = month % 12 + 1
+    day = min(sourcedate.day,calendar.monthrange(year,month)[1])
+    return dt.date(year,month,day)
+
+def valbytranches_date(var_control, param):
+    ''' Associe à chaque individu la bonne valeur du paramètre selon la valeur de la variable de control 
+    var_control spécifié au format date (exemple : date de naissance) '''
+    param_indiv = var_control.copy()
+    for i in range(param._nb) :
+        param_indiv[(var_control >= param._tranches[i][0])] = param._tranches[i][1]
+    return param_indiv
+    
+def calculate_SAM(sali, nb_years, time_step):
+    ''' renvoie un vecteur des SAM '''
+    if time_step == 'month' :
+        sali = months_to_years(sali)
+    
+    def sum_sam(data):
+        nb_sali = data[-1]
+        data = np.sort(data[:-1])
+        data = data[nb_sali:]
+        if nb_sali != 0 :
+            sam = data.sum() / nb_sali
+        else:
+            sam = 0
+        return sam
+
+    # deux tables aient le même index (pd.DataFrame({'sali' : sali.index.values, 'nb_years': nb_years.index.values}).to_csv('testindex.csv'))
+    assert max(sali.index) == max(nb_years.index)
+    sali = sali.fillna(0) 
+    nb_sali = (sali != 0).sum(1)
+    nb_years[nb_sali < nb_years] = nb_sali[nb_sali < nb_years]
+    sali['nb_years'] = nb_years.values
+    sam = sali.apply(sum_sam, 1)
+    return sam
+    
+    
+    
 if __name__ == '__main__':
     
     # Exemple d'utilisation d'unemployment_trimesters()

@@ -40,7 +40,7 @@ import openfisca_france
 openfisca_france.init_country()
 
     
-def run_pension(sali, workstate, info_child_father, info_child_mother, yearsim = 2009, example=False):
+def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, yearsim = 2009, example=False):
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
@@ -48,7 +48,8 @@ def run_pension(sali, workstate, info_child_father, info_child_mother, yearsim =
     if example:
         param_file =  'param_example.xml'
 
-    config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
+    config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
+                'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
     Pension.set_config(**config)
     Pension.set_param()
     # II - Lancement des calculs
@@ -57,9 +58,17 @@ def run_pension(sali, workstate, info_child_father, info_child_mother, yearsim =
     RG = Regime_general(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     RG.set_config(**config)
     RG.load()
+    
+    # a.1 - Coefficient de proratisation
+        # Nombre de trimestres côtisés
     trim_cot_RG = RG.nb_trim_cot()
     trim_ass_RG = RG.nb_trim_ass()
     trim_maj_RG = RG.nb_trim_maj()
+    trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
+    #CP = RG.calculate_CP(trim_RG)
+    
+    # a.2 - Calcul du SAM
+    SAM_RG = RG.SAM()
     import pdb
     pdb.set_trace()
     return Pension.P
