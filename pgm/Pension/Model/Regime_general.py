@@ -4,10 +4,14 @@ import numpy as np
 import pandas as pd
 
 from pandas import DataFrame
-from pgm.CONFIG import path_data_destinie
 from datetime import datetime, timedelta
 
-from pgm.Pension.SimulPension import PensionSimulation, workstate_selection, years_to_months, months_to_years, unemployment_trimesters, calculate_trim_cot, substract_months, valbytranches_date, calculate_SAM
+import os
+parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.sys.path.insert(0,parentdir) 
+from SimulPension import PensionSimulation, workstate_selection, \
+        years_to_months, months_to_years, unemployment_trimesters, \
+        calculate_trim_cot, substract_months, valbytranches_date, calculate_SAM
 
 code_avpf = 8
 

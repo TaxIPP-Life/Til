@@ -28,14 +28,14 @@ import pickle
 import sys
 
 
-from pgm.CONFIG import path_til
-from pgm.Pension.Param import legislations_add_pension as legislations
-from pgm.Pension.Param import legislationsxml_add_pension as  legislationsxml
+from CONFIG import path_til
+from Pension.Param import legislations_add_pension as legislations
+from Pension.Param import legislationsxml_add_pension as  legislationsxml
 from openfisca_core import conv
-from pgm.Pension.Model.Regime_general import Regime_general 
+from Pension.Model.Regime_general import Regime_general 
 #from .columns import EnumCol, EnumPresta
 #from .taxbenefitsystems import TaxBenefitSystem
-from pgm.Pension.SimulPension import PensionSimulation
+from Pension.SimulPension import PensionSimulation
 import openfisca_france
 openfisca_france.init_country()
 

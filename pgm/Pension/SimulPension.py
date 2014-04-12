@@ -33,16 +33,12 @@ import pandas as pd
 
 from xml.etree import ElementTree
 
-from pgm.Pension.Param import legislations_add_pension as legislations
-from pgm.Pension.Param import legislationsxml_add_pension as  legislationsxml
+
+from Pension.Param import legislations_add_pension as legislations
+from Pension.Param import legislationsxml_add_pension as  legislationsxml
 from openfisca_core import conv
 #from .columns import EnumCol, EnumPresta
 #from .taxbenefitsystems import TaxBenefitSystem
-
-import openfisca_france
-TaxBenefitSystem = openfisca_france.init_country()
-tax_benefit_system = TaxBenefitSystem()
-
 
 # TO DO : Add as parameters
 chomage = 2
@@ -120,7 +116,7 @@ class Simulation(object):
                 parma_default is necessarily different from param when examining a reform
         """
         if param is None or param_default is None:
-            legislation_tree = ElementTree.parse(self.param_file)      
+            legislation_tree = ElementTree.parse(self.param_file)
             legislation_xml_json = conv.check(legislationsxml.xml_legislation_to_json)(legislation_tree.getroot(),
                 state = conv.default_state)
             legislation_xml_json, _ = legislationsxml.validate_node_xml_json(legislation_xml_json,
