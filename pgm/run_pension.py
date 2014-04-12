@@ -27,26 +27,24 @@ import pandas as pd
 import pickle
 import sys
 
+from CONFIG import path_pension
 
-from CONFIG import path_til
 from Pension.Param import legislations_add_pension as legislations
 from Pension.Param import legislationsxml_add_pension as  legislationsxml
 from openfisca_core import conv
-from Pension.Model.Regime_general import Regime_general 
-#from .columns import EnumCol, EnumPresta
-#from .taxbenefitsystems import TaxBenefitSystem
-from Pension.SimulPension import PensionSimulation
-import openfisca_france
-openfisca_france.init_country()
+
+sys.path.append(path_pension)
+from Regimes.Regime_general import Regime_general 
+from SimulPension import PensionSimulation
 
     
 def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, yearsim = 2009, example=False):
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
-    param_file = path_til + 'pgm\\Pension\\Param\\' + 'param.xml' #TODO: Amelioration
+    param_file = path_pension + '\\France\\' + 'param.xml' #TODO: Amelioration
     if example:
-        param_file =  'param_example.xml'
+        param_file =  path_pension +'param_example.xml'
 
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
                 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
@@ -75,6 +73,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
 
 if __name__ == '__main__':    
     # 0 - Préparation de la table d'input
+    from CONFIG import path_til
     filename = os.path.join(path_til + 'model', 'Destinie.h5')
     table = pd.read_hdf(filename, 'entities//person')
     past = pd.read_hdf(filename, 'entities//past')
