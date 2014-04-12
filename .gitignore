@@ -36,22 +36,11 @@ data/Patrimoine/lien_parent_enfant/*.csv
 data/Patrimoine/lien_parent_enfant/*.h5
 data/Patrimoine/archives_R/lien_parent_enfant/*.csv
 data/Patrimoine/archives_R/lien_parent_enfant/*.h5
-model/*.csv
-model/*.h5
-model/*.csv
-!model/test.h5
-#model/data/*.csv
 
 data/Patrimoine/Past/*.dta
-doc/destinie/*.pdf
-doc/*.pdf
-doc/
 
 output/*.h5
 output/*.csv
 output/check_simul/*.csv
 
 pgm/CONFIG.py
-pgm/Pension/Calculate/*.csv
-pgm/Pension/Param/*.csv
-pgm/Pension/Param/*.xlsx
