@@ -6,14 +6,14 @@ import sys
 sys.path.append(path_liam)
 from src.simulation import Simulation
 
-fichier= path_til + 'Model\\console_futur.yml'
-fichier= path_til + 'Model\\console.yml'
+fichier = path_til + 'Model\\console_futur.yml'
+path_model = 'C:\\Til-BaseModel\\console.yml'
 
 
-simulation = Simulation.from_yaml( fichier,
+simulation = Simulation.from_yaml(path_model,
                     input_dir = None,
                     input_file = None,
-                    output_dir = path_til + '//output',                    
+                    output_dir = path_til + 'output',                    
                     output_file = None)
 simulation.run(False)
 
