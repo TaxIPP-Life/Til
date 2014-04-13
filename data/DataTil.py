@@ -7,7 +7,7 @@ Alexis Eidelman
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
 from utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
-from pgm.CONFIG import path_til, path_liam
+from pgm.CONFIG import path_liam, path_model
 import numpy as np
 import tables
 
@@ -546,13 +546,13 @@ class DataTil(object):
         Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
         '''
         
-        path = path_til +'model\\' + self._output_name()
+        path = path_model + self._output_name()
         h5file = tables.openFile( path, mode="w")
         # 1 - on met d'abord les global en recopiant le code de liam2
         globals_def = {'periodic': {'path': 'param\\globals.csv'}}
 
         const_node = h5file.createGroup("/", "globals", "Globals")
-        localdir = path_til + '\\model'
+        localdir = path_model
         for global_name, global_def in globals_def.iteritems():
             print(" %s" % global_name)
             req_fields = ([('PERIOD', int)] if global_name == 'periodic'
@@ -614,7 +614,7 @@ class DataTil(object):
         store.close()
         
     def store(self):
-        path = path_til +'model\\' + self._output_name()
+        path = path_model + self._output_name()
         self.men.to_hdf(path, 'entites/men')
         self.ind.to_hdf(path, 'entites/ind')
         self.foy.to_hdf(path, 'entites/foy')
