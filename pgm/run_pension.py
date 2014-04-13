@@ -73,8 +73,8 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
 
 if __name__ == '__main__':    
     # 0 - Préparation de la table d'input
-    from CONFIG import path_til
-    filename = os.path.join(path_til + 'model', 'Destinie.h5')
+    from CONFIG import path_model
+    filename = os.path.join(path_model, 'Destinie.h5')
     table = pd.read_hdf(filename, 'entities//person')
     past = pd.read_hdf(filename, 'entities//past')
     futur = pd.read_hdf(filename, 'entities//futur')
