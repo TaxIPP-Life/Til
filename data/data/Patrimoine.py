@@ -312,9 +312,15 @@ class Patrimoine(DataTil):
             ind.loc[manque_conj.index,'couple'] = 2
    
             return ind
+        
         ind['sexe'] = _recode_sexe(ind['sexe'])
         ind['workstate'] = _work_on_workstate(ind)
         ind['workstate'] = ind['workstate'].fillna('-1').astype(np.int8)
+        #work in findet
+        ind['findet'][ind['findet']==0] = np.nan
+        ind['findet'] = ind['findet'] - ind['anais']
+        ind['findet'][ind['findet'].isnull()] = np.nan
+        
         ind = _work_on_couple(ind)
         self.men = men
         self.ind = ind
