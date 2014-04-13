@@ -16,7 +16,7 @@ import datetime as dt
 
 from utils import of_name_to_til
 import liam2of
-from CONFIG import path_of, path_liam, path_til
+from CONFIG import path_liam, path_til
 
 
 
