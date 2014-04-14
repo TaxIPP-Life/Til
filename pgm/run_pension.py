@@ -29,10 +29,6 @@ import sys
 
 from CONFIG import path_pension
 
-from Pension.Param import legislations_add_pension as legislations
-from Pension.Param import legislationsxml_add_pension as  legislationsxml
-from openfisca_core import conv
-
 sys.path.append(path_pension)
 from Regimes.Regime_general import Regime_general 
 from SimulPension import PensionSimulation
@@ -42,7 +38,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
-    param_file = path_pension + '\\France\\' + 'param.xml' #TODO: Amelioration
+    param_file = path_pension + '\\France\\param.xml' #TODO: Amelioration
     if example:
         param_file =  path_pension +'param_example.xml'
 
@@ -50,23 +46,34 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
                 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
     Pension.set_config(**config)
     Pension.set_param()
-    # II - Lancement des calculs
-    # II/a - Régime général
+    # II - Calculs des durées d'assurance et des SAM par régime 
+    
+    # II - a : Régime Général
     _P =  Pension.P.RG.ret_base
     RG = Regime_general(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     RG.set_config(**config)
     RG.load()
-    
-    # a.1 - Coefficient de proratisation
-        # Nombre de trimestres côtisés
+
     trim_cot_RG = RG.nb_trim_cot()
     trim_ass_RG = RG.nb_trim_ass()
     trim_maj_RG = RG.nb_trim_maj()
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
-    #CP = RG.calculate_CP(trim_RG)
     
-    # a.2 - Calcul du SAM
     SAM_RG = RG.SAM()
+    
+    # II - b : Fonction Publique
+    
+    
+    # III - Durées d'assurances tous régimes confondus
+    trim_tot = trim_RG
+    agem = info_ind['agem']
+    
+    trim_RG = RG.assurance_maj(trim_RG, trim_tot, agem)
+    CP_RG = RG.calculate_CP(trim_RG)
+    decote = RG.decote(trim_tot, agem)
+    #surcote = RG.surcote(trim_tot, agem)
+    #taux_RG = RG.taux(decote, surcote)
+    #pension_RG = SAM_RG * CP_RG * taux_RG
     import pdb
     pdb.set_trace()
     return Pension.P

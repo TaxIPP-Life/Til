@@ -6,7 +6,6 @@ import sys
 sys.path.append(path_liam)
 from src.simulation import Simulation
 
-fichier = path_til + 'Model\\console_futur.yml'
 fichier = path_model + 'console.yml'
 
 
