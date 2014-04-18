@@ -67,13 +67,18 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     # III - Durées d'assurances tous régimes confondus
     trim_tot = trim_RG
     agem = info_ind['agem']
+    trim_by_years = RG.trim_by_years
     
     trim_RG = RG.assurance_maj(trim_RG, trim_tot, agem)
     CP_RG = RG.calculate_CP(trim_RG)
-    decote = RG.decote(trim_tot, agem)
-    #surcote = RG.surcote(trim_tot, agem)
-    #taux_RG = RG.taux(decote, surcote)
-    #pension_RG = SAM_RG * CP_RG * taux_RG
+    
+    decote_RG = RG.decote(trim_tot, agem)
+    surcote_RG = RG.surcote(trim_by_years, trim_maj_RG, agem)
+    taux_RG = RG.calculate_taux(decote_RG, surcote_RG)
+    assert max(taux_RG) < 1
+    assert max(CP_RG) <= 1
+    pension_RG = SAM_RG * CP_RG * taux_RG
+    print pension_RG
     import pdb
     pdb.set_trace()
     return Pension.P
