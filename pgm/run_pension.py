@@ -44,6 +44,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
 
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
                 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
+    info_child_father.to_csv('info.csv')
     Pension.set_config(**config)
     Pension.set_param()
     # II - Calculs des durées d'assurance et des SAM par régime 
@@ -64,43 +65,38 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     # II - b : Fonction Publique
     
     
-    # III - Durées d'assurances tous régimes confondus
-    trim_tot = trim_RG
+    # III - Calculs des pensions tous régimes confondus 
+    trim_cot = trim_cot_RG #+
+    trim = trim_RG #+
     agem = info_ind['agem']
     trim_by_years = RG.trim_by_years
     
-    trim_RG = RG.assurance_maj(trim_RG, trim_tot, agem)
+    trim_RG = RG.assurance_maj(trim_RG, trim, agem)
     CP_RG = RG.calculate_CP(trim_RG)
     
-    decote_RG = RG.decote(trim_tot, agem)
+    # III - 1 : Régime général
+    decote_RG = RG.decote(trim, agem)
     surcote_RG = RG.surcote(trim_by_years, trim_maj_RG, agem)
     taux_RG = RG.calculate_taux(decote_RG, surcote_RG)
     assert max(taux_RG) < 1
     assert max(CP_RG) <= 1
     pension_RG = SAM_RG * CP_RG * taux_RG
-    print pension_RG
+
+    pension = pension_RG #+
+    
+    # IV - Pensions minimales et maximales
+    pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot, trim)
+    pension_surcote_RG = SAM_RG * CP_RG * surcote_RG * RG._P.plein.taux
+    pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
     import pdb
     pdb.set_trace()
     return Pension.P
 
 if __name__ == '__main__':    
-    # 0 - Préparation de la table d'input
-    from CONFIG import path_model
-    filename = os.path.join(path_model, 'Destinie.h5')
-    table = pd.read_hdf(filename, 'entities//person')
-    past = pd.read_hdf(filename, 'entities//past')
-    futur = pd.read_hdf(filename, 'entities//futur')
-    
-    dic_rename = {'id': 'ind', 'foy': 'idfoy', 'men': 'idmen'}
-    table = table.rename(columns = dic_rename)
-    table[['quifam', 'idfam']] = table[['quimen', 'idmen']]
-    
-    P = run_pension(past, futur) #, example=True)
-    _P = P.RG.ret_base
-    print "\n Exemple de variable type 'Paramètre' : "
-    print _P.age_max
-    print "\n Exemple de variable type 'Génération' :"
-    print _P.age_min, _P.age_min.control
-    print "\n Exemple de variable type 'Barème' :"
-    print _P.deduc
-    
+    # Comparaison des résultats avec PENSIPP
+    import pandas.rpy.common as com
+    from rpy2 import robjects as r
+    r.r("load('database.RData')")
+    workstate = com.load_data('database')
+    sali = com.load_data('database')
+    info_ind = com.load_data('database')
