@@ -19,9 +19,10 @@ import liam2of
 from CONFIG import path_liam, path_til
 
 
-
-from openfisca_core.simulations import SurveySimulation
-from openfisca_core.parameters import XmlReader, Tree2Object
+import datetime
+from openfisca_core import simulations
+import openfisca_france
+from openfisca_france import surveys
 
 ### list des variable que l'on veut conserver
 ### Note plus vraiment utile
@@ -31,8 +32,17 @@ listkeep = {'ind': ["salsuperbrut","cotsoc_noncontrib","cotsal_noncontrib","cots
             'fam': ["aah","caah","aeeh","aefa","af","cf","paje", "al","alf","als","apl","ars","asf",
                      "api","apje","asi","aspa","rmi","rsa","rsa_socle"],
             'foy': ["decote", "irpp", "isf_tot", "avantage_qf"]}
-    
-def main(simulation, annee_leg=None,annee_base=None, output='array'):
+
+traduc_variables = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'statmarit':'civilstate'}
+# on prend ce sens pour que famille puisse chercher dans menage comme menages
+traduc_entities = {'foyers_fiscaux':'declar', 'menages':'menage',
+                    'individus':'person', 'familles':'menage'}
+input_even_if_formula = ['age', 'agem']
+traduction = {}
+traduction['person'] = {'men': 'idmen', 'foy': 'idfoy', 'id': 'noi', 'statmarit': 'civilstate'}
+
+
+def main(liam, annee_leg=None,annee_base=None, output='array'):
     ''' Send data from the simulation to openfisca
     - annee_base: si rempli alors on tourne sur cette année-là, sinon sur toute la base
      mais à voir
@@ -45,7 +55,7 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
 #    for ent in ('ind','men','foy','fam'):
 #        del output_h5[ent]
 #        output_h5[ent]=DataFrame() 
-  
+    
     ## on recupere la liste des annees en entree
     if annee_base is not None:
         if isinstance(annee_base,int):
@@ -56,141 +66,75 @@ def main(simulation, annee_leg=None,annee_base=None, output='array'):
         years = [x[-4:] for x in dir(get_years.root) if x[0]!='_' ]
         get_years.close()
     
-    country = 'france'    
-    for year in annee_base:        
-        yr = str(year)
-        deb3 =  time.clock()
-          
-        simu = SurveySimulation()
-        simu.set_config(year = year, country = country)
-        ## Load_parameters(annee_leg):
-        date_str = str(annee_leg)+ '-01-01'
-        date = dt.datetime.strptime(date_str ,"%Y-%m-%d").date()
-        reader = XmlReader(simu.param_file, date)
-        rootNode = reader.tree
-        simu.P_default = Tree2Object(rootNode, defaut=True)
-        simu.P_default.datesim = date
-        simu.P = Tree2Object(rootNode, defaut=False)
-        simu.P.datesim = date
-        ## Translate table of liam for OF.
-        table = liam2of.table_for_of(simulation, year, check_validity=True, save_tables=False)
-        simu.set_config(survey_filename=table, num_table=3, print_missing=False)
-        ## Run the legislation
-        tps_charge = time.clock() - deb3
-        print tps_charge, time.clock()
-        deb_comp =  time.clock()
-        simu.compute()
-        tps_comp = time.clock() - deb_comp
-        print "total", time.clock() - deb3
-             
-        ## Save results in the simulation or in a hdf5 table.
-        deb_write =  time.clock()        
-        if output != '.h5':
-            entities = simulation.entities
-            for entity in entities:
-                nom = entity.name
-                if nom in of_name_to_til:
-                    ent = of_name_to_til [nom]
-                    vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
-                    for var in vars:
-                        value = simu.output_table.table3[ent][var]
-                        #TODO: test the type
-                        if len(entity.array[var]) != len(value):
-                            print ent, nom, var, len(entity.array[var]),  len(value)
-                            pdb.set_trace()
-                        entity.array[var] = np.array(value)
-                #TODO: change that ad hoc solution
-                if nom == 'menage':
-                    ent = 'fam'
-                    vars = [x for x in simu.output_table.table3[ent].columns if x in entity.array.columns]
-                    if len(entity.array) == len(simu.output_table.table3[ent]) + 1 :
-                    #TODO: ad-hoc to remove a line id=0. Look where it comes from.
-                        entity.array =  entity.array[1:]
-                    for var in vars:
-                        value = simu.output_table.table3[ent][var]
-                        #TODO: test the type
-                        if len(entity.array[var]) != len(value):
-                            print ent, nom, var, len(entity.array[var]),  len(value)
-                            pdb.set_trace()
-                        entity.array[var] = np.array(value)
-                         
-        else:
-            # chemin de sortie
-            output = path_til + "/output/"
-            output_h5 = tables.openFile(output+"simul_leg.h5",mode='w')
-            output_entities = output_h5.createGroup("/", "entities",
-                                                              "Entities")              
-            for ent in ('ind','men','foy',"fam"):
-#            #TODO: gerer un bon keep pour ne pas avoir trop de variable  
-                tab = simu.output_table.table3[ent]
-                ###  export par table     
-                if ent=='ind':
-                    ident = ["idmen","quimen","idfam","quifam","idfoy","quifoy","noi"]
-                else:
-                    ident = ["idmen","idfam","idfoy"]
-                renam ={}
-                for nom in ident:
-                    renam[nom+'_'+ent] = nom
-                tab = tab.rename(columns=renam)
-                tab = tab[listkeep[ent]+ident]
-                tab['period'] = Series(np.ones(len(tab)) * int(year),dtype=int)
-                 
-                ident = 'id'+ent
-                if ent=='ind':
-                    ident='noi'
     
-                #on retire les identifiant sauf celui qui deviendra id
-                list_id = ['idmen','idfoy','idfam','id','quifoy','quifam','quimen','noi'] 
-                list_id.remove(ident)
-                to_remove = [x for x in tab.columns if x in list_id]
-                #on n4oublie pas de garder periode
-                tab = tab.drop(to_remove,axis=1)
-                tab = tab.rename(columns={ident:'id'})           
-                tab['id'] = tab['id'].astype(int)           
-                nom = of_name_to_til[ent]
-                output_type = tab.to_records(index=False).dtype
-                #TODO: ameliorer pour optimiser tout ca, les type
-                to_int = ['id','period']
-                for x in output_type.descr: 
-                    if x[0] in to_int : 
-                        x=(x[0],'<i4')
-                        
-                if output_entities.__contains__(nom):
-                    output_table = getattr(output_entities, nom) 
-                else: 
-                    output_table = output_h5.createTable('/entities',nom,output_type)
-                output_table.append(tab.to_records(index=False))
-                output_table.flush() 
-            output_h5.close() 
-                                                 
-        tps_write = time.clock() - deb_write
-        del simu
-        gc.collect()
-        fin3  = time.clock()
-        print ("La législation sur l'année %s vient d'être calculée en %d secondes"
-                   " dont %d pour le chargement, %d pour la simul pure et %d pour la sauvegarde") %(year, fin3-deb3,
-                                                                        tps_charge, tps_comp, tps_write )          
+    
+    TaxBenefitSystem = openfisca_france.init_country()
+    tax_benefit_system = TaxBenefitSystem()
+    column_by_name = tax_benefit_system.column_by_name
+    
+    simulation = simulations.Simulation(
+    compact_legislation = None,
+    date = datetime.date(2009, 5, 1),
+    debug = None,
+    debug_all = None,
+    tax_benefit_system = tax_benefit_system,
+    trace = None,
+    )
+    
+    entities = liam.entities
+    entities_name =  map( lambda e: e.name, liam.entities)
+    def _get_entity(name):
+        position = entities_name.index(name)
+        return liam.entities[position]
+    input = dict()
+    required = dict()  # pour conserver les valeurs que l'on va vouloir sortir de of.
+    #pour chaque entité d'open fisca
 
-# [('period', '<i4'), ('id', '<i4'), ('age', '<i4'), ('sexe', '<i4'), ('wprm_init', '<i4'),
-# ('men', '<i4'), ('quimen', '<i4'), ('foy', '<i4'), ('quifoy', '<i4'), ('pere', '<i4'), 
-# ('mere', '<i4'), ('conj', '<i4'), ('dur_in_couple', '<f8'), ('dur_out_couple', '<i4'), 
-# ('civilstate', '<i4'), ('education_level', '<i4'), ('findet', '<i4'), ('workstate', '<i4'), 
-# ('sali', '<f8'), ('productivity', '<f8'), ('rsti', '<f8'), ('choi', '<f8'), ('xpr', '<i4'), 
-# ('anc', '<i4'), ('dur_rest_ARE', '<i4')]
-        
-####  export par period       
-#            df = simu.output_table.table3[ent]     
-##            key = 'survey_'+str(year) + '/'+ent              
-##            output_h5.put(key,df)
-####     export en R
-#            not_bool = df.dtypes[df.dtypes != bool]
-#            df = df.ix[:,not_bool.index]
-#            r_dataframe = com.convert_to_r_dataframe(df)
-#            name = ent+'_'+str(year)
-#            r.assign(name, r_dataframe)
-#            file_dir = output + name+ ".gzip"
-#            phrase = "save("+name+", file='" +file_dir+"', compress=TRUE)"
-#            r(phrase) 
+    for of_ent_name, of_entity in tax_benefit_system.entity_class_by_key_plural.iteritems():
+        input[of_ent_name] = []
+        required[of_ent_name] = []
+        # on cherche l'entité corrspondante dans liam
+        til_ent_name = traduc_entities[of_ent_name]
+        til_entity =  _get_entity(til_ent_name)
+        of_entity.count = of_entity.step_size = sum(til_entity.id_to_rownum > 0)
+        of_entity.roles_count = sum(til_entity.id_to_rownum > 0) + 1 
+        til_entity = til_entity.array.columns
+        # pour toutes les variables de l'entité of
+        for column in of_entity.column_by_name:
+            # on regarde si on les a dans til sous un nom ou un autre
+            if column in traduc_variables or column in til_entity:
+                holder = simulation.get_or_new_holder(column)
+                #on selectionne les valeurs d'entrée
+                if holder.formula is None or column in input_even_if_formula:
+                    input[of_ent_name].append(column)
+                    if column in til_entity:
+                        holder.array = til_entity[column]
+                    else: 
+                        holder.array = til_entity[traduc_variables[column]]
+                # sinon, on conserve la liste des variable pour tout à l'heure
+                else: 
+                    required[of_ent_name].append(column)
+        print(of_ent_name)
+        print(required[of_ent_name])
+        print(input[of_ent_name])
+    
+    simulation.calculate('nbF')
+    pdb.set_trace()
+
+#         
+#     output_of = 'list_de_variable_qui_sortent_du_model'
+#     for var in ind.array.columns:
+#         if var in output_of:
+#             liam.entities.etc.var.values = simulation.calculate(var)
+#                                                  
+#         tps_write = time.clock() - deb_write
+#         del simu
+#         gc.collect()
+#         fin3  = time.clock()
+#         print ("La législation sur l'année %s vient d'être calculée en %d secondes"
+#                    " dont %d pour le chargement, %d pour la simul pure et %d pour la sauvegarde") %(year, fin3-deb3,
+#                                                                         tps_charge, tps_comp, tps_write )          
+
 
 if __name__ == "__main__":
     main(2009)
