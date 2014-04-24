@@ -31,6 +31,7 @@ from CONFIG import path_pension
 
 sys.path.append(path_pension)
 from Regimes.Regime_general import Regime_general 
+from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from SimulPension import PensionSimulation
 
     
@@ -44,13 +45,12 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
 
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
                 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
-    info_child_father.to_csv('info.csv')
     Pension.set_config(**config)
     Pension.set_param()
-    # II - Calculs des durées d'assurance et des SAM par régime 
+    # II - Calculs des durées d'assurance et des SAM par régime de base
     
     # II - a : Régime Général
-    _P =  Pension.P.RG.ret_base
+    _P =  Pension.P.prive.RG
     RG = Regime_general(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     RG.set_config(**config)
     RG.load()
@@ -59,9 +59,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     trim_ass_RG = RG.nb_trim_ass()
     trim_maj_RG = RG.nb_trim_maj()
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
-    
     SAM_RG = RG.SAM()
-    
     # II - b : Fonction Publique
     
     
@@ -70,7 +68,6 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     trim = trim_RG #+
     agem = info_ind['agem']
     trim_by_years = RG.trim_by_years
-    
     trim_RG = RG.assurance_maj(trim_RG, trim, agem)
     CP_RG = RG.calculate_CP(trim_RG)
     
@@ -81,22 +78,63 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     assert max(taux_RG) < 1
     assert max(CP_RG) <= 1
     pension_RG = SAM_RG * CP_RG * taux_RG
-
     pension = pension_RG #+
     
-    # IV - Pensions minimales et maximales
+    # IV - Pensions de base finales (appication des minima et maxima)
     pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot, trim)
     pension_surcote_RG = SAM_RG * CP_RG * surcote_RG * RG._P.plein.taux
     pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
-    import pdb
-    pdb.set_trace()
-    return Pension.P
+
+    # V - Régime complémentaire
+    
+    # V - 1: Régimes complémentaires du privé
+    _P = Pension.P.prive
+    arrco = ARRCO(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long,
+                   workstate_table = RG.workstate, sal_RG = RG.sal_RG)
+    arrco.set_config(**config)
+    points_arrco = arrco.nombre_points()
+    
+    agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long,
+                   workstate_table = RG.workstate, sal_RG = RG.sal_RG)
+    agirc.set_config(**config)
+    points_agirc = agirc.nombre_points()
+    
+    to_check = {}
+    to_check['taux decote'] = (decote_RG * RG._P.plein.taux).values
+    to_check['taux surcote'] = (surcote_RG * RG._P.plein.taux).values
+    to_check['taux'] = taux_RG.values
+    to_check['SAM_RG'] = SAM_RG.values
+    to_check["pension_RG"] = pension_RG.values
+    to_check['Prorat'] = CP_RG.values
+    to_check['Points ARRCO'] = points_arrco
+    to_check['Points AGIRC'] = points_agirc
+    print '\n', pd.DataFrame(to_check).to_string()
+    
+    return pension_RG
 
 if __name__ == '__main__':    
     # Comparaison des résultats avec PENSIPP
+    import numpy as np
     import pandas.rpy.common as com
+    import datetime
     from rpy2 import robjects as r
-    r.r("load('database.RData')")
-    workstate = com.load_data('database')
-    sali = com.load_data('database')
-    info_ind = com.load_data('database')
+    
+    r.r("load('Z:/PENSIPP vs. TIL/data.RData')")
+    dates_to_col = [ year * 100 + 1 for year in range(1901,2061)]
+    statut = com.load_data('statut')
+    statut.columns =  dates_to_col
+    salaire = com.load_data('salaire')
+    salaire.columns = dates_to_col
+    info = com.load_data('ind')
+    info['t_naiss'] = 1900 + info['t_naiss']
+    info['naiss'] = [datetime.date(int(year),1,1) for year in info['t_naiss']]
+    
+    for year in range(2008,2009):#2016):
+        print year
+        col_to_keep = [date for date in dates_to_col if date < (year * 100 + 1) and date >= 194901]
+        info['agem'] =  (year - info['t_naiss']) * 12
+        select_id = (info['agem'] ==  63 * 12)
+        sali = salaire.loc[select_id, col_to_keep]
+        workstate = statut.loc[select_id, col_to_keep]
+        info_ind = info.loc[select_id,:]
+        pension_RG = run_pension(sali, workstate, info_ind, info_child_father = None, info_child_mother = None, yearsim = year)
