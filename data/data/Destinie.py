@@ -52,10 +52,10 @@ class Destinie(DataTil):
             # selection0 : informations atemporelles  sur les individus (identifiant, sexe, date de naissance et âge de fin d'étude)
             selection0 = [3*x for x in range(taille)]
             ind = BioEmp.iloc[selection0]
-            ind = ind.reset_index()
-            ind = ind.rename(columns={1:'sexe', 2:'naiss', 3:'findet', 4:'tx_prime_fct'})
-            ind[['sexe', 'naiss', 'findet']] = ind[['sexe', 'naiss', 'findet']].astype(int)
-            ind = ind[['sexe', 'naiss', 'findet', 'tx_prime_fct']]
+            ind.reset_index(inplace=True)
+            ind.rename(columns={1:'sexe', 2:'naiss', 3:'findet', 4:'tx_prime_fct'}, inplace=True)
+            ind[['sexe','naiss','findet']] = ind[['sexe','naiss','findet']].astype(int)
+            ind = ind[['sexe','naiss','findet','tx_prime_fct']]
             ind['id'] = ind.index
             
             # selection1 : information sur les statuts d'emploi
