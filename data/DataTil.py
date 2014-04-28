@@ -415,7 +415,7 @@ class DataTil(object):
         futur = self.futur
         past = self.past  
         
-        for data in [ind, men, foy] : 
+        for data in [ind, men, foy, futur, past] : 
             if data is not None:
                 data['period'] =  self.survey_year*100 + 1 
         
