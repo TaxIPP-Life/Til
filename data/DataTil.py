@@ -415,9 +415,14 @@ class DataTil(object):
         futur = self.futur
         past = self.past  
         
-        for data in [ind, men, foy, futur, past] : 
+        for data in [ind, men, foy]: 
             if data is not None:
                 data['period'] =  self.survey_year*100 + 1 
+                
+        for data in [past, futur]:
+            if data is not None:
+                data['period'] = data['period'].astype(int)
+                data['period'] = 100*data['period'] + 1
         
         if ('age' not in ind.columns) & ('anais' in ind.columns):
             ind['age'] = self.survey_date//100 - ind['anais']
