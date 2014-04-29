@@ -107,7 +107,7 @@ class Destinie(DataTil):
                 BioFam.loc[BioFam[var] < 0 , var] = -1
             BioFam = BioFam.fillna(-1)
             BioFam = drop_consecutive_row(BioFam.sort(['id', 'period']), ['id', 'pere','mere', 'conj', 'civilstate'])
-            BioFam = BioFam.replace(-1, np.nan)
+            BioFam.replace(-1, np.nan, inplace=True)
             BioFam = minimal_dtype(BioFam)
             return BioFam 
                   
@@ -152,8 +152,9 @@ class Destinie(DataTil):
             # inactif   <-  1  # chomeur   <-  2   # non_cadre <-  3  # cadre     <-  4
             # fonct_a   <-  5  # fonct_s   <-  6   # indep     <-  7  # avpf      <-  8
             # preret    <-  9 #  décès, ou immigré pas encore arrivé en France <- 0
-            emp['workstate'] = emp['workstate'].replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
-                                                        [0, 3, 4, 5, 6, 7, 2, 1, 9, 8])
+            emp['workstate'] .replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
+                                      [0, 3, 4, 5, 6, 7, 2, 1, 9, 8], 
+                                      inplace=True)
             return emp #, deces
          
         def _ind_total(BioFam, ind, emp):
@@ -161,7 +162,7 @@ class Destinie(DataTil):
             survey_year = self.survey_year
             to_ind = merge(emp, BioFam, on=['id','period'], how ='left')
             ind = merge(to_ind, ind, on='id', how = 'left')
-            ind = ind.sort(['id', 'period'])
+            ind.sort(['id', 'period'], inplace=True)
             cond_atemp = ( (ind['naiss']>survey_year) & ( ind['period'] != ind['naiss']) ) | ((ind['naiss']<=survey_year)& (ind['period'] != survey_year))
             ind.loc[cond_atemp, ['sexe', 'naiss', 'findet', 'tx_prime_fct']] = -1
             return ind
@@ -171,13 +172,13 @@ class Destinie(DataTil):
             ind -> past, ind, futur '''
             survey_year = self.survey_year
             ind_survey = ind.loc[ind['period']==survey_year]
-            ind_survey = ind_survey.fillna(-1)
+            ind_survey.fillna(-1, inplace=True)
             print "Nombre dindividus présents dans la base en " + str(survey_year) + " : " + str(len(ind_survey))
             past = ind[ind['period'] < survey_year]
             list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
             list_intraseques = ['sexe','naiss','findet','tx_prime_fct']
             list_to_drop = list_intraseques + list_enf
-            past = past.drop(list_to_drop, axis=1)
+            past.drop(list_to_drop, axis=1, inplace=True)
             self.longitudinal = past
             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
             print ("Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + \
@@ -187,11 +188,11 @@ class Destinie(DataTil):
             # voir si la situation change entre n et n+1
             # Indications de l'année du changement + variables inchangées -> -1
             futur = ind[ind['period'] >= survey_year]
-            futur = futur.drop(list_enf,axis=1)
-            futur = futur.fillna(-1)
+            futur.drop(list_enf, axis=1, inplace=True)
+            futur.fillna(-1, inplace=True)
             futur = drop_consecutive_row(futur.sort(['id', 'period']), 
                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
-            futur = futur[futur['period']> survey_year]
+            futur = futur[futur['period'] > survey_year]
             return ind_survey, past, futur
         
         def _work_on_futur(futur, ind):
@@ -202,7 +203,7 @@ class Destinie(DataTil):
                 dead = DataFrame(index = deces.index.values, columns = futur.columns)
                 dead['period'][deces.index.values] = deces.values
                 dead['id'][deces.index.values] = deces.index.values
-                dead = dead.fillna(-1)
+                dead.fillna(-1, inplace=True)
                 dead['death'] = dead['period']
     
                 dead = DataFrame(deces)
@@ -210,21 +211,21 @@ class Destinie(DataTil):
                 dead['death'] = dead['period']
                 
                 futur = concat([futur, dead], axis=0, ignore_index=True)
-                futur = futur.fillna(-1)
+                futur.fillna(-1, inplace=True)
                 futur = futur.sort(['id','period','dead']).reset_index().drop('index', 1)
-                futur = futur.drop_duplicates(['id', 'period'])
+                futur.drop_duplicates(['id', 'period'], inplace=True)
                 dead = futur[['id','period']].drop_duplicates('id', take_last=True).index
                 futur['deces'] = -1   
-                futur['deces'][dead] = 1
+                futur.loc[dead, 'deces'] = 1
                 futur = futur.sort(['period','id']).reset_index().drop(['index','dead'], 1)
                 return futur
             
             def __death_unic_event(futur):
                 futur = futur.sort(['id', 'period'])
-                no_last = futur.duplicated('id', take_last = True)
+                no_last = futur.duplicated('id', take_last=True)
                 futur['death'] = -1 
-                cond_death =  (no_last == False) & ((futur['workstate'] == 0) | (futur['period'] != 2060))
-                futur.loc[cond_death, 'death' ] = futur.loc[ cond_death, 'period' ]
+                cond_death = (no_last == False) & ((futur['workstate'] == 0) | (futur['period'] != 2060))
+                futur.loc[cond_death, 'death'] = futur.loc[cond_death, 'period']
                 futur.loc[(futur['workstate'] != 0) & (futur['death'] != -1), 'death' ] += 1 
                 add_lines = futur.loc[(futur['period']> futur['death']) & (futur['death'] != -1), 'id']
                 if len(add_lines) != 0 :
@@ -234,12 +235,11 @@ class Destinie(DataTil):
             
                 return futur
 
-            futur =__death_unic_event(futur)
+            futur = __death_unic_event(futur)
             
             # Types minimaux
-            futur = futur.replace(-1, np.nan)
+            futur.replace(-1, np.nan, inplace=True)
             futur = minimal_dtype(futur)
-            
             return futur
                        
         emp = _Emp_clean(self.ind, self.emp)
@@ -314,7 +314,7 @@ class Destinie(DataTil):
         ind['quimen'] = -1
         ind['men'] = -1
         ind['age'] = survey_year - ind['naiss']
-        ind = ind.fillna(-1)
+        ind.fillna(-1, inplace=True)
         # 1ere étape : Détermination des têtes de ménages
         
         # (a) - Majeurs ne déclarant ni père, ni mère dans le même ménage (+ un cas de 17 ans indep.financièrement)
@@ -346,7 +346,7 @@ class Destinie(DataTil):
             ind.loc[care_par['id_' + par], 'quimen'] = -2 # pour identifier les couples à charge
             
             # Si personne potentiellement à la charge de plusieurs enfants -> à charge de l'enfant ayant l'identifiant le plus petit
-            care_par = care_par.drop_duplicates('id_' + par)
+            care_par.drop_duplicates('id_' + par, inplace=True)
             care[par] = care_par
             
             print str(len(care_par)) +" " + par + "s à charge"
@@ -366,7 +366,7 @@ class Destinie(DataTil):
         # 3eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
         conj = ind.loc[(ind['quimen'] == 1), ['id', 'conj']].astype(int)
-        ind['men'] [conj['id'].values] = ind['men'][conj['conj'].values]
+        ind['men'][conj['id'].values] = ind['men'][conj['conj'].values]
 
         # (b) - Rattachements de leurs enfants (d'abord ménage de la mère, puis celui du père)
         for par in ['mere', 'pere']: 
@@ -401,11 +401,11 @@ class Destinie(DataTil):
         ind.loc[~ind['quimen'].isin([0,1]), 'quimen'] = 2
         
         # suppressions des variables inutiles
-        ind = ind.drop(['men_pere', 'men_mere'],1)
+        ind.drop(['men_pere', 'men_mere'], axis=1, inplace=True)
         
         # 6eme étape : création de la table men
         men = ind.loc[ind['quimen'] == 0, ['id', 'men']]
-        men = men.rename(columns={'id': 'pref', 'men': 'id'})
+        men.rename(columns={'id': 'pref', 'men': 'id'}, inplace=True)
         
         # Rajout des foyers fictifs
         to_add = DataFrame([np.zeros(len(men.columns))], columns = men.columns)
@@ -419,8 +419,8 @@ class Destinie(DataTil):
             
         men['pond'] = 1
         men['period'] = survey_year
-        men = men.fillna(-1)
-        ind = ind.fillna(-1)
+        men.fillna(-1, inplace=True)
+        ind.fillna(-1, inplace=True)
         
         assert sum((ind['men']==-1)) == 0 # Tout le monde a un ménage : on est content!
         assert sum((ind['quimen'] < 0)) == 0
@@ -452,10 +452,10 @@ class Destinie(DataTil):
         # On ajoute ces données aux informations de 2009
         # TODO: être sur que c'est bien. 
         ind = concat([ind, futur], axis=0, join='outer', ignore_index=True)
-        ind = ind.fillna(-1)
-        men = men.fillna(-1)
-        foy = foy.fillna(-1)
-        ind.sort(['period', 'id'])
+        ind.fillna(-1, inplace=True)
+        men.fillna(-1, inplace=True)
+        foy.fillna(-1, inplace=True)
+        ind.sort(['period', 'id'], inplace=True)
         self.ind = ind
         self.men = men
         self.foy = foy
