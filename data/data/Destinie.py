@@ -106,7 +106,7 @@ class Destinie(DataTil):
             for var in ['pere','mere', 'conj'] + list_enf:
                 BioFam.loc[BioFam[var] < 0 , var] = -1
             BioFam = BioFam.fillna(-1)
-            BioFam = drop_consecutive_row(BioFam.sort(['id', 'period']), ['id', 'pere','mere', 'conj', 'civilstate'])
+#             BioFam = drop_consecutive_row(BioFam.sort(['id', 'period']), ['id', 'pere','mere', 'conj', 'civilstate'])
             BioFam.replace(-1, np.nan, inplace=True)
             BioFam = minimal_dtype(BioFam)
             return BioFam 
@@ -180,7 +180,7 @@ class Destinie(DataTil):
             list_to_drop = list_intraseques + list_enf
             past.drop(list_to_drop, axis=1, inplace=True)
             self.longitudinal = past
-            past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
+#             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
             print ("Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + \
                     str(past['period'].min()) +" à " + str(past['period'].max()) + ")")
             
@@ -190,8 +190,8 @@ class Destinie(DataTil):
             futur = ind[ind['period'] >= survey_year]
             futur.drop(list_enf, axis=1, inplace=True)
             futur.fillna(-1, inplace=True)
-            futur = drop_consecutive_row(futur.sort(['id', 'period']), 
-                             ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
+#             futur = drop_consecutive_row(futur.sort(['id', 'period']), 
+#                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
             futur = futur[futur['period'] > survey_year]
             return ind_survey, past, futur
         
@@ -306,7 +306,7 @@ class Destinie(DataTil):
             ind.loc[parents['id'].values, par] = parents[par + '_decla'].values
             print str(sum((ind[par].notnull() & (ind[par] != -1 )))) + " enfants connaissent leur " + par
 
-        self.ind = ind.drop(list_enf,axis = 1)
+        self.ind = ind.drop(list_enf, axis=1)
         
     def creation_menage(self):
         ind = self.ind
