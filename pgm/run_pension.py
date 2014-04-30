@@ -30,10 +30,11 @@ import sys
 from CONFIG import path_pension
 
 sys.path.append(path_pension)
-from Regimes.Regime_general import Regime_general 
+from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
+from Regimes.Regime_general import RegimeGeneral 
 from SimulPension import PensionSimulation
-
+from utils import calculate_age
     
 def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, yearsim = 2009, example=False):
     Pension = PensionSimulation()
@@ -47,21 +48,28 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
                 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
     Pension.set_config(**config)
     Pension.set_param()
+    
     # II - Calculs des durées d'assurance et des SAM par régime de base
     
-    # II - a : Régime Général
+    # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
+    _P = Pension.P.fp
+    FP = FonctionPublique(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
+    FP.set_config(**config)
+    FP.load()
+    
+    trim_cot_FP = FP.trim_service()
+
+    # II - 2 : Régime Général
     _P =  Pension.P.prive.RG
-    RG = Regime_general(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
+    RG = RegimeGeneral(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     RG.set_config(**config)
     RG.load()
 
-    trim_cot_RG = RG.nb_trim_cot()
+    trim_cot_RG = RG.nb_trim_cot() 
     trim_ass_RG = RG.nb_trim_ass()
     trim_maj_RG = RG.nb_trim_maj()
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
     SAM_RG = RG.SAM()
-    # II - b : Fonction Publique
-    
     
     # III - Calculs des pensions tous régimes confondus 
     trim_cot = trim_cot_RG #+
@@ -71,7 +79,9 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     trim_RG = RG.assurance_maj(trim_RG, trim, agem)
     CP_RG = RG.calculate_CP(trim_RG)
     
-    # III - 1 : Régime général
+    # III - 1 : Fonction Publique
+    
+    # III - 2 : Régime général
     decote_RG = RG.decote(trim, agem)
     surcote_RG = RG.surcote(trim_by_years, trim_maj_RG, agem)
     taux_RG = RG.calculate_taux(decote_RG, surcote_RG)
@@ -88,38 +98,55 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     # V - Régime complémentaire
     
     # V - 1: Régimes complémentaires du privé
+        # ARRCO
     _P = Pension.P.prive
     arrco = ARRCO(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long,
                    workstate_table = RG.workstate, sal_RG = RG.sal_RG)
     arrco.set_config(**config)
-    points_arrco = arrco.nombre_points()
+    arrco.build_sal_regime() # Distinction cadre/non-cadre
     
+    points_arrco_98, points_arrco9911, points_arrco12_ = arrco.nombre_points()
+    points_arrco =  points_arrco_98 + points_arrco9911 + points_arrco12_
+    maj_arrco = arrco.majoration_enf(points_arrco_98, points_arrco9911, points_arrco12_, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
+    coeff_majo =  arrco.coeff_age(agem, trim)
+    val_arrco = _P.complementaire.arrco.val_point 
+    pension_arrco = val_arrco * points_arrco * coeff_majo + maj_arrco
+    
+        # AGIRC
     agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long,
                    workstate_table = RG.workstate, sal_RG = RG.sal_RG)
     agirc.set_config(**config)
-    points_agirc = agirc.nombre_points()
-    
-    to_check = {}
-    to_check['taux decote'] = (decote_RG * RG._P.plein.taux).values
-    to_check['taux surcote'] = (surcote_RG * RG._P.plein.taux).values
-    to_check['taux'] = taux_RG.values
-    to_check['SAM_RG'] = SAM_RG.values
-    to_check["pension_RG"] = pension_RG.values
-    to_check['Prorat'] = CP_RG.values
-    to_check['Points ARRCO'] = points_arrco
-    to_check['Points AGIRC'] = points_agirc
-    print '\n', pd.DataFrame(to_check).to_string()
-    
-    return pension_RG
+    points_agirc_11, points_agirc12_ = agirc.nombre_points()
+    points_agirc = points_agirc_11 + points_agirc12_
+    points_agirc_11 = agirc.coeff_age(agem, trim) * points_agirc_11
+    points_agirc12_ = agirc.coeff_age(agem, trim) * points_agirc12_
+    #maj_agirc = agirc.majoration_enf(points_agirc_11, points_agirc12_, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
+    pension_agirc = _P.complementaire.agirc.val_point * points_agirc #+ maj_agirc
 
-if __name__ == '__main__':    
-    # Comparaison des résultats avec PENSIPP
-    import numpy as np
-    import pandas.rpy.common as com
-    import datetime
-    from rpy2 import robjects as r
-    
-    r.r("load('Z:/PENSIPP vs. TIL/data.RData')")
+    to_check = {}
+    to_check['dec'] = (decote_RG * RG._P.plein.taux).values
+    to_check['sur'] = (surcote_RG * RG._P.plein.taux).values
+    to_check['taux'] = taux_RG.values
+    to_check['sam'] = SAM_RG.values
+    to_check["pliq_rg"] = pension_RG.values
+    to_check['prorat'] = CP_RG.values
+    to_check['pts_ar'] = points_arrco
+    to_check['pts_ag'] = points_agirc
+    to_check['pliq_ar'] = pension_arrco
+    to_check['pliq_ag'] = pension_agirc
+    #print '\n', pd.DataFrame(to_check).to_string()
+    return pension_RG, pd.DataFrame(to_check)
+
+
+def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
+    def _clean_info_child(info_child, year, id_selected):
+        info_child = info_child.loc[info_child['id_parent'].isin(id_selected),:]
+        info_child['age'] = calculate_age(info_child['naiss'], datetime.date(year,1,1))
+        nb_enf = info_child.groupby(['id_parent', 'age']).size().reset_index()
+        nb_enf.columns = ['id_parent', 'age_enf', 'nb_enf']
+        return nb_enf
+        
+    r.r("load('" + str(pensipp_input) + "')") 
     dates_to_col = [ year * 100 + 1 for year in range(1901,2061)]
     statut = com.load_data('statut')
     statut.columns =  dates_to_col
@@ -128,13 +155,67 @@ if __name__ == '__main__':
     info = com.load_data('ind')
     info['t_naiss'] = 1900 + info['t_naiss']
     info['naiss'] = [datetime.date(int(year),1,1) for year in info['t_naiss']]
-    
-    for year in range(2008,2009):#2016):
+    info['id'] = info.index
+    id_enf = com.load_data('enf')
+    id_enf.columns =  [ 'enf'+ str(i) for i in range(id_enf.shape[1])]
+    info_child_father, info_child_mother, id_enf = build_info_child(id_enf,info) 
+    r.r['load'](pensipp_output)
+    result_pensipp = com.load_data('output1')
+    result_til = pd.DataFrame(columns = var_to_check, index = result_pensipp.index)
+    for year in range(2004,2005):
         print year
         col_to_keep = [date for date in dates_to_col if date < (year * 100 + 1) and date >= 194901]
         info['agem'] =  (year - info['t_naiss']) * 12
         select_id = (info['agem'] ==  63 * 12)
+        id_selected = select_id[select_id == True].index
         sali = salaire.loc[select_id, col_to_keep]
         workstate = statut.loc[select_id, col_to_keep]
+        info_child_mother = _clean_info_child(info_child_mother, year, id_selected)
+        info_child_father = _clean_info_child(info_child_father, year, id_selected)
         info_ind = info.loc[select_id,:]
-        pension_RG = run_pension(sali, workstate, info_ind, info_child_father = None, info_child_mother = None, yearsim = year)
+        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, info_child_father = info_child_father, info_child_mother = info_child_mother, yearsim = year)
+        result_til.loc[result_til_year.index, :] = result_til_year
+        result_til.loc[result_til_year.index,'yearliq'] = year
+    #result_pensipp.to_csv('rpensipp.csv')
+    #result_til.to_csv('rtil.csv')
+    for var in var_to_check:
+        til_var = result_til[var]
+        pensipp_var = result_pensipp[var]
+        conflict = ((til_var - pensipp_var).abs() > threshold)
+        if conflict.any():
+            print u"Le calcul de {} pose problème pour {} personne(s) sur {}: ".format(var, sum(conflict), sum(result_til['yearliq'] == 2004))
+            print pd.DataFrame({
+                "TIL": til_var[conflict],
+                "PENSIPP": pensipp_var[conflict],
+                "diff.": til_var[conflict].abs() - pensipp_var[conflict].abs(),
+                "year_liq": result_til.loc[conflict, 'yearliq']
+                }).to_string()
+            #relevant_variables = relevant_variables_by_var[var]
+            
+
+def build_info_child(enf, info_ind):
+    '''
+    Input tables :
+        - 'enf' : pour chaque personne sont donnés les identifiants de ses enfants
+        - 'ind' : table des infos perso (dates de naissances notamment)
+    Output table :
+        - info_child_father : identifiant du pere, ages possibles des enfants, nombre d'enfant ayant cet age
+        - info_child_mother : identifiant de la mere, ages possibles des enfants, nombre d'enfant ayant cet age
+    '''
+    info_enf = enf.stack().reset_index()
+    info_enf.columns =  ['id_parent', 'enf', 'id_enf']
+    info_enf = info_enf.merge(info_ind[['sexe', 'id']], left_on='id_parent', right_on= 'id')
+    info_enf = info_enf.merge(info_ind[['naiss', 'id']], left_on='id_enf', right_on= 'id').drop(['id_x', 'id_y', 'enf'], axis=1)
+    return info_enf[info_enf['sexe'] == 1], info_enf[info_enf['sexe'] == 2], info_enf['id_enf']
+
+if __name__ == '__main__':    
+    # Comparaison des résultats avec PENSIPP
+    import numpy as np
+    import pandas.rpy.common as com
+    import datetime
+    from rpy2 import robjects as r
+    input_pensipp ='Z:/PENSIPP vs. TIL/dataALL.RData'
+    output_pensipp = 'Z:/PENSIPP vs. TIL/output1.RData'
+    var_to_check = ['sam', 'pliq_rg', 'pliq_ar', 'pliq_ag', 'pts_ag', 'pts_ar']
+    threshold = 50
+    compare_til_pensipp(input_pensipp, output_pensipp, var_to_check, threshold)
