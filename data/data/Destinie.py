@@ -200,15 +200,15 @@ class Destinie(DataTil):
             # On rajoute une ligne par individu pour spécifier leur décès (seulement période != -1)
             
             def __deces_indicated_lastyearoflife():
-                dead = DataFrame(index = deces.index.values, columns = futur.columns)
-                dead['period'][deces.index.values] = deces.values
-                dead['id'][deces.index.values] = deces.index.values
-                dead.fillna(-1, inplace=True)
-                dead['death'] = dead['period']
+#                 dead = DataFrame(index = deces.index.values, columns = futur.columns)
+#                 dead['period'][deces.index.values] = deces.values
+#                 dead['id'][deces.index.values] = deces.index.values
+#                 dead.fillna(-1, inplace=True)
+#                 dead['death'] = dead['period']*100 + 1
     
                 dead = DataFrame(deces)
                 dead['id'] = dead.index
-                dead['death'] = dead['period']
+                dead['death'] = dead['period']*100 + 1
                 
                 futur = concat([futur, dead], axis=0, ignore_index=True)
                 futur.fillna(-1, inplace=True)
@@ -225,14 +225,14 @@ class Destinie(DataTil):
                 no_last = futur.duplicated('id', take_last=True)
                 futur['death'] = -1 
                 cond_death = (no_last == False) & ((futur['workstate'] == 0) | (futur['period'] != 2060))
-                futur.loc[cond_death, 'death'] = futur.loc[cond_death, 'period']
+                futur.loc[cond_death, 'death'] = 100*futur.loc[cond_death, 'period'] + 1
                 futur.loc[(futur['workstate'] != 0) & (futur['death'] != -1), 'death' ] += 1 
                 add_lines = futur.loc[(futur['period']> futur['death']) & (futur['death'] != -1), 'id']
                 if len(add_lines) != 0 :
                     # TODO: prévoir de rajouter une ligne quand il n'existe pas de ligne associée à la date de mort.
                     print len(add_lines)
                     pdb.set_trace()
-            
+
                 return futur
 
             futur = __death_unic_event(futur)
