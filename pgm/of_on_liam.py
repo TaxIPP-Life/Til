@@ -33,14 +33,17 @@ listkeep = {'ind': ["salsuperbrut","cotsoc_noncontrib","cotsal_noncontrib","cots
                      "api","apje","asi","aspa","rmi","rsa","rsa_socle"],
             'foy': ["decote", "irpp", "isf_tot", "avantage_qf"]}
 
-traduc_variables = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'statmarit':'civilstate'}
+rename_variables = {'statmarit':'civilstate'}
 # on prend ce sens pour que famille puisse chercher dans menage comme menages
 traduc_entities = {'foyers_fiscaux':'declar', 'menages':'menage',
                     'individus':'person', 'familles':'menage'}
+
 input_even_if_formula = ['age', 'agem']
 traduction = {}
 traduction['person'] = {'men': 'idmen', 'foy': 'idfoy', 'id': 'noi', 'statmarit': 'civilstate'}
 
+new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'idfam':'men'}
+id_to_row = {}
 
 def main(liam, annee_leg=None,annee_base=None, output='array'):
     ''' Send data from the simulation to openfisca
@@ -96,21 +99,35 @@ def main(liam, annee_leg=None,annee_base=None, output='array'):
         # on cherche l'entité corrspondante dans liam
         til_ent_name = traduc_entities[of_ent_name]
         til_entity =  _get_entity(til_ent_name)
-        of_entity.count = of_entity.step_size = sum(til_entity.id_to_rownum > 0)
-        of_entity.roles_count = sum(til_entity.id_to_rownum > 0) + 1 
+        of_entity.count = of_entity.step_size = sum(til_entity.id_to_rownum > 0) + 1
+        of_entity.roles_count = 10 #TODO: faire une fonction
+        of_entity.is_persons_entity
+        
         til_entity = til_entity.array.columns
         # pour toutes les variables de l'entité of
         for column in of_entity.column_by_name:
             # on regarde si on les a dans til sous un nom ou un autre
-            if column in traduc_variables or column in til_entity:
+            if column in rename_variables or column in til_entity or column in new_ident:
                 holder = simulation.get_or_new_holder(column)
                 #on selectionne les valeurs d'entrée
                 if holder.formula is None or column in input_even_if_formula:
                     input[of_ent_name].append(column)
                     if column in til_entity:
                         holder.array = til_entity[column]
+                    elif column in new_ident:
+                        print('ici')
+                        init = til_entity[new_ident[column]]
+                        id_to_rownum = np.empty(len(init), dtype=np.int32) #np.int64 ? 
+                        init_values = np.unique(init)
+                        for k in range(len(init_values)):
+                            concerned = np.nonzero(init == init_values[k])
+                            id_to_rownum[concerned] = k - 1  
+                        holder.array = id_to_rownum
+                        id_to_row[column] = id_to_rownum
+                        print('la')
+                        
                     else: 
-                        holder.array = til_entity[traduc_variables[column]]
+                        holder.array = til_entity[rename_variables[column]]
                 # sinon, on conserve la liste des variable pour tout à l'heure
                 else: 
                     required[of_ent_name].append(column)
@@ -118,8 +135,9 @@ def main(liam, annee_leg=None,annee_base=None, output='array'):
         print(required[of_ent_name])
         print(input[of_ent_name])
     
-    simulation.calculate('nbF')
     pdb.set_trace()
+    simulation.calculate('nbF')
+    simulation.calculate('revdisp')
 
 #         
 #     output_of = 'list_de_variable_qui_sortent_du_model'
