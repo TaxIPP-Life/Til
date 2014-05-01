@@ -28,21 +28,18 @@ from openfisca_france import surveys
 
 ### list des variable que l'on veut conserver
 ### Note plus vraiment utile
-listkeep = {'ind': ["salsuperbrut","cotsoc_noncontrib","cotsal_noncontrib","cotsoc_bar","cotsoc_lib",
-                     "cotpat_contrib","cotpat_noncontrib","cotsal_contrib","cotsal","impo","psoc","mini","pfam","logt"],
-            'men': ["decile","decile_net", "pauvre60", "revdisp", "revini", "revnet", "typ_men", "uc"],
-            'fam': ["aah","caah","aeeh","aefa","af","cf","paje", "al","alf","als","apl","ars","asf",
-                     "api","apje","asi","aspa","rmi","rsa","rsa_socle"],
-            'foy': ["decote", "irpp", "isf_tot", "avantage_qf"]}
+# listkeep = {'ind': ["salsuperbrut","cotsoc_noncontrib","cotsal_noncontrib","cotsoc_bar","cotsoc_lib",
+#                      "cotpat_contrib","cotpat_noncontrib","cotsal_contrib","cotsal","impo","psoc","mini","pfam","logt"],
+#             'men': ["decile","decile_net", "pauvre60", "revdisp", "revini", "revnet", "typ_men", "uc"],
+#             'fam': ["aah","caah","aeeh","aefa","af","cf","paje", "al","alf","als","apl","ars","asf",
+#                      "api","apje","asi","aspa","rmi","rsa","rsa_socle"],
+#             'foy': ["decote", "irpp", "isf_tot", "avantage_qf"]}
 
 rename_variables = {'statmarit':'civilstate'}
 # on prend ce sens pour que famille puisse chercher dans menage comme menages
 traduc_entities = {'foyers_fiscaux':'declar', 'menages':'menage',
                     'individus':'person', 'familles':'menage'}
-
 input_even_if_formula = ['age', 'agem']
-traduction = {}
-traduction['person'] = {'men': 'idmen', 'foy': 'idfoy', 'id': 'noi', 'statmarit': 'civilstate'}
 
 new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'idfam':'men'}
 id_to_row = {}
@@ -54,12 +51,6 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
      - annee_leg pour donner les paramètres
      '''
     print "annee base", annee_base
-    #TODO: test mode_output is either a simulation either a string
-    # if not isinstance(mode_output,SurveySimulation)
-#    #### initialisation, si on veut une grosse table de sortie
-#    for ent in ('ind','men','foy','fam'):
-#        del mode_output_h5[ent]
-#        mode_output_h5[ent]=DataFrame() 
     
     ## on recupere la liste des annees en entree
     if annee_base is not None:
@@ -121,7 +112,7 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
                         holder.array = til_entity[column]
                     elif column in new_ident:
                         ident = til_entity[new_ident[column]]
-                        holder.array = rankdata( ident, 'dense').astype(int) - 2
+                        holder.array = rankdata(ident, 'dense').astype(int) - 2
                     else: 
                         holder.array = til_entity[rename_variables[column]]
                 # sinon, on conserve la liste des variable pour tout à l'heure
@@ -138,6 +129,3 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
         til_column = til_entity.array.columns
         for var in entity_vars:
             til_column[var] = simulation.calculate(var)
-
-if __name__ == "__main__":
-    main(2009)
