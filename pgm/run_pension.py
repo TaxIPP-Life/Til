@@ -213,4 +213,11 @@ if __name__ == '__main__':
     output_pensipp = 'Z:/PENSIPP vs. TIL/output1.RData'
     var_to_check = ['sam', 'pliq_rg', 'pliq_ar', 'pliq_ag', 'pts_ag', 'pts_ar']
     threshold = 50
+    
     compare_til_pensipp(input_pensipp, output_pensipp, var_to_check, threshold)
+
+#    or to have a profiler : 
+#    import cProfile
+#    import re
+#    command = """compare_til_pensipp(input_pensipp, output_pensipp, var_to_check, threshold)"""
+#    cProfile.runctx( command, globals(), locals(), filename="OpenGLContext.profile1")
