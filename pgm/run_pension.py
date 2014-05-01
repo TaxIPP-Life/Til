@@ -21,49 +21,46 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import os
 import pandas as pd
-import pickle
 import sys
+import datetime as dt
 
 from CONFIG import path_pension
-
 sys.path.append(path_pension)
 from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
-from SimulPension import PensionSimulation
-from utils import calculate_age
+from SimulPension import PensionSimulation, first_year_sal
+from utils import calculate_age, table_selected_dates, build_naiss
     
-def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, yearsim = 2009, example=False):
+def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, time_step='year', yearsim=2009, example=False):
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
     param_file = path_pension + '\\France\\param.xml' #TODO: Amelioration
     if example:
         param_file =  path_pension +'param_example.xml'
-
+    info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
+    workstate = table_selected_dates(workstate, first_year=first_year_sal, last_year=yearsim)
+    sali = table_selected_dates(sali, first_year=first_year_sal, last_year=yearsim)
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
-                'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': 'year'}
+                'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': time_step}
     Pension.set_config(**config)
     Pension.set_param()
-    
     # II - Calculs des durées d'assurance et des SAM par régime de base
     
     # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
     _P = Pension.P.fp
-    FP = FonctionPublique(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
+    FP = FonctionPublique(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
     FP.set_config(**config)
-    FP.load()
     
-    trim_cot_FP = FP.trim_service()
+    #trim_cot_FP = FP.trim_service()
 
     # II - 2 : Régime Général
     _P =  Pension.P.prive.RG
-    RG = RegimeGeneral(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
+    RG = RegimeGeneral(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
     RG.set_config(**config)
-    RG.load()
+    RG.build_salref()
 
     trim_cot_RG = RG.nb_trim_cot() 
     trim_ass_RG = RG.nb_trim_ass()
@@ -100,32 +97,30 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     # V - 1: Régimes complémentaires du privé
         # ARRCO
     _P = Pension.P.prive
-    arrco = ARRCO(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long,
-                   workstate_table = RG.workstate, sal_RG = RG.sal_RG)
+    arrco = ARRCO(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
     arrco.set_config(**config)
-    arrco.build_sal_regime() # Distinction cadre/non-cadre
+    arrco.build_sal_regime() # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
     
-    points_arrco_98, points_arrco9911, points_arrco12_ = arrco.nombre_points()
-    points_arrco =  points_arrco_98 + points_arrco9911 + points_arrco12_
-    maj_arrco = arrco.majoration_enf(points_arrco_98, points_arrco9911, points_arrco12_, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
-    coeff_majo =  arrco.coeff_age(agem, trim)
+    points_arrco= arrco.nombre_points()
+    maj_arrco = arrco.majoration_enf(points_arrco, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
+    print 'maj_arrco', maj_arrco
+    coeff_arrco =  arrco.coeff_age(agem, trim)
     val_arrco = _P.complementaire.arrco.val_point 
-    pension_arrco = val_arrco * points_arrco * coeff_majo + maj_arrco
+    pension_arrco = val_arrco * points_arrco * coeff_arrco + maj_arrco
     
         # AGIRC
-    agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long,
-                   workstate_table = RG.workstate, sal_RG = RG.sal_RG)
+    agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     agirc.set_config(**config)
-    points_agirc_11, points_agirc12_ = agirc.nombre_points()
-    points_agirc = points_agirc_11 + points_agirc12_
-    points_agirc_11 = agirc.coeff_age(agem, trim) * points_agirc_11
-    points_agirc12_ = agirc.coeff_age(agem, trim) * points_agirc12_
-    #maj_agirc = agirc.majoration_enf(points_agirc_11, points_agirc12_, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
-    pension_agirc = _P.complementaire.agirc.val_point * points_agirc #+ maj_agirc
+    agirc.build_sal_regime()
+    points_agirc = agirc.nombre_points()
+    coeff_agirc =  agirc.coeff_age(agem, trim)
+    maj_agirc = agirc.majoration_enf(points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
+    print 'maj_agirc', maj_agirc
+    pension_agirc = _P.complementaire.agirc.val_point * points_agirc * coeff_agirc + maj_agirc
 
     to_check = {}
-    to_check['dec'] = (decote_RG * RG._P.plein.taux).values
-    to_check['sur'] = (surcote_RG * RG._P.plein.taux).values
+    to_check['dec'] = (decote_RG*RG._P.plein.taux).values
+    to_check['sur'] = (surcote_RG*RG._P.plein.taux).values
     to_check['taux'] = taux_RG.values
     to_check['sam'] = SAM_RG.values
     to_check["pliq_rg"] = pension_RG.values
@@ -147,7 +142,7 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
         return nb_enf
         
     r.r("load('" + str(pensipp_input) + "')") 
-    dates_to_col = [ year * 100 + 1 for year in range(1901,2061)]
+    dates_to_col = [ year*100 + 1 for year in range(1901,2061)]
     statut = com.load_data('statut')
     statut.columns =  dates_to_col
     salaire = com.load_data('salaire')
@@ -164,8 +159,8 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
     result_til = pd.DataFrame(columns = var_to_check, index = result_pensipp.index)
     for year in range(2004,2005):
         print year
-        col_to_keep = [date for date in dates_to_col if date < (year * 100 + 1) and date >= 194901]
-        info['agem'] =  (year - info['t_naiss']) * 12
+        col_to_keep = [date for date in dates_to_col if date < (year*100 + 1) and date >= 194901]
+        info['agem'] =  (year - info['t_naiss'])*12
         select_id = (info['agem'] ==  63 * 12)
         id_selected = select_id[select_id == True].index
         sali = salaire.loc[select_id, col_to_keep]
@@ -173,7 +168,7 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
         info_child_mother = _clean_info_child(info_child_mother, year, id_selected)
         info_child_father = _clean_info_child(info_child_father, year, id_selected)
         info_ind = info.loc[select_id,:]
-        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, info_child_father = info_child_father, info_child_mother = info_child_mother, yearsim = year)
+        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, info_child_father=info_child_father, info_child_mother=info_child_mother, yearsim=year, time_step='year')
         result_til.loc[result_til_year.index, :] = result_til_year
         result_til.loc[result_til_year.index,'yearliq'] = year
     #result_pensipp.to_csv('rpensipp.csv')
