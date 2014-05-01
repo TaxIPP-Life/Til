@@ -612,7 +612,6 @@ class DataTil(object):
         for varname, tab in self.longitudinal.iteritems():
             #format to liam
             table = tab
-            table.columns = [x*100+1 for x in table.columns]
             table['id'] = table.index
             
             store.append('longitudinal/' + varname, table)
