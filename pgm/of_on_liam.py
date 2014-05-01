@@ -14,6 +14,8 @@ import time
 import gc
 import datetime as dt   
 
+from scipy.stats import rankdata
+
 from utils import of_name_to_til
 import liam2of
 from CONFIG import path_liam, path_til
@@ -45,19 +47,19 @@ traduction['person'] = {'men': 'idmen', 'foy': 'idfoy', 'id': 'noi', 'statmarit'
 new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'idfam':'men'}
 id_to_row = {}
 
-def main(liam, annee_leg=None,annee_base=None, output='array'):
+def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
     ''' Send data from the simulation to openfisca
     - annee_base: si rempli alors on tourne sur cette année-là, sinon sur toute la base
      mais à voir
      - annee_leg pour donner les paramètres
      '''
     print "annee base", annee_base
-    #TODO: test output is either a simulation either a string
-    # if not isinstance(output,SurveySimulation)
+    #TODO: test mode_output is either a simulation either a string
+    # if not isinstance(mode_output,SurveySimulation)
 #    #### initialisation, si on veut une grosse table de sortie
 #    for ent in ('ind','men','foy','fam'):
-#        del output_h5[ent]
-#        output_h5[ent]=DataFrame() 
+#        del mode_output_h5[ent]
+#        mode_output_h5[ent]=DataFrame() 
     
     ## on recupere la liste des annees en entree
     if annee_base is not None:
@@ -89,10 +91,13 @@ def main(liam, annee_leg=None,annee_base=None, output='array'):
     def _get_entity(name):
         position = entities_name.index(name)
         return liam.entities[position]
+    
     input = dict()
     required = dict()  # pour conserver les valeurs que l'on va vouloir sortir de of.
     #pour chaque entité d'open fisca
 
+    ## load data : 
+    
     for of_ent_name, of_entity in tax_benefit_system.entity_class_by_key_plural.iteritems():
         input[of_ent_name] = []
         required[of_ent_name] = []
@@ -115,44 +120,24 @@ def main(liam, annee_leg=None,annee_base=None, output='array'):
                     if column in til_entity:
                         holder.array = til_entity[column]
                     elif column in new_ident:
-                        print('ici')
-                        init = til_entity[new_ident[column]]
-                        id_to_rownum = np.empty(len(init), dtype=np.int32) #np.int64 ? 
-                        init_values = np.unique(init)
-                        for k in range(len(init_values)):
-                            concerned = np.nonzero(init == init_values[k])
-                            id_to_rownum[concerned] = k - 1  
-                        holder.array = id_to_rownum
-                        id_to_row[column] = id_to_rownum
-                        print('la')
-                        
+                        ident = til_entity[new_ident[column]]
+                        holder.array = rankdata( ident, 'dense').astype(int) - 2
                     else: 
                         holder.array = til_entity[rename_variables[column]]
                 # sinon, on conserve la liste des variable pour tout à l'heure
                 else: 
                     required[of_ent_name].append(column)
-        print(of_ent_name)
-        print(required[of_ent_name])
-        print(input[of_ent_name])
+#         print(of_ent_name)
+#         print(required[of_ent_name])
+#         print(input[of_ent_name])
     
-    pdb.set_trace()
-    simulation.calculate('nbF')
-    simulation.calculate('revdisp')
-
-#         
-#     output_of = 'list_de_variable_qui_sortent_du_model'
-#     for var in ind.array.columns:
-#         if var in output_of:
-#             liam.entities.etc.var.values = simulation.calculate(var)
-#                                                  
-#         tps_write = time.clock() - deb_write
-#         del simu
-#         gc.collect()
-#         fin3  = time.clock()
-#         print ("La législation sur l'année %s vient d'être calculée en %d secondes"
-#                    " dont %d pour le chargement, %d pour la simul pure et %d pour la sauvegarde") %(year, fin3-deb3,
-#                                                                         tps_charge, tps_comp, tps_write )          
-
+    ### load of outputs
+    for entity, entity_vars in required.iteritems():
+        til_ent_name = traduc_entities[entity]
+        til_entity = _get_entity(til_ent_name)
+        til_column = til_entity.array.columns
+        for var in entity_vars:
+            til_column[var] = simulation.calculate(var)
 
 if __name__ == "__main__":
     main(2009)
