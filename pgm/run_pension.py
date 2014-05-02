@@ -24,15 +24,24 @@
 import pandas as pd
 import sys
 import datetime as dt
+import time
 
 from CONFIG import path_pension
 sys.path.append(path_pension)
+
 from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
 from SimulPension import PensionSimulation, first_year_sal
 from utils import calculate_age, table_selected_dates, build_naiss
-    
+
+import cProfile
+import re
+
+def til_pension(sali, workstate, info_ind, info_child_father, info_child_mother, time_step='year', yearsim=2009, example=False):
+    command = """run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, time_step, yearsim, example)"""
+    cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
+
 def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, time_step='year', yearsim=2009, example=False):
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
@@ -40,34 +49,39 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     param_file = path_pension + '\\France\\param.xml' #TODO: Amelioration
     if example:
         param_file =  path_pension +'param_example.xml'
+    
+    etape0 = time.time()
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
+    etape1 = time.time()
     workstate = table_selected_dates(workstate, first_year=first_year_sal, last_year=yearsim)
     sali = table_selected_dates(sali, first_year=first_year_sal, last_year=yearsim)
+    etape2 = time.time()
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
                 'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': time_step}
     Pension.set_config(**config)
     Pension.set_param()
     # II - Calculs des durées d'assurance et des SAM par régime de base
-    
+    etape3 = time.time()
     # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
     _P = Pension.P.fp
     FP = FonctionPublique(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
     FP.set_config(**config)
     
     #trim_cot_FP = FP.trim_service()
-
+    etape4 = time.time()
     # II - 2 : Régime Général
     _P =  Pension.P.prive.RG
     RG = RegimeGeneral(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
     RG.set_config(**config)
     RG.build_salref()
-
+    etape5 = time.time()
+    
     trim_cot_RG = RG.nb_trim_cot() 
     trim_ass_RG = RG.nb_trim_ass()
     trim_maj_RG = RG.nb_trim_maj()
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
     SAM_RG = RG.SAM()
-    
+    etape6 = time.time()
     # III - Calculs des pensions tous régimes confondus 
     trim_cot = trim_cot_RG #+
     trim = trim_RG #+
@@ -75,7 +89,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     trim_by_years = RG.trim_by_years
     trim_RG = RG.assurance_maj(trim_RG, trim, agem)
     CP_RG = RG.calculate_CP(trim_RG)
-    
+    etape7 = time.time()
     # III - 1 : Fonction Publique
     
     # III - 2 : Régime général
@@ -86,7 +100,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     assert max(CP_RG) <= 1
     pension_RG = SAM_RG * CP_RG * taux_RG
     pension = pension_RG #+
-    
+    etape8 = time.time()
     # IV - Pensions de base finales (appication des minima et maxima)
     pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot, trim)
     pension_surcote_RG = SAM_RG * CP_RG * surcote_RG * RG._P.plein.taux
@@ -107,7 +121,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     coeff_arrco =  arrco.coeff_age(agem, trim)
     val_arrco = _P.complementaire.arrco.val_point 
     pension_arrco = val_arrco * points_arrco * coeff_arrco + maj_arrco
-    
+    etape9 = time.time()
         # AGIRC
     agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     agirc.set_config(**config)
@@ -130,6 +144,11 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     to_check['pliq_ar'] = pension_arrco
     to_check['pliq_ag'] = pension_agirc
     #print '\n', pd.DataFrame(to_check).to_string()
+    etape10 = time.time()
+    
+    for etape in range(10):
+        duree = eval('etape'+str(etape + 1)) - eval('etape'+str(etape))
+        print(" la durée de l'étape " + str(etape) + " a été de ", duree)
     return pension_RG, pd.DataFrame(to_check)
 
 
@@ -157,6 +176,7 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
     r.r['load'](pensipp_output)
     result_pensipp = com.load_data('output1')
     result_til = pd.DataFrame(columns = var_to_check, index = result_pensipp.index)
+    
     for year in range(2004,2005):
         print year
         col_to_keep = [date for date in dates_to_col if date < (year*100 + 1) and date >= 194901]
