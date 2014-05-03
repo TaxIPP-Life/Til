@@ -38,11 +38,11 @@ from utils import calculate_age, table_selected_dates, build_naiss
 import cProfile
 import re
 
-def til_pension(sali, workstate, info_ind, info_child_father, info_child_mother, time_step='year', yearsim=2009, example=False):
-    command = """run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, time_step, yearsim, example)"""
+def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False):
+    command = """run_pension(sali, workstate, info_ind, time_step, yearsim, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
 
-def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother, time_step='year', yearsim=2009, example=False):
+def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False):
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
@@ -57,7 +57,7 @@ def run_pension(sali, workstate, info_ind, info_child_father, info_child_mother,
     sali = table_selected_dates(sali, first_year=first_year_sal, last_year=yearsim)
     etape2 = time.time()
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
-                'info_child_father': info_child_father, 'info_child_mother': info_child_mother, 'param_file' : param_file, 'time_step': time_step}
+                'param_file' : param_file, 'time_step': time_step}
     Pension.set_config(**config)
     Pension.set_param()
     # II - Calculs des durées d'assurance et des SAM par régime de base
