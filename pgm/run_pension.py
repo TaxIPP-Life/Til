@@ -43,13 +43,31 @@ def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
 
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False):
+    if yearsim > 2009: 
+        yearsim = 2009
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
     param_file = path_pension + '\\France\\param.xml' #TODO: Amelioration
     if example:
         param_file =  path_pension +'param_example.xml'
-    
+
+    try: 
+        assert all(sali.index == workstate.index) and all(sali.index == info_ind.index)
+    except:
+        assert all(sali.index == workstate.index)
+        assert len(sali) == len(info_ind)
+        sal = sali.index
+        idx = info_ind.index
+        assert all(sal[sal.isin(idx)] == idx[idx.isin(sal)])
+        print(sal[~sal.isin(idx)])
+        print(idx[~idx.isin(sal)])
+        
+        # un décalage ? 
+        decal = idx[~idx.isin(sal)][0] - sal[~sal.isin(idx)][0]
+        import pdb
+        pdb.set_trace()
+        
     etape0 = time.time()
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     etape1 = time.time()
@@ -117,7 +135,6 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     
     points_arrco= arrco.nombre_points()
     maj_arrco = arrco.majoration_enf(points_arrco, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
-    print 'maj_arrco', maj_arrco
     coeff_arrco =  arrco.coeff_age(agem, trim)
     val_arrco = _P.complementaire.arrco.val_point 
     pension_arrco = val_arrco * points_arrco * coeff_arrco + maj_arrco
@@ -129,7 +146,6 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     points_agirc = agirc.nombre_points()
     coeff_agirc =  agirc.coeff_age(agem, trim)
     maj_agirc = agirc.majoration_enf(points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
-    print 'maj_agirc', maj_agirc
     pension_agirc = _P.complementaire.agirc.val_point * points_agirc * coeff_agirc + maj_agirc
 
     to_check = {}
