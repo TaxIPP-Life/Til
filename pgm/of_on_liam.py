@@ -40,7 +40,21 @@ new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'idfam':'men'}
 id_to_row = {}
 
 def deal_with_qui(qui, ident):
-    pdb.set_trace()
+    ''' change qui to have a unique qui by ident
+        assumes that there is an accumulation (on qui=2) '''
+    order = np.lexsort((qui, ident))
+    diff_ident = np.ones(qui.shape, qui.dtype)
+    diff_ident[1:] = np.diff(ident[order])
+    squi = qui[order].copy()
+    diff_qui = np.ones(qui.shape, qui.dtype)
+    diff_qui[1:] = np.diff(squi)
+    cond = (diff_ident == 0) & (diff_qui == 0)
+    while sum(cond) > 0:
+        squi[cond] += 1
+        diff_qui[1:] = np.diff(squi)
+        cond = (diff_ident == 0) & (diff_qui == 0)
+    qui[order] = squi
+    return qui
 
 def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
     ''' Send data from the simulation to openfisca
@@ -97,11 +111,13 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
         selected = np.ones(len(til_entity['id']), dtype=bool)
         if of_entity.is_persons_entity:
             selected = (til_entity['men'] > -1) & (til_entity['foy'] > -1)
-#             pdb.set_trace()
-#             til_entity['quimen'] = deal_with_qui(til_entity['quimen'][selected], til_entity['men'][selected])
-#             til_entity['quifoy'] = deal_with_qui(til_entity['quifoy'][selected], til_entity['foy'][selected])
+            til_entity['quimen'][selected] = deal_with_qui(til_entity['quimen'][selected],
+                                                            til_entity['men'][selected])
+            til_entity['quifoy'][selected] = deal_with_qui(til_entity['quifoy'][selected],
+                                                            til_entity['foy'][selected])
         selected_rows[of_ent_name] = selected  
         of_entity.count = of_entity.step_size = sum(selected)
+        
         of_entity.roles_count = 10 #TODO: faire une fonction
         
         # pour toutes les variables de l'entité of
@@ -134,4 +150,5 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
         selected = selected_rows[entity]
         for var in entity_vars:
             til_column[var][selected] = simulation.calculate(var)
-            til_column[var][selected] = 0
+            #TODO: check incidence of following line
+            til_column[var][~selected] = 0
