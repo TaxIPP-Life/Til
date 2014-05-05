@@ -33,7 +33,8 @@ from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
 from SimulPension import PensionSimulation, first_year_sal
-from utils import calculate_age, table_selected_dates, build_naiss
+from utils import build_naiss, calculate_age, table_selected_dates
+from pension_functions import count_enf_born, count_enf_pac
 
 import cProfile
 import re
@@ -164,12 +165,12 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     
     for etape in range(10):
         duree = eval('etape'+str(etape + 1)) - eval('etape'+str(etape))
-        print(" la durée de l'étape " + str(etape) + " a été de ", duree)
+        print (u"  La durée de l'étape {} a été de : {} sec").format(etape+1, duree)
     return pension_RG, pd.DataFrame(to_check)
 
 
 def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
-    def _clean_info_child(info_child, year, id_selected):
+    def _child_by_age(info_child, year, id_selected):
         info_child = info_child.loc[info_child['id_parent'].isin(id_selected),:]
         info_child['age'] = calculate_age(info_child['naiss'], datetime.date(year,1,1))
         nb_enf = info_child.groupby(['id_parent', 'age']).size().reset_index()
@@ -188,7 +189,7 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
     info['id'] = info.index
     id_enf = com.load_data('enf')
     id_enf.columns =  [ 'enf'+ str(i) for i in range(id_enf.shape[1])]
-    info_child_father, info_child_mother, id_enf = build_info_child(id_enf,info) 
+    info_child = build_info_child(id_enf,info) 
     r.r['load'](pensipp_output)
     result_pensipp = com.load_data('output1')
     result_til = pd.DataFrame(columns = var_to_check, index = result_pensipp.index)
@@ -201,10 +202,13 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
         id_selected = select_id[select_id == True].index
         sali = salaire.loc[select_id, col_to_keep]
         workstate = statut.loc[select_id, col_to_keep]
-        info_child_mother = _clean_info_child(info_child_mother, year, id_selected)
-        info_child_father = _clean_info_child(info_child_father, year, id_selected)
+        info_child = _child_by_age(info_child, year, id_selected)
+        nb_pac = count_enf_pac(info_child, info.index)
+        nb_enf = count_enf_born(info_child, info.index)
         info_ind = info.loc[select_id,:]
-        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, info_child_father=info_child_father, info_child_mother=info_child_mother, yearsim=year, time_step='year')
+        info_ind['nb_pac'] = nb_pac
+        info_ind['nb_born'] = nb_enf
+        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year')
         result_til.loc[result_til_year.index, :] = result_til_year
         result_til.loc[result_til_year.index,'yearliq'] = year
     #result_pensipp.to_csv('rpensipp.csv')
@@ -237,7 +241,7 @@ def build_info_child(enf, info_ind):
     info_enf.columns =  ['id_parent', 'enf', 'id_enf']
     info_enf = info_enf.merge(info_ind[['sexe', 'id']], left_on='id_parent', right_on= 'id')
     info_enf = info_enf.merge(info_ind[['naiss', 'id']], left_on='id_enf', right_on= 'id').drop(['id_x', 'id_y', 'enf'], axis=1)
-    return info_enf[info_enf['sexe'] == 1], info_enf[info_enf['sexe'] == 2], info_enf['id_enf']
+    return info_enf
 
 if __name__ == '__main__':    
     # Comparaison des résultats avec PENSIPP
