@@ -43,7 +43,7 @@ def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
 
-def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False):
+def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False, to_check=False):
     if yearsim > 2009: 
         yearsim = 2009
     Pension = PensionSimulation()
@@ -79,8 +79,10 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
                 'param_file' : param_file, 'time_step': time_step}
     Pension.set_config(**config)
     Pension.set_param()
-    # II - Calculs des durées d'assurance et des SAM par régime de base
     etape3 = time.time()
+     
+    # II - Calculs des durées d'assurance et des SAM par régime de base
+   
     # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
     _P = Pension.P.fp
     FP = FonctionPublique(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
@@ -101,11 +103,11 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
     SAM_RG = RG.SAM()
     etape6 = time.time()
+    
     # III - Calculs des pensions tous régimes confondus 
     trim_cot = trim_cot_RG #+
     trim = trim_RG #+
     agem = info_ind['agem']
-    trim_by_years = RG.trim_by_years
     trim_RG = RG.assurance_maj(trim_RG, trim, agem)
     CP_RG = RG.calculate_CP(trim_RG)
     etape7 = time.time()
@@ -113,18 +115,17 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     
     # III - 2 : Régime général
     decote_RG = RG.decote(trim, agem)
+    trim_by_years = RG.trim_by_years
     surcote_RG = RG.surcote(trim_by_years, trim_maj_RG, agem)
     taux_RG = RG.calculate_taux(decote_RG, surcote_RG)
-    assert max(taux_RG) < 1
-    assert max(CP_RG) <= 1
-    pension_RG = SAM_RG * CP_RG * taux_RG
+    pension_RG = SAM_RG*CP_RG*taux_RG
     pension = pension_RG #+
-    etape8 = time.time()
+    
     # IV - Pensions de base finales (appication des minima et maxima)
     pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot, trim)
-    pension_surcote_RG = SAM_RG * CP_RG * surcote_RG * RG._P.plein.taux
+    pension_surcote_RG = SAM_RG*CP_RG*surcote_RG* RG._P.plein.taux
     pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
-
+    etape8 = time.time()
     # V - Régime complémentaire
     
     # V - 1: Régimes complémentaires du privé
@@ -148,25 +149,27 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     coeff_agirc =  agirc.coeff_age(agem, trim)
     maj_agirc = agirc.majoration_enf(points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
     pension_agirc = _P.complementaire.agirc.val_point * points_agirc * coeff_agirc + maj_agirc
-
-    to_check = {}
-    to_check['dec'] = (decote_RG*RG._P.plein.taux).values
-    to_check['sur'] = (surcote_RG*RG._P.plein.taux).values
-    to_check['taux'] = taux_RG.values
-    to_check['sam'] = SAM_RG.values
-    to_check["pliq_rg"] = pension_RG.values
-    to_check['prorat'] = CP_RG.values
-    to_check['pts_ar'] = points_arrco
-    to_check['pts_ag'] = points_agirc
-    to_check['pliq_ar'] = pension_arrco
-    to_check['pliq_ag'] = pension_agirc
-    #print '\n', pd.DataFrame(to_check).to_string()
     etape10 = time.time()
     
     for etape in range(10):
         duree = eval('etape'+str(etape + 1)) - eval('etape'+str(etape))
         print (u"  La durée de l'étape {} a été de : {} sec").format(etape+1, duree)
-    return pension_RG, pd.DataFrame(to_check)
+    if to_check == True:
+        to_check = {}
+        to_check['dec'] = (decote_RG*RG._P.plein.taux).values
+        to_check['sur'] = (surcote_RG*RG._P.plein.taux).values
+        to_check['taux'] = taux_RG.values
+        to_check['sam'] = SAM_RG.values
+        to_check["pliq_rg"] = pension_RG.values
+        to_check['prorat'] = CP_RG.values
+        to_check['pts_ar'] = points_arrco
+        to_check['pts_ag'] = points_agirc
+        to_check['pliq_ar'] = pension_arrco
+        to_check['pliq_ag'] = pension_agirc
+        #print '\n', pd.DataFrame(to_check).to_string()
+        return pension_RG, pd.DataFrame(to_check)
+    else:
+        return pension_RG
 
 
 def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
@@ -208,7 +211,7 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
         info_ind = info.loc[select_id,:]
         info_ind['nb_pac'] = nb_pac
         info_ind['nb_born'] = nb_enf
-        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year')
+        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year', to_check=True)
         result_til.loc[result_til_year.index, :] = result_til_year
         result_til.loc[result_til_year.index,'yearliq'] = year
     #result_pensipp.to_csv('rpensipp.csv')
