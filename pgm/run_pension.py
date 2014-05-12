@@ -21,6 +21,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import numpy as np
 import pandas as pd
 import sys
 import datetime as dt
@@ -73,6 +74,8 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     etape1 = time.time()
     workstate = table_selected_dates(workstate, first_year=first_year_sal, last_year=yearsim)
     sali = table_selected_dates(sali, first_year=first_year_sal, last_year=yearsim)
+    sali = np.array(sali)
+    workstate = np.array(workstate)
     etape2 = time.time()
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
                 'param_file' : param_file, 'time_step': time_step}
