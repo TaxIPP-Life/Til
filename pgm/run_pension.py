@@ -32,27 +32,23 @@ sys.path.append(path_pension)
 from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
-from SimulPension import PensionSimulation, first_year_sal
-from utils import build_naiss, calculate_age, table_selected_dates
+from SimulPension import first_year_sal, PensionSimulation
+from utils_pension import build_naiss, calculate_age, table_selected_dates
 from pension_functions import count_enf_born, count_enf_pac
 
 import cProfile
-import re
 
 def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False):
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
 
-def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False, to_check=False):
+def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_check=False):
     if yearsim > 2009: 
         yearsim = 2009
     Pension = PensionSimulation()
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
     param_file = path_pension + '\\France\\param.xml' #TODO: Amelioration
-    if example:
-        param_file =  path_pension +'param_example.xml'
-
     try: 
         assert all(sali.index == workstate.index) and all(sali.index == info_ind.index)
     except:
@@ -70,6 +66,9 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
         pdb.set_trace()
         
     etape0 = time.time()
+    if max(info_ind['sexe']) == 2:
+        info_ind['sexe'] = info_ind['sexe'].replace(1,0)
+        info_ind['sexe'] = info_ind['sexe'].replace(2,1)
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     etape1 = time.time()
     workstate = table_selected_dates(workstate, first_year=first_year_sal, last_year=yearsim)
@@ -87,8 +86,9 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     _P = Pension.P.fp
     FP = FonctionPublique(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
     FP.set_config(**config)
-    
-    #trim_cot_FP = FP.trim_service()
+    trim_cot_FP, trim_actif = FP.trim_service()
+    FP.build_age_ref(trim_actif)
+    trim_FP = trim_cot_FP #+...
     etape4 = time.time()
     # II - 2 : Régime Général
     _P =  Pension.P.prive.RG
@@ -148,11 +148,11 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     points_agirc = agirc.nombre_points()
     coeff_agirc =  agirc.coeff_age(agem, trim)
     maj_agirc = agirc.majoration_enf(points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
-    pension_agirc = _P.complementaire.agirc.val_point * points_agirc * coeff_agirc + maj_agirc
+    pension_agirc = _P.complementaire.agirc.val_point*points_agirc # * coeff_agirc + maj_agirc
     etape10 = time.time()
     
     for etape in range(10):
-        duree = eval('etape'+str(etape + 1)) - eval('etape'+str(etape))
+        duree = eval('etape'+str(etape+1)) - eval('etape'+str(etape))
         print (u"  La durée de l'étape {} a été de : {} sec").format(etape+1, duree)
     if to_check == True:
         to_check = {}
@@ -166,101 +166,10 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
         to_check['pts_ag'] = points_agirc
         to_check['pliq_ar'] = pension_arrco
         to_check['pliq_ag'] = pension_agirc
-        #print '\n', pd.DataFrame(to_check).to_string()
+        to_check['trim_fp'] = trim_FP
+        to_check['DA_RG'] = trim_RG//4
+        to_check['DA_RG_maj'] = (trim_RG + trim_maj_RG)//4
+        #pd.DataFrame(to_check).to_csv('resultat2004.csv')
         return pension_RG, pd.DataFrame(to_check)
     else:
         return pension_RG
-
-
-def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
-    def _child_by_age(info_child, year, id_selected):
-        info_child = info_child.loc[info_child['id_parent'].isin(id_selected),:]
-        info_child['age'] = calculate_age(info_child['naiss'], datetime.date(year,1,1))
-        nb_enf = info_child.groupby(['id_parent', 'age']).size().reset_index()
-        nb_enf.columns = ['id_parent', 'age_enf', 'nb_enf']
-        return nb_enf
-        
-    r.r("load('" + str(pensipp_input) + "')") 
-    dates_to_col = [ year*100 + 1 for year in range(1901,2061)]
-    statut = com.load_data('statut')
-    statut.columns =  dates_to_col
-    salaire = com.load_data('salaire')
-    salaire.columns = dates_to_col
-    info = com.load_data('ind')
-    info['t_naiss'] = 1900 + info['t_naiss']
-    info['naiss'] = [datetime.date(int(year),1,1) for year in info['t_naiss']]
-    info['id'] = info.index
-    id_enf = com.load_data('enf')
-    id_enf.columns =  [ 'enf'+ str(i) for i in range(id_enf.shape[1])]
-    info_child = build_info_child(id_enf,info) 
-    r.r['load'](pensipp_output)
-    result_pensipp = com.load_data('output1')
-    result_til = pd.DataFrame(columns = var_to_check, index = result_pensipp.index)
-    
-    for year in range(2004,2005):
-        print year
-        col_to_keep = [date for date in dates_to_col if date < (year*100 + 1) and date >= 194901]
-        info['agem'] =  (year - info['t_naiss'])*12
-        select_id = (info['agem'] ==  63 * 12)
-        id_selected = select_id[select_id == True].index
-        sali = salaire.loc[select_id, col_to_keep]
-        workstate = statut.loc[select_id, col_to_keep]
-        info_child = _child_by_age(info_child, year, id_selected)
-        nb_pac = count_enf_pac(info_child, info.index)
-        nb_enf = count_enf_born(info_child, info.index)
-        info_ind = info.loc[select_id,:]
-        info_ind['nb_pac'] = nb_pac
-        info_ind['nb_born'] = nb_enf
-        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year', to_check=True)
-        result_til.loc[result_til_year.index, :] = result_til_year
-        result_til.loc[result_til_year.index,'yearliq'] = year
-    #result_pensipp.to_csv('rpensipp.csv')
-    #result_til.to_csv('rtil.csv')
-    for var in var_to_check:
-        til_var = result_til[var]
-        pensipp_var = result_pensipp[var]
-        conflict = ((til_var - pensipp_var).abs() > threshold)
-        if conflict.any():
-            print u"Le calcul de {} pose problème pour {} personne(s) sur {}: ".format(var, sum(conflict), sum(result_til['yearliq'] == 2004))
-            print pd.DataFrame({
-                "TIL": til_var[conflict],
-                "PENSIPP": pensipp_var[conflict],
-                "diff.": til_var[conflict].abs() - pensipp_var[conflict].abs(),
-                "year_liq": result_til.loc[conflict, 'yearliq']
-                }).to_string()
-            #relevant_variables = relevant_variables_by_var[var]
-            
-
-def build_info_child(enf, info_ind):
-    '''
-    Input tables :
-        - 'enf' : pour chaque personne sont donnés les identifiants de ses enfants
-        - 'ind' : table des infos perso (dates de naissances notamment)
-    Output table :
-        - info_child_father : identifiant du pere, ages possibles des enfants, nombre d'enfant ayant cet age
-        - info_child_mother : identifiant de la mere, ages possibles des enfants, nombre d'enfant ayant cet age
-    '''
-    info_enf = enf.stack().reset_index()
-    info_enf.columns =  ['id_parent', 'enf', 'id_enf']
-    info_enf = info_enf.merge(info_ind[['sexe', 'id']], left_on='id_parent', right_on= 'id')
-    info_enf = info_enf.merge(info_ind[['naiss', 'id']], left_on='id_enf', right_on= 'id').drop(['id_x', 'id_y', 'enf'], axis=1)
-    return info_enf
-
-if __name__ == '__main__':    
-    # Comparaison des résultats avec PENSIPP
-    import numpy as np
-    import pandas.rpy.common as com
-    import datetime
-    from rpy2 import robjects as r
-    input_pensipp ='Z:/PENSIPP vs. TIL/dataALL.RData'
-    output_pensipp = 'Z:/PENSIPP vs. TIL/output1.RData'
-    var_to_check = ['sam', 'pliq_rg', 'pliq_ar', 'pliq_ag', 'pts_ag', 'pts_ar']
-    threshold = 50
-    
-    compare_til_pensipp(input_pensipp, output_pensipp, var_to_check, threshold)
-
-#    or to have a profiler : 
-#    import cProfile
-#    import re
-#    command = """compare_til_pensipp(input_pensipp, output_pensipp, var_to_check, threshold)"""
-#    cProfile.runctx( command, globals(), locals(), filename="OpenGLContext.profile1")
