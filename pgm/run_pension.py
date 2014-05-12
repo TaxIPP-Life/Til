@@ -66,6 +66,13 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         import pdb
         pdb.set_trace()
         
+    ##TODO: should be done before
+    assert sali.columns.tolist() == workstate.columns.tolist()
+    assert sali.columns.tolist() == (sorted(sali.columns))
+    past_dates = sali.columns.tolist()
+    sali = np.array(sali)
+    workstate = np.array(workstate)
+    
     etape0 = time.time()
     if max(info_ind['sexe']) == 2:
         info_ind['sexe'] = info_ind['sexe'].replace(1,0)
