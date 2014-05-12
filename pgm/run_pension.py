@@ -69,7 +69,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     ##TODO: should be done before
     assert sali.columns.tolist() == workstate.columns.tolist()
     assert sali.columns.tolist() == (sorted(sali.columns))
-    past_dates = sali.columns.tolist()
+    dates = sali.columns.tolist()
     sali = np.array(sali)
     workstate = np.array(workstate)
     
@@ -79,12 +79,12 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         info_ind['sexe'] = info_ind['sexe'].replace(2,1)
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     etape1 = time.time()
-    workstate = table_selected_dates(workstate, first_year=first_year_sal, last_year=yearsim)
-    sali = table_selected_dates(sali, first_year=first_year_sal, last_year=yearsim)
+    workstate = table_selected_dates(workstate, dates, first_year=first_year_sal, last_year=yearsim)
+    sali = table_selected_dates(sali, dates, first_year=first_year_sal, last_year=yearsim)
     sali = np.array(sali)
     workstate = np.array(workstate)
     etape2 = time.time()
-    config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'info_ind': info_ind,
+    config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'dates': dates, 'info_ind': info_ind,
                 'param_file' : param_file, 'time_step': time_step}
     Pension.set_config(**config)
     Pension.set_param()
