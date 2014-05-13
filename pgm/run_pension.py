@@ -79,13 +79,11 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         info_ind['sexe'] = info_ind['sexe'].replace(2,1)
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     etape1 = time.time()
-    workstate = table_selected_dates(workstate, dates, first_year=first_year_sal, last_year=yearsim)
-    sali = table_selected_dates(sali, dates, first_year=first_year_sal, last_year=yearsim)
-    sali = np.array(sali)
-    workstate = np.array(workstate)
+    # On fait l'hypothèse qu'on ne tient pas compte de la dernière année :
+
     etape2 = time.time()
     config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'dates': dates, 'info_ind': info_ind,
-                'param_file' : param_file, 'time_step': time_step}
+                'param_file' : param_file, 'time_step': time_step, 'data_type' : 'numpy', 'first_year': first_year_sal}
     Pension.set_config(**config)
     Pension.set_param()
     etape3 = time.time()
@@ -125,8 +123,8 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     
     # III - 2 : Régime général
     decote_RG = RG.decote(trim, agem)
-    trim_by_years = RG.trim_by_years
-    surcote_RG = RG.surcote(trim_by_years, trim_maj_RG, agem)
+    trim_by_year = RG.trim_by_year # + _.trim_by_year...
+    surcote_RG = RG.surcote(trim_by_year, trim_maj_RG, agem)
     taux_RG = RG.calculate_taux(decote_RG, surcote_RG)
     pension_RG = SAM_RG*CP_RG*taux_RG
     pension = pension_RG #+
@@ -167,7 +165,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     if to_check == True:
         to_check = {}
         to_check['dec'] = (decote_RG*RG._P.plein.taux).values
-        to_check['sur'] = (surcote_RG*RG._P.plein.taux).values
+        to_check['sur'] = (surcote_RG*RG._P.plein.taux)
         to_check['taux'] = taux_RG.values
         to_check['sam'] = SAM_RG.values
         to_check["pliq_rg"] = pension_RG.values
