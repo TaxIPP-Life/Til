@@ -33,9 +33,10 @@ sys.path.append(path_pension)
 from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
-from SimulPension import first_year_sal, PensionSimulation
-from utils_pension import build_naiss, calculate_age, table_selected_dates
+from time_array import TimeArray
+from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
 from pension_functions import count_enf_born, count_enf_pac
+first_year_sal = 1949 
 
 import cProfile
 
@@ -46,7 +47,7 @@ def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_check=False):
     if yearsim > 2009: 
         yearsim = 2009
-    Pension = PensionSimulation()
+
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
     param_file = path_pension + '\\France\\param.xml' #TODO: Amelioration
@@ -60,54 +61,54 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         assert all(sal[sal.isin(idx)] == idx[idx.isin(sal)])
         print(sal[~sal.isin(idx)])
         print(idx[~idx.isin(sal)])
-        
         # un décalage ? 
         decal = idx[~idx.isin(sal)][0] - sal[~sal.isin(idx)][0]
         import pdb
         pdb.set_trace()
-        
     ##TODO: should be done before
     assert sali.columns.tolist() == workstate.columns.tolist()
     assert sali.columns.tolist() == (sorted(sali.columns))
     dates = sali.columns.tolist()
     sali = np.array(sali)
     workstate = np.array(workstate)
-    
-    etape0 = time.time()
+
+    #TODO: virer ça, non ?
     if max(info_ind['sexe']) == 2:
         info_ind['sexe'] = info_ind['sexe'].replace(1,0)
         info_ind['sexe'] = info_ind['sexe'].replace(2,1)
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
-    etape1 = time.time()
     # On fait l'hypothèse qu'on ne tient pas compte de la dernière année :
 
-    etape2 = time.time()
-    config = {'year' : yearsim, 'workstate': workstate, 'sali': sali, 'dates': dates, 'info_ind': info_ind,
-                'param_file' : param_file, 'time_step': time_step, 'data_type' : 'numpy', 'first_year': first_year_sal}
-    Pension.set_config(**config)
-    Pension.set_param()
-    etape3 = time.time()
-     
+
+    date_param = str(yearsim)+ '-05-01'
+    date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
+    P, P_longit = load_param(param_file, date_param)
+    config = {'yearsim' : yearsim, 'P': P, 'P_longit': P_longit,
+              'workstate': workstate, 'sali': sali, 'dates': dates, 'info_ind': info_ind,
+               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
     # II - Calculs des durées d'assurance et des SAM par régime de base
    
     # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
-    _P = Pension.P.fp
-    FP = FonctionPublique(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
+    sali = TimeArray(sali, dates)
+    sali.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True)
+    workstate = TimeArray(workstate, dates)
+    workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
+    
+    FP = FonctionPublique()
     FP.set_config(**config)
-    trim_cot_FP, trim_actif = FP.trim_service()
-    FP.build_age_ref(trim_actif)
-    trim_FP = trim_cot_FP #+...
-    etape4 = time.time()
+    trim_valides = FP.nb_trim_valide(workstate)
+    trim_actif = FP.nb_trim_valide(workstate, FP.code_actif)
+    FP.build_age_ref(trim_actif, workstate)
+    trim_FP = trim_valides #+...
     # II - 2 : Régime Général
-    _P =  Pension.P.prive.RG
-    RG = RegimeGeneral(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
+    _P =  P.prive.RG
+    RG = RegimeGeneral()
     RG.set_config(**config)
     RG.build_salref()
-    etape5 = time.time()
     
-    trim_cot_RG = RG.nb_trim_cot() 
-    trim_ass_RG = RG.nb_trim_ass()
-    trim_maj_RG = RG.nb_trim_maj()
+    trim_cot_RG = RG.nb_trim_cot(workstate, sali) 
+    trim_ass_RG = RG.nb_trim_ass(workstate)
+    trim_maj_RG = RG.nb_trim_maj(workstate, sali)
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
     SAM_RG = RG.SAM()
     etape6 = time.time()
@@ -131,18 +132,19 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     
     # IV - Pensions de base finales (appication des minima et maxima)
     pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot, trim)
-    pension_surcote_RG = SAM_RG*CP_RG*surcote_RG* RG._P.plein.taux
+    
+    pension_surcote_RG = SAM_RG*CP_RG*surcote_RG* P.prive.RG.plein.taux
     pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
     etape8 = time.time()
     # V - Régime complémentaire
     
     # V - 1: Régimes complémentaires du privé
         # ARRCO
-    _P = Pension.P.prive
-    arrco = ARRCO(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
+    _P = P.prive
+    arrco = ARRCO()
     arrco.set_config(**config)
-    arrco.build_sal_regime() # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
-    
+    arrco.build_sal_regime(workstate, sali) # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
+
     points_arrco= arrco.nombre_points()
     maj_arrco = arrco.majoration_enf(points_arrco, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
     coeff_arrco =  arrco.coeff_age(agem, trim)
@@ -150,16 +152,16 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     pension_arrco = val_arrco * points_arrco * coeff_arrco + maj_arrco
     etape9 = time.time()
         # AGIRC
-    agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
+    agirc = AGIRC()
     agirc.set_config(**config)
-    agirc.build_sal_regime()
+    agirc.build_sal_regime(workstate, sali)
     points_agirc = agirc.nombre_points()
     coeff_agirc =  agirc.coeff_age(agem, trim)
     maj_agirc = agirc.majoration_enf(points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
     pension_agirc = _P.complementaire.agirc.val_point*points_agirc # * coeff_agirc + maj_agirc
     etape10 = time.time()
     
-    for etape in range(10):
+    for etape in range(2,10):
         duree = eval('etape'+str(etape+1)) - eval('etape'+str(etape))
         print (u"  La durée de l'étape {} a été de : {} sec").format(etape+1, duree)
     if to_check == True:
