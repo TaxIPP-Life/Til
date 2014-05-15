@@ -16,11 +16,11 @@
 #
 # OpenFisca is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import pandas as pd
 import sys
@@ -37,6 +37,7 @@ from time_array import TimeArray
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
 from pension_functions import count_enf_born, count_enf_pac
 first_year_sal = 1949 
+
 
 import cProfile
 
@@ -61,10 +62,12 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         assert all(sal[sal.isin(idx)] == idx[idx.isin(sal)])
         print(sal[~sal.isin(idx)])
         print(idx[~idx.isin(sal)])
-        # un décalage ? 
+        
+        # un décalage ?
         decal = idx[~idx.isin(sal)][0] - sal[~sal.isin(idx)][0]
         import pdb
         pdb.set_trace()
+        
     ##TODO: should be done before
     assert sali.columns.tolist() == workstate.columns.tolist()
     assert sali.columns.tolist() == (sorted(sali.columns))
@@ -72,13 +75,11 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     sali = np.array(sali)
     workstate = np.array(workstate)
 
-    #TODO: virer ça, non ?
     if max(info_ind['sexe']) == 2:
         info_ind['sexe'] = info_ind['sexe'].replace(1,0)
         info_ind['sexe'] = info_ind['sexe'].replace(2,1)
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     # On fait l'hypothèse qu'on ne tient pas compte de la dernière année :
-
 
     date_param = str(yearsim)+ '-05-01'
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
@@ -117,10 +118,31 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     agem = info_ind['agem']
     trim_RG = RG.assurance_maj(trim_RG, trim, agem)
     CP_RG = RG.calculate_coeff_proratisation(trim_RG)
+     
+    # II - Calculs des durées d'assurance et des SAM par régime de base
+   
+    # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
+    trim_cot_FP, trim_actif = FP.trim_service()
+    FP.build_age_ref(trim_actif)
+    trim_bonif_CPCM = FP.trim_bonif_CPCM(trim_cot_FP)
+    trim_bonif_5eme = FP.trim_bonif_5eme(trim_cot_FP)
+    trim_maj_FP = trim_bonif_CPCM + trim_bonif_5eme
+    trim_FP = trim_cot_FP + trim_maj_FP
+    CP_FP = FP.CP(trim_cot_FP, trim_bonif_CPCM, trim_bonif_5eme)
+        
+    CP_RG = RG.calculate_CP(trim_RG)
+    SAM_RG = RG.SAM()
+
+    # III - Calculs des pensions tous régimes confondus
+    trim_cot_all = trim_tot(index, *(RG.trim_by_year, FP.trim_by_year))
+    trim_maj_all = trim_maj_FP + trim_maj_RG
+    trim_all = trim_cot_all + trim_maj_all
+    agem = info_ind['agem']
+    trim_RG = RG.assurance_maj(trim_RG, trim_all, agem)
     # III - 1 : Fonction Publique
     
     # III - 2 : Régime général
-    decote_RG = RG.decote(trim, agem)
+    decote_RG = RG.decote(trim_all, agem)
     trim_by_year = RG.trim_by_year # + _.trim_by_year...
     surcote_RG = RG.surcote(trim_by_year, trim_maj_RG, agem)
     
@@ -131,18 +153,18 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     pension = pension_RG #+
     
     # IV - Pensions de base finales (appication des minima et maxima)
-    pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot, trim)
-    
-    pension_surcote_RG = SAM_RG*CP_RG*surcote_RG* P.prive.RG.plein.taux
+    pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot_all, trim_all)
+    pension_surcote_RG = SAM_RG*CP_RG*surcote_RG* RG._P.plein.taux
     pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
 
     # V - Régime complémentaire
     
     # V - 1: Régimes complémentaires du privé
         # ARRCO
-    _P = P.prive
-    arrco = ARRCO()
+    _P = Pension.P.prive
+    arrco = ARRCO(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
     arrco.set_config(**config)
+    
     plaf_sali = arrco.old_plaf_sali(workstate, sali) # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
 
     points_arrco = arrco.nombre_points(plaf_sali)
@@ -151,7 +173,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     val_arrco = _P.complementaire.arrco.val_point 
     pension_arrco = val_arrco * points_arrco * coeff_arrco + maj_arrco
         # AGIRC
-    agirc = AGIRC()
+    agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
     agirc.set_config(**config)
     plaf_sali = agirc.old_plaf_sali(workstate, sali)
     points_agirc = agirc.nombre_points(plaf_sali)
