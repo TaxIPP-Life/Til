@@ -84,22 +84,23 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
     P, P_longit = load_param(param_file, date_param)
     config = {'yearsim' : yearsim, 'P': P, 'P_longit': P_longit,
-              'workstate': workstate, 'sali': sali, 'dates': dates, 'info_ind': info_ind,
+              'dates': dates, 'info_ind': info_ind,
                'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
-    # II - Calculs des durées d'assurance et des SAM par régime de base
-   
-    # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
+    
     sali = TimeArray(sali, dates)
     sali.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True)
     workstate = TimeArray(workstate, dates)
     workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
-    
+    # II - Calculs des durées d'assurance et des SAM par régime de base
+   
+    # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
     FP = FonctionPublique()
     FP.set_config(**config)
     trim_valides = FP.nb_trim_valide(workstate)
     trim_actif = FP.nb_trim_valide(workstate, FP.code_actif)
     FP.build_age_ref(trim_actif, workstate)
     trim_FP = trim_valides #+...
+    
     # II - 2 : Régime Général
     _P =  P.prive.RG
     RG = RegimeGeneral()
@@ -111,7 +112,6 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     trim_maj_RG = RG.nb_trim_maj(workstate, sali)
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
     SAM_RG = RG.SAM()
-    etape6 = time.time()
     
     # III - Calculs des pensions tous régimes confondus 
     trim_cot = trim_cot_RG #+
@@ -119,7 +119,6 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     agem = info_ind['agem']
     trim_RG = RG.assurance_maj(trim_RG, trim, agem)
     CP_RG = RG.calculate_CP(trim_RG)
-    etape7 = time.time()
     # III - 1 : Fonction Publique
     
     # III - 2 : Régime général
@@ -143,27 +142,22 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     _P = P.prive
     arrco = ARRCO()
     arrco.set_config(**config)
-    arrco.build_sal_regime(workstate, sali) # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
+    plaf_sali = arrco.plaf_sali(workstate, sali) # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
 
-    points_arrco= arrco.nombre_points()
-    maj_arrco = arrco.majoration_enf(points_arrco, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
+    points_arrco = arrco.nombre_points(plaf_sali)
+    maj_arrco = arrco.majoration_enf(plaf_sali, points_arrco, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
     coeff_arrco =  arrco.coeff_age(agem, trim)
     val_arrco = _P.complementaire.arrco.val_point 
     pension_arrco = val_arrco * points_arrco * coeff_arrco + maj_arrco
-    etape9 = time.time()
         # AGIRC
     agirc = AGIRC()
     agirc.set_config(**config)
-    agirc.build_sal_regime(workstate, sali)
-    points_agirc = agirc.nombre_points()
+    plaf_sali = agirc.plaf_sali(workstate, sali)
+    points_agirc = agirc.nombre_points(plaf_sali)
     coeff_agirc =  agirc.coeff_age(agem, trim)
-    maj_agirc = agirc.majoration_enf(points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
+    maj_agirc = agirc.majoration_enf(plaf_sali, points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
     pension_agirc = _P.complementaire.agirc.val_point*points_agirc # * coeff_agirc + maj_agirc
-    etape10 = time.time()
     
-    for etape in range(2,10):
-        duree = eval('etape'+str(etape+1)) - eval('etape'+str(etape))
-        print (u"  La durée de l'étape {} a été de : {} sec").format(etape+1, duree)
     if to_check == True:
         to_check = {}
         to_check['dec'] = (decote_RG*RG._P.plein.taux).values
