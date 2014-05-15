@@ -142,7 +142,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     _P = P.prive
     arrco = ARRCO()
     arrco.set_config(**config)
-    plaf_sali = arrco.plaf_sali(workstate, sali) # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
+    plaf_sali = arrco.old_plaf_sali(workstate, sali) # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
 
     points_arrco = arrco.nombre_points(plaf_sali)
     maj_arrco = arrco.majoration_enf(plaf_sali, points_arrco, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
@@ -152,7 +152,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         # AGIRC
     agirc = AGIRC()
     agirc.set_config(**config)
-    plaf_sali = agirc.plaf_sali(workstate, sali)
+    plaf_sali = agirc.old_plaf_sali(workstate, sali)
     points_agirc = agirc.nombre_points(plaf_sali)
     coeff_agirc =  agirc.coeff_age(agem, trim)
     maj_agirc = agirc.majoration_enf(plaf_sali, points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
