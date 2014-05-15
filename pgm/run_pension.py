@@ -91,26 +91,27 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     sali.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True)
     workstate = TimeArray(workstate, dates)
     workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
-    # II - Calculs des durées d'assurance et des SAM par régime de base
    
-    # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
-    FP = FonctionPublique()
-    FP.set_config(**config)
-    trim_valides = FP.nb_trim_valide(workstate)
-    trim_actif = FP.nb_trim_valide(workstate, FP.code_actif)
-    FP.build_age_ref(trim_actif, workstate)
-    trim_FP = trim_valides #+...
+    base_regimes = ['FonctionPublique', 'RegimeGeneral']
+    ### get trimestre : 
+    trimestres = {}
+    
+    for reg_name in base_regimes:
+        reg = eval(reg_name + '()')
+        reg.set_config(**config)
+        reg_trim = reg.get_trimester(workstate, sali)
+        assert len([x for x in reg_trim.keys() if x in trimestres]) == 0
+        trimestres = dict(trimestres.items() + reg_trim.items())
+        
+    import pdb
+    pdb.set_trace()        
+
     
     # II - 2 : Régime Général
-    _P =  P.prive.RG
-    RG = RegimeGeneral()
-    RG.set_config(**config)
+
     RG.build_salref()
-    
-    trim_cot_RG = RG.nb_trim_cot(workstate, sali) 
-    trim_ass_RG = RG.nb_trim_ass(workstate)
-    trim_maj_RG = RG.nb_trim_maj(workstate, sali)
     trim_RG = trim_cot_RG + trim_ass_RG + trim_maj_RG
+    
     SAM_RG = RG.SAM()
     
     # III - Calculs des pensions tous régimes confondus 
@@ -134,7 +135,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     
     pension_surcote_RG = SAM_RG*CP_RG*surcote_RG* P.prive.RG.plein.taux
     pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
-    etape8 = time.time()
+
     # V - Régime complémentaire
     
     # V - 1: Régimes complémentaires du privé
