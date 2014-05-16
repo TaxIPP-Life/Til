@@ -35,7 +35,7 @@ from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
 from time_array import TimeArray
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
-from pension_functions import count_enf_born, count_enf_pac
+from pension_functions import count_enf_born, count_enf_pac, trim_all
 first_year_sal = 1949 
 
 
@@ -44,6 +44,15 @@ import cProfile
 def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False):
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
+    
+def select_trim_regime(trimestres, trimestres_by_year, code_regime):
+    trim_regime = dict(trim for trim in trimestres.items() if code_regime in trim[0])
+    trim_regime.update({'trim_by_year' : trimestres_by_year[code_regime]})
+    for key in trim_regime.keys():
+        if code_regime in key:
+            trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
+    trim_regime['trim_tot'] = trim_regime['trim_cot'] + trim_regime['trim_maj']
+    return trim_regime
 
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_check=False):
     if yearsim > 2009: 
@@ -95,66 +104,24 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
    
     base_regimes = ['FonctionPublique', 'RegimeGeneral']
     ### get trimestre : 
-    trimestres = {}
-    
+    trimestres = dict()
+    trimestres_by_year = dict()
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg_trim = reg.get_trimester(workstate, sali)
+        reg_trim, trim_by_year = reg.get_trimester(workstate, sali, table=True)
         assert len([x for x in reg_trim.keys() if x in trimestres]) == 0
-        trimestres = dict(trimestres.items() + reg_trim.items())
-
-#     trim_RG = trimestres['trim_cot_RG'] + trimestres['trim_ass'] + trimestres['trim_maj']
-    trim_cot = sum(trimestres.values())
-    
+        trimestres.update(reg_trim)
+        trimestres_by_year.update(trim_by_year)
+    trim_by_year_tot, trim_maj_tot = trim_all(trimestres, trimestres_by_year)
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg.calculate_pension(workstate, sali)
-           
-    SAM_RG = RG.SAM()
-    # III - Calculs des pensions tous régimes confondus 
-    trim = trim_RG #+
-    agem = info_ind['agem']
-    trim_RG = RG.assurance_maj(trim_RG, trim, agem)
-    CP_RG = RG.calculate_coeff_proratisation(trim_RG)
-     
-    # II - Calculs des durées d'assurance et des SAM par régime de base
-   
-    # II - 1 : Fonction Publique (l'ordre importe car bascule vers RG si la condition de durée minimale de cotisation n'est pas respectée)
-    trim_cot_FP, trim_actif = FP.trim_service()
-    FP.build_age_ref(trim_actif)
-    trim_bonif_CPCM = FP.trim_bonif_CPCM(trim_cot_FP)
-    trim_bonif_5eme = FP.trim_bonif_5eme(trim_cot_FP)
-    trim_maj_FP = trim_bonif_CPCM + trim_bonif_5eme
-    trim_FP = trim_cot_FP + trim_maj_FP
-    CP_FP = FP.CP(trim_cot_FP, trim_bonif_CPCM, trim_bonif_5eme)
-        
-    CP_RG = RG.calculate_CP(trim_RG)
-    SAM_RG = RG.SAM()
+        trim_regime = select_trim_regime(trimestres, trimestres_by_year, reg.regime)
+        pension_reg = reg.calculate_pension(workstate, sali, trim_by_year_tot, trim_maj_tot, trim_regime)
+        print reg_name, pension_reg
 
-    # III - Calculs des pensions tous régimes confondus
-    trim_cot_all = trim_tot(index, *(RG.trim_by_year, FP.trim_by_year))
-    trim_maj_all = trim_maj_FP + trim_maj_RG
-    trim_all = trim_cot_all + trim_maj_all
-    agem = info_ind['agem']
-    trim_RG = RG.assurance_maj(trim_RG, trim_all, agem)
-    # III - 1 : Fonction Publique
-    
-    # III - 2 : Régime général
-    decote_RG = RG.decote(trim_all, agem)
-    trim_by_year = RG.trim_by_year # + _.trim_by_year...
-    surcote_RG = RG.surcote(trim_by_year, trim_maj_RG, agem)
-    
-    taux_RG = RG.calculate_taux(decote_RG, surcote_RG)
-    
-    pension_RG = SAM_RG *CP_RG*taux_RG
-    
-    pension = pension_RG #+
-    
-    # IV - Pensions de base finales (appication des minima et maxima)
-    pension_RG = pension_RG + RG.minimum_contributif(pension_RG, pension, trim_RG, trim_cot_all, trim_all)
-    pension_surcote_RG = SAM_RG*CP_RG*surcote_RG* RG._P.plein.taux
+    '''
     pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
 
     # V - Régime complémentaire
@@ -200,3 +167,4 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         return pension_RG, pd.DataFrame(to_check)
     else:
         return pension_RG
+    '''
