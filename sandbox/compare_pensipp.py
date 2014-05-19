@@ -30,7 +30,7 @@ from pension_functions import count_enf_born, count_enf_pac
 from pgm.run_pension import run_pension
 from utils_pension import calculate_age
 
-def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
+def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check_montant, var_to_check_taux, threshold):
     def _child_by_age(info_child, year, id_selected):
         info_child = info_child.loc[info_child['id_parent'].isin(id_selected),:]
         info_child['age'] = calculate_age(info_child['naiss'], datetime.date(year,1,1))
@@ -53,7 +53,10 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
     info_child = build_info_child(id_enf,info) 
     r.r['load'](pensipp_output)
     result_pensipp = com.load_data('output1')
-    result_til = pd.DataFrame(columns = var_to_check, index = result_pensipp.index)
+    result_pensipp.rename(columns= {'dec': 'decote_RG', 'surc': 'surcote_RG', 'taux': 'taux_RG', 'sam':'salref_RG', 'pliq_rg': 'pension_RG', 'prorat' : 'CP_RG',
+                                    'pts_ar' : 'nb_points_arrco', 'pts_ag' : 'nb_points_agirc', 'pliq_ar' :'pension_arrco', 'pliq_ag' :'pension_agirc'},
+                          inplace = True)
+    result_til = pd.DataFrame(columns = var_to_check_montant + var_to_check_taux, index = result_pensipp.index)
     
     for year in range(2004,2005):
         print year
@@ -69,13 +72,19 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
         info_ind = info.loc[select_id,:]
         info_ind['nb_pac'] = nb_pac
         info_ind['nb_born'] = nb_enf
-        pension_RG, result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year', to_check=True)
+        result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year', to_check=True)
         result_til.loc[result_til_year.index, :] = result_til_year
         result_til.loc[result_til_year.index,'yearliq'] = year
     #result_pensipp.to_csv('rpensipp.csv')
     #result_til.to_csv('rtil.csv')
-    var_conflict = []
-    for var in var_to_check:
+    
+    def _check_var(var, threshold, var_conflict, var_not_implemented):
+        if var not in result_til.columns:
+            print("La variable {} n'est pas bien implémenté dans Til".format(var))
+            var_not_implemented += [var]
+        if var not in result_pensipp.columns:
+            print("La variable {} n'est pas bien implémenté dans Til".format(var))
+            var_not_implemented += [var]
         til_var = result_til[var]
         pensipp_var = result_pensipp[var]
         conflict = ((til_var - pensipp_var).abs() > threshold)
@@ -89,7 +98,15 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check, threshold):
                 "year_liq": result_til.loc[conflict, 'yearliq']
                 }).to_string()
             #relevant_variables = relevant_variables_by_var[var]
-    no_conflict = [var for var in var_to_check if var not in var_conflict]  
+    var_conflict = []
+    var_not_implemented = []
+    
+    for var in var_to_check_montant:
+        _check_var(var, threshold['montant'], var_conflict, var_not_implemented)
+    for var in var_to_check_taux:
+        _check_var(var, threshold['taux'], var_conflict, var_not_implemented)
+    no_conflict = [var for var in var_to_check_montant + var_to_check_taux
+                    if var not in var_conflict and var not in var_not_implemented]  
     print( u"Avec un seuil de {}, le calcul pose problème pour les variables suivantes : {} \n Il ne pose aucun problème pour : {}").format(threshold, var_conflict, no_conflict)   
 
 def build_info_child(enf, info_ind):
@@ -116,13 +133,13 @@ if __name__ == '__main__':
     input_pensipp ='Z:/PENSIPP vs. TIL/dataALL.RData'
     output_pensipp = 'Z:/PENSIPP vs. TIL/output1.RData'
 
-    var_to_check = [ u'pliq_rg', u'sam', u'prorat', u'taux', u'surc', u'dec', u'DA', u'pts_ar', u'pts_ag', u'pliq_ar', u'pliq_ag'] #'sam', 'pliq_rg', 'pliq_ar', 'pts_ar','DA_RG', 'DA_RG_maj'
-    threshold = 5
-    
-    compare_til_pensipp(input_pensipp, output_pensipp, var_to_check, threshold)
+    var_to_check_montant = [ u'pension_RG', u'salref_RG', u'CP_RG', u'nb_points_arrco', u'nb_points_agirc', u'pension_arrco', u'pension_agirc'] 
+    var_to_check_taux = [u'taux_RG', u'surcote_RG', u'decote_RG']
+    threshold = {'montant' : 5, 'taux' : 0.05}
+    compare_til_pensipp(input_pensipp, output_pensipp, var_to_check_montant, var_to_check_taux, threshold)
 
 #    or to have a profiler : 
     import cProfile
     import re
-    command = """compare_til_pensipp(input_pensipp, output_pensipp, var_to_check, threshold)"""
+    command = """compare_til_pensipp(input_pensipp, output_pensipp, var_to_check_montant, var_to_check_taux, threshold)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_run_compare")
