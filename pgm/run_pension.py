@@ -35,7 +35,7 @@ from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
 from time_array import TimeArray
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
-from pension_functions import count_enf_born, count_enf_pac, trim_all
+from pension_functions import count_enf_born, count_enf_pac, trim_by_year_all, trim_maj_all
 first_year_sal = 1949 
 
 
@@ -53,6 +53,14 @@ def select_trim_regime(trimestres, trimestres_by_year, code_regime):
             trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
     trim_regime['trim_tot'] = trim_regime['trim_cot'] + trim_regime['trim_maj']
     return trim_regime
+
+def select_trim_base(trimestres, code_regime_comp, correspondance):
+    '''  Selectionne le vecteur du nombre de trimestres côtisés du régime de base 
+    dans l'ensemble des vecteurs '''
+    for base, comp in correspondance.iteritems():
+        if code_regime_comp in comp:
+            regime_base = base
+    return trimestres['trim_cot_' + regime_base]
 
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_check=False):
     if yearsim > 2009: 
@@ -77,6 +85,8 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         import pdb
         pdb.set_trace()
         
+    if to_check == True:
+        dict_to_check = dict()
     ##TODO: should be done before
     assert sali.columns.tolist() == workstate.columns.tolist()
     assert sali.columns.tolist() == (sorted(sali.columns))
@@ -103,6 +113,8 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
    
     base_regimes = ['FonctionPublique', 'RegimeGeneral']
+    complementaire_regimes = ['ARRCO', 'AGIRC']
+    base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
     ### get trimestre : 
     trimestres = dict()
     trimestres_by_year = dict()
@@ -113,58 +125,28 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         assert len([x for x in reg_trim.keys() if x in trimestres]) == 0
         trimestres.update(reg_trim)
         trimestres_by_year.update(trim_by_year)
-    trim_by_year_tot, trim_maj_tot = trim_all(trimestres, trimestres_by_year)
+        
+    trim_by_year_tot = trim_by_year_all(trimestres_by_year)
+    trim_maj_tot = trim_maj_all(trimestres)
+    
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
         trim_regime = select_trim_regime(trimestres, trimestres_by_year, reg.regime)
-        pension_reg = reg.calculate_pension(workstate, sali, trim_by_year_tot, trim_maj_tot, trim_regime)
-        print reg_name, pension_reg
+        pension_reg = reg.calculate_pension(workstate, sali, trim_by_year_tot, trim_maj_tot, trim_regime, dict_to_check)
+        if to_check == True:
+            dict_to_check['pension_' + reg.regime] = pension_reg
 
-    '''
-    pension_RG = RG.plafond_pension(pension_RG, pension_surcote_RG)
+    for reg_name in complementaire_regimes:
+        reg = eval(reg_name + '()')
+        reg.set_config(**config)
+        trim_base = select_trim_base(trimestres, reg.regime, base_to_complementaire)
+        pension_reg = reg.calculate_pension(workstate, sali, trim_base, dict_to_check)
+        if to_check == True:
+            dict_to_check['pension_' + reg.regime] = pension_reg
 
-    # V - Régime complémentaire
-    
-    # V - 1: Régimes complémentaires du privé
-        # ARRCO
-    _P = Pension.P.prive
-    arrco = ARRCO(param_regime=_P, param_common=Pension.P.common, param_longitudinal=Pension.P_long)
-    arrco.set_config(**config)
-    
-    plaf_sali = arrco.old_plaf_sali(workstate, sali) # Distinction cadre/non-cadre avec plafonnement des salaires des cadres
-
-    points_arrco = arrco.nombre_points(plaf_sali)
-    maj_arrco = arrco.majoration_enf(plaf_sali, points_arrco, agem) # majoration arrco AVANT éventuelle application de maj/mino pour âge
-    coeff_arrco =  arrco.coeff_age(agem, trim)
-    val_arrco = _P.complementaire.arrco.val_point 
-    pension_arrco = val_arrco * points_arrco * coeff_arrco + maj_arrco
-        # AGIRC
-    agirc = AGIRC(param_regime = _P, param_common = Pension.P.common, param_longitudinal = Pension.P_long)
-    agirc.set_config(**config)
-    plaf_sali = agirc.old_plaf_sali(workstate, sali)
-    points_agirc = agirc.nombre_points(plaf_sali)
-    coeff_agirc =  agirc.coeff_age(agem, trim)
-    maj_agirc = agirc.majoration_enf(plaf_sali, points_agirc, coeff_agirc, agem)  # majoration agirc APRES éventuelle application de maj/mino pour âge
-    pension_agirc = _P.complementaire.agirc.val_point*points_agirc # * coeff_agirc + maj_agirc
-    
     if to_check == True:
-        to_check = {}
-        to_check['dec'] = (decote_RG*RG._P.plein.taux).values
-        to_check['sur'] = (surcote_RG*RG._P.plein.taux)
-        to_check['taux'] = taux_RG.values
-        to_check['sam'] = SAM_RG.values
-        to_check["pliq_rg"] = pension_RG.values
-        to_check['prorat'] = CP_RG.values
-        to_check['pts_ar'] = points_arrco
-        to_check['pts_ag'] = points_agirc
-        to_check['pliq_ar'] = pension_arrco
-        to_check['pliq_ag'] = pension_agirc
-        to_check['trim_fp'] = trim_FP
-        to_check['DA_RG'] = trim_RG//4
-        to_check['DA_RG_maj'] = (trim_RG + trim_maj_RG)//4
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
-        return pension_RG, pd.DataFrame(to_check)
+        return pd.DataFrame(dict_to_check)
     else:
-        return pension_RG
-    '''
+        return pension_reg # TODO: define the output
