@@ -46,6 +46,9 @@ def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
     
 def select_trim_regime(trimestres, trimestres_by_year, code_regime):
+    ''' Je comprends pas ce que ça fait, ça parait bizarre
+         est-ce qu'il ne faudrait pas que trim_tot sorte directement du régime direct ? 
+         '''
     trim_regime = dict(trim for trim in trimestres.items() if code_regime in trim[0])
     trim_regime.update({'trim_by_year' : trimestres_by_year[code_regime]})
     for key in trim_regime.keys():
@@ -56,7 +59,9 @@ def select_trim_regime(trimestres, trimestres_by_year, code_regime):
 
 def select_trim_base(trimestres, code_regime_comp, correspondance):
     '''  Selectionne le vecteur du nombre de trimestres côtisés du régime de base 
-    dans l'ensemble des vecteurs '''
+    dans l'ensemble des vecteurs 
+    
+    Il faut expliquer. Fondamentalement c'est bizarre'''
     for base, comp in correspondance.iteritems():
         if code_regime_comp in comp:
             regime_base = base
