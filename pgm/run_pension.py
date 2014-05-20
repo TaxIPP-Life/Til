@@ -121,7 +121,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg_trim, trim_by_year = reg.get_trimester(workstate, sali, table=True)
+        reg_trim, trim_by_year = reg.get_trimester(workstate, sali, dict_to_check,table=True)
         assert len([x for x in reg_trim.keys() if x in trimestres]) == 0
         trimestres.update(reg_trim)
         trimestres_by_year.update(trim_by_year)
@@ -147,6 +147,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
 
     if to_check == True:
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
+        
         return pd.DataFrame(dict_to_check)
     else:
         return pension_reg # TODO: define the output
