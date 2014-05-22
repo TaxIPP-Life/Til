@@ -54,7 +54,8 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check_montant, var
     r.r['load'](pensipp_output)
     result_pensipp = com.load_data('output1')
     result_pensipp.rename(columns= {'dec': 'decote_RG', 'surc': 'surcote_RG', 'taux': 'taux_RG', 'sam':'salref_RG', 'pliq_rg': 'pension_RG', 'prorat' : 'CP_RG',
-                                    'pts_ar' : 'nb_points_arrco', 'pts_ag' : 'nb_points_agirc', 'pliq_ar' :'pension_arrco', 'pliq_ag' :'pension_agirc', 'DA': 'DA_RG'},
+                                    'pts_ar' : 'nb_points_arrco', 'pts_ag' : 'nb_points_agirc', 'pliq_ar' :'pension_arrco', 'pliq_ag' :'pension_agirc', 'DA_rg': 'DA_RG',
+                                    'taux_rg': 'taux_RG', 'pliq_fp': 'pension_FP', 'taux_fp': 'taux_FP', 'DA_fp':'DA_FP'},
                           inplace = True)
     result_til = pd.DataFrame(columns = var_to_check_montant + var_to_check_taux, index = result_pensipp.index)
     
@@ -131,8 +132,11 @@ if __name__ == '__main__':
     input_pensipp ='Z:/PENSIPP vs. TIL/dataALL.RData'
     output_pensipp = 'Z:/PENSIPP vs. TIL/output2.RData'
 
-    var_to_check_montant = [ u'pension_RG', u'salref_RG', u'nb_points_arrco', u'nb_points_agirc', u'pension_arrco', u'pension_agirc', 'DA_RG'] 
-    var_to_check_taux = [u'taux_RG', u'surcote_RG', u'decote_RG', u'CP_RG']
+    var_to_check_montant = [ u'pension_RG', u'salref_RG', u'DA_RG',
+                            u'nb_points_arrco', u'nb_points_agirc', u'pension_arrco', u'pension_agirc',
+                            u'DA_FP', u'pension_FP'] 
+    var_to_check_taux = [u'taux_RG', u'surcote_RG', u'decote_RG', u'CP_RG',
+                          u'taux_FP']
     threshold = {'montant' : 1, 'taux' : 0.05}
     compare_til_pensipp(input_pensipp, output_pensipp, var_to_check_montant, var_to_check_taux, threshold)
 
