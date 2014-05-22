@@ -45,16 +45,17 @@ def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
     
-def select_trim_regime(trimestres, trimestres_by_year, code_regime):
+def select_trim_regime(trimestres, code_regime):
     ''' Je comprends pas ce que ça fait, ça parait bizarre
          est-ce qu'il ne faudrait pas que trim_tot sorte directement du régime direct ? 
          '''
     trim_regime = dict(trim for trim in trimestres.items() if code_regime in trim[0])
-    trim_regime.update({'trim_by_year' : trimestres_by_year[code_regime]})
     for key in trim_regime.keys():
         if code_regime in key:
             trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
     trim_regime['trim_tot'] = trim_regime['trim_cot'] + trim_regime['trim_maj']
+    trim_regime['trim_by_year_tot'] = trimestres['trim_by_year_tot']
+    trim_regime['trim_maj_tot'] = trimestres['trim_maj_tot']
     return trim_regime
 
 def select_trim_base(trimestres, code_regime_comp, correspondance):
@@ -122,23 +123,21 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
     ### get trimestre : 
     trimestres = dict()
-    trimestres_by_year = dict()
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg_trim, trim_by_year = reg.get_trimester(workstate, sali, dict_to_check,table=True)
+        reg_trim = reg.get_trimester(workstate, sali, dict_to_check)
         assert len([x for x in reg_trim.keys() if x in trimestres]) == 0
         trimestres.update(reg_trim)
-        trimestres_by_year.update(trim_by_year)
         
-    trimestres_by_year_tot = trim_by_year_all(trimestres_by_year)
-    trimestres_maj_tot = trim_maj_all(trimestres)
+    trimestres['trim_by_year_tot'] = trim_by_year_all(trimestres)
+    trimestres['trim_maj_tot'] = trim_maj_all(trimestres)
     
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        trim_regime = select_trim_regime(trimestres, trimestres_by_year, reg.regime)
-        pension_reg = reg.calculate_pension(workstate, sali, trimestres_by_year_tot, trimestres_maj_tot, trim_regime, dict_to_check)
+        trim_regime = select_trim_regime(trimestres, reg.regime)
+        pension_reg = reg.calculate_pension(workstate, sali, trim_regime, dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
