@@ -105,17 +105,15 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         info_ind['sexe'] = info_ind['sexe'].replace(2,1)
     info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     # On fait l'hypothèse qu'on ne tient pas compte de la dernière année :
-
     date_param = str(yearsim)+ '-05-01'
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
-    P, P_longit = load_param(param_file, date_param)
-    config = {'yearsim' : yearsim, 'P': P, 'P_longit': P_longit,
-              'dates': dates, 'info_ind': info_ind,
-               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
+    P, P_longit = load_param(param_file, info_ind, date_param)
+    config = {'yearsim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 
+              'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
     
-    sali = TimeArray(sali, dates)
+    sali = TimeArray(sali, dates, name='sali')
     sali.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True)
-    workstate = TimeArray(workstate, dates)
+    workstate = TimeArray(workstate, dates, name='workstate')
     workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
    
     base_regimes = ['FonctionPublique', 'RegimeGeneral']
@@ -126,7 +124,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg_trim = reg.get_trimester(workstate, sali, dict_to_check)
+        reg_trim = reg.get_trimester(workstate, sali, info_ind, dict_to_check)
         assert len([x for x in reg_trim.keys() if x in trimestres]) == 0
         trimestres.update(reg_trim)
         
@@ -137,7 +135,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         reg = eval(reg_name + '()')
         reg.set_config(**config)
         trim_regime = select_trim_regime(trimestres, reg.regime)
-        pension_reg = reg.calculate_pension(workstate, sali, trim_regime, dict_to_check)
+        pension_reg = reg.calculate_pension(workstate, sali, info_ind, trim_regime, dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
@@ -145,7 +143,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         reg = eval(reg_name + '()')
         reg.set_config(**config)
         trim_base = select_trim_base(trimestres, reg.regime, base_to_complementaire)
-        pension_reg = reg.calculate_pension(workstate, sali, trim_base, dict_to_check)
+        pension_reg = reg.calculate_pension(workstate, sali, info_ind, trim_base, dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
