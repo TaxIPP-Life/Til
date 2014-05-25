@@ -91,8 +91,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         import pdb
         pdb.set_trace()
         
-    if to_check == True:
-        dict_to_check = dict()
+    dict_to_check = dict()
     ##TODO: should be done before
     assert sali.columns.tolist() == workstate.columns.tolist()
     assert sali.columns.tolist() == (sorted(sali.columns))
