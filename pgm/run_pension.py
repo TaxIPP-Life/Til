@@ -61,7 +61,6 @@ def select_trim_regime(trimesters, code_regime):
         if code_regime in key:
             trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
     trim_regime['by_year_regime'] = sum_from_dict(trim_regime, key='by_year')
-    print trimesters.keys()
     trim_regime['by_year_tot'] = sum_from_dict(trimesters, key='by_year')
     trim_regime['maj_tot'] = trim_maj_all(trimesters)
     return trim_regime
@@ -72,10 +71,7 @@ def select_wage_regime(wages, code_regime):
     for key in wage_regime.keys():
         if code_regime in key:
             wage_regime[key.replace('_' + code_regime, '')] = wage_regime.pop(key)
-                
-    #sal_by_year = [wages[key] for key in wages.keys() if 'sal_by_year' in key]
-    #sal_by_year = trim_sum('output_table', *sal_by_year)
-    #wage_regime['sal_by_year'] = trim_by_year_all(wages)
+    wage_regime['regime'] = sum_from_dict(wage_regime)
     return wage_regime
 
 def select_trim_base(trimesters, code_regime_comp, correspondance):
@@ -86,7 +82,7 @@ def select_trim_base(trimesters, code_regime_comp, correspondance):
     for base, comp in correspondance.iteritems():
         if code_regime_comp in comp:
             regime_base = base
-    return trimesters['trim_cot_' + regime_base]
+    return trimesters['cot_' + regime_base]
 
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_check=False):
     if yearsim > 2009: 
@@ -171,8 +167,6 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
 
     if to_check == True:
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
-        FP_to_RG = trimesters['trim_by_year_FP_to_RG'].array.sum(axis=1) // 4
-        dict_to_check['DA_RG'] += FP_to_RG
         return pd.DataFrame(dict_to_check)
     else:
         return pension_reg # TODO: define the output
