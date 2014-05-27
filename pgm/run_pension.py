@@ -33,11 +33,11 @@ sys.path.append(path_pension)
 from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
+from Regimes.Regime_social_independants import RegimeSocialIndependants
 from time_array import TimeArray
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
 from pension_functions import count_enf_born, count_enf_pac, trim_by_year_all, trim_maj_all
 first_year_sal = 1949 
-
 
 import cProfile
 
@@ -53,7 +53,6 @@ def select_trim_regime(trimestres, code_regime):
     for key in trim_regime.keys():
         if code_regime in key:
             trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
-    trim_regime['trim_tot'] = trim_regime['trim_cot'] + trim_regime['trim_maj']
     trim_regime['trim_by_year_tot'] = trimestres['trim_by_year_tot']
     trim_regime['trim_maj_tot'] = trimestres['trim_maj_tot']
     return trim_regime
@@ -107,7 +106,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     date_param = str(yearsim)+ '-05-01'
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
     P, P_longit = load_param(param_file, info_ind, date_param)
-    config = {'yearsim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 
+    config = {'yearsim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
     
     sali = TimeArray(sali, dates, name='sali')
@@ -115,10 +114,10 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     workstate = TimeArray(workstate, dates, name='workstate')
     workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
    
-    base_regimes = ['FonctionPublique', 'RegimeGeneral']
+    base_regimes = ['FonctionPublique', 'RegimeGeneral', 'RegimeSocialIndependants']
     complementaire_regimes = ['ARRCO', 'AGIRC']
     base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
-    ### get trimestre : 
+    ### get trimestres: 
     trimestres = dict()
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
@@ -148,6 +147,8 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
 
     if to_check == True:
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
+        FP_to_RG = trimestres['trim_by_year_FP_to_RG'].array.sum(axis=1) // 4
+        dict_to_check['DA_RG'] += FP_to_RG
         return pd.DataFrame(dict_to_check)
     else:
         return pension_reg # TODO: define the output
