@@ -36,7 +36,7 @@ from Regimes.Regime_general import RegimeGeneral
 from Regimes.Regime_social_independants import RegimeSocialIndependants
 from time_array import TimeArray
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
-from pension_functions import count_enf_born, count_enf_pac, trim_by_year_all, trim_maj_all
+from pension_functions import count_enf_born, count_enf_pac, sum_from_dict, trim_maj_all
 first_year_sal = 1949 
 
 import cProfile
@@ -45,19 +45,40 @@ def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, examp
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
     
-def select_trim_regime(trimestres, code_regime):
-    ''' Je comprends pas ce que ça fait, ça parait bizarre
-         est-ce qu'il ne faudrait pas que trim_tot sorte directement du régime direct ? 
-         '''
-    trim_regime = dict(trim for trim in trimestres.items() if code_regime in trim[0])
+def clean_dict_timearray(dictionnary):
+    ''' Cette fonction vérifie que les TimeArray ont bien une dénomination 'by_year' '''
+    clean_dict = dictionnary.copy()
+    for name, timearray_or_vector in dictionnary.iteritems():
+        if isinstance(timearray_or_vector, TimeArray) and 'by_year' not in name:
+            clean_dict['by_year_' + name] = clean_dict.pop(name)
+    return clean_dict
+
+def select_trim_regime(trimesters, code_regime):
+    ''' Cette fonction sélectionne les TimeArray de trimesters par années + les vecteurs propres au régime '''
+    trimesters = clean_dict_timearray(trimesters)
+    trim_regime = dict(trim for trim in trimesters.items() if code_regime in trim[0])
     for key in trim_regime.keys():
         if code_regime in key:
             trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
-    trim_regime['trim_by_year_tot'] = trimestres['trim_by_year_tot']
-    trim_regime['trim_maj_tot'] = trimestres['trim_maj_tot']
+    trim_regime['by_year_regime'] = sum_from_dict(trim_regime, key='by_year')
+    print trimesters.keys()
+    trim_regime['by_year_tot'] = sum_from_dict(trimesters, key='by_year')
+    trim_regime['maj_tot'] = trim_maj_all(trimesters)
     return trim_regime
 
-def select_trim_base(trimestres, code_regime_comp, correspondance):
+def select_wage_regime(wages, code_regime):
+    ''' Cette fonction sélectionne les TimeArray de salaires propres au régime'''
+    wage_regime = dict(trim for trim in wages.items() if code_regime in trim[0])
+    for key in wage_regime.keys():
+        if code_regime in key:
+            wage_regime[key.replace('_' + code_regime, '')] = wage_regime.pop(key)
+                
+    #sal_by_year = [wages[key] for key in wages.keys() if 'sal_by_year' in key]
+    #sal_by_year = trim_sum('output_table', *sal_by_year)
+    #wage_regime['sal_by_year'] = trim_by_year_all(wages)
+    return wage_regime
+
+def select_trim_base(trimesters, code_regime_comp, correspondance):
     '''  Selectionne le vecteur du nombre de trimestres côtisés du régime de base 
     dans l'ensemble des vecteurs 
     
@@ -65,7 +86,7 @@ def select_trim_base(trimestres, code_regime_comp, correspondance):
     for base, comp in correspondance.iteritems():
         if code_regime_comp in comp:
             regime_base = base
-    return trimestres['trim_cot_' + regime_base]
+    return trimesters['trim_cot_' + regime_base]
 
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_check=False):
     if yearsim > 2009: 
@@ -117,37 +138,40 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     base_regimes = ['FonctionPublique', 'RegimeGeneral', 'RegimeSocialIndependants']
     complementaire_regimes = ['ARRCO', 'AGIRC']
     base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
-    ### get trimestres: 
-    trimestres = dict()
+    
+    ### get trimesters and wages: 
+    trimesters = dict()
+    wages = dict()
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg_trim = reg.get_trimester(workstate, sali, info_ind, dict_to_check)
-        assert len([x for x in reg_trim.keys() if x in trimestres]) == 0
-        trimestres.update(reg_trim)
-        
-    trimestres['trim_by_year_tot'] = trim_by_year_all(trimestres)
-    trimestres['trim_maj_tot'] = trim_maj_all(trimestres)
+        reg_trim, reg_sal = reg.get_trimesters_wages(workstate, sali, info_ind, dict_to_check)
+        assert len([x for x in reg_trim.keys() if x in trimesters]) == 0
+        trimesters.update(reg_trim)
+        assert len([x for x in reg_sal.keys() if x in wages]) == 0
+        wages.update(reg_sal)
     
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        trim_regime = select_trim_regime(trimestres, reg.regime)
-        pension_reg = reg.calculate_pension(workstate, sali, info_ind, trim_regime, dict_to_check)
+        trim_regime = select_trim_regime(trimesters, reg.regime)
+        sal_regime = select_wage_regime(wages, reg.regime)
+        pension_reg = reg.calculate_pension(workstate, sali, info_ind, trim_regime, sal_regime, dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
     for reg_name in complementaire_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        trim_base = select_trim_base(trimestres, reg.regime, base_to_complementaire)
+        trim_base = select_trim_base(trimesters, reg.regime, base_to_complementaire)
+        #sal_base = select_trim_base(salaires, reg.regime, base_to_complementaire)
         pension_reg = reg.calculate_pension(workstate, sali, info_ind, trim_base, dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
     if to_check == True:
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
-        FP_to_RG = trimestres['trim_by_year_FP_to_RG'].array.sum(axis=1) // 4
+        FP_to_RG = trimesters['trim_by_year_FP_to_RG'].array.sum(axis=1) // 4
         dict_to_check['DA_RG'] += FP_to_RG
         return pd.DataFrame(dict_to_check)
     else:
