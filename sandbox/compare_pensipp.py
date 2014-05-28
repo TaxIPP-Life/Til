@@ -33,7 +33,7 @@ from utils_pension import calculate_age
 def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check_montant, var_to_check_taux, threshold):
     def _child_by_age(info_child, year, id_selected):
         info_child = info_child.loc[info_child['id_parent'].isin(id_selected),:]
-        info_child['age'] = calculate_age(info_child['naiss'], datetime.date(year,1,1))
+        info_child['age'] = calculate_age(info_child.loc[:,'naiss'], datetime.date(year,1,1))
         nb_enf = info_child.groupby(['id_parent', 'age']).size().reset_index()
         nb_enf.columns = ['id_parent', 'age_enf', 'nb_enf']
         return nb_enf
@@ -62,8 +62,8 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check_montant, var
     for year in range(2004,2005):
         print year
         col_to_keep = [date for date in dates_to_col if date < (year*100 + 1) and date >= 194901]
-        info['agem'] =  (year - info['t_naiss'])*12
-        select_id = (info['agem'] ==  63 * 12)
+        info.loc[:,'agem'] =  (year - info['t_naiss'])*12
+        select_id = (info.loc[:,'agem'] ==  63 * 12)
         id_selected = select_id[select_id == True].index
         sali = salaire.loc[select_id, col_to_keep]
         workstate = statut.loc[select_id, col_to_keep]
@@ -71,8 +71,8 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check_montant, var
         nb_pac = count_enf_pac(info_child, info.index)
         nb_enf = count_enf_born(info_child, info.index)
         info_ind = info.loc[select_id,:]
-        info_ind['nb_pac'] = nb_pac
-        info_ind['nb_born'] = nb_enf
+        info_ind.loc[:,'nb_pac'] = nb_pac
+        info_ind.loc[:,'nb_born'] = nb_enf
         result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year', to_check=True)
         result_til.loc[result_til_year.index, :] = result_til_year
         result_til.loc[result_til_year.index,'yearliq'] = year
@@ -105,6 +105,7 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check_montant, var
         _check_var(var, threshold['montant'], var_conflict, var_not_implemented)
     for var in var_to_check_taux:
         _check_var(var, threshold['taux'], var_conflict, var_not_implemented)
+        
     no_conflict = [var for var in var_to_check_montant + var_to_check_taux
                     if var not in var_conflict and var not in var_not_implemented]  
     print( u"Avec un seuil de {}, le calcul pose problème pour les variables suivantes : {} \n Il ne pose aucun problème pour : {}").format(threshold, var_conflict, no_conflict)   
