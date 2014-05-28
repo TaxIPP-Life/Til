@@ -84,7 +84,7 @@ def select_trim_base(trimesters, code_regime_comp, correspondance):
             regime_base = base
     return trimesters['cot_' + regime_base]
 
-def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_check=False):
+def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, to_check=False):
     if yearsim > 2009: 
         yearsim = 2009
 
@@ -119,8 +119,10 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
         info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(1,0)
         info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(2,1)
     info_ind.loc[:,'naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
-    # On fait l'hypothèse qu'on ne tient pas compte de la dernière année :
-    date_param = str(yearsim)+ '-05-01'
+    # Si aucune année n'est renseignée pour la législation on prend l'année de simulation
+    yearleg = yearsim if yearleg is None else yearleg
+    date_param = str(yearleg)+ '-05-01'
+    
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
     P, P_longit = load_param(param_file, info_ind, date_param)
     config = {'datesim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
