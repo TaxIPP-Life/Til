@@ -41,8 +41,8 @@ first_year_sal = 1949
 
 import cProfile
 
-def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, example=False):
-    command = """run_pension(sali, workstate, info_ind, time_step, yearsim, example)"""
+def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, example=False):
+    command = """run_pension(sali, workstate, info_ind, time_step, yearsim, yearleg, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
     
 def clean_dict_timearray(dictionnary):
