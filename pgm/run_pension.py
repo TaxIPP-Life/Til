@@ -60,7 +60,7 @@ def select_trim_regime(trimesters, code_regime):
     for key in trim_regime.keys():
         if code_regime in key:
             trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
-    trim_regime['by_year_regime'] = sum_from_dict(trim_regime, key='by_year')
+    trim_regime['by_year_regime'] = sum_from_dict(trim_regime, key='by_year', plafond=4)
     trim_regime['by_year_tot'] = sum_from_dict(trimesters, key='by_year')
     trim_regime['maj_tot'] = trim_maj_all(trimesters)
     return trim_regime
@@ -115,10 +115,10 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     sali = np.array(sali)
     workstate = np.array(workstate)
 
-    if max(info_ind['sexe']) == 2:
-        info_ind['sexe'] = info_ind['sexe'].replace(1,0)
-        info_ind['sexe'] = info_ind['sexe'].replace(2,1)
-    info_ind['naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
+    if max(info_ind.loc[:,'sexe']) == 2:
+        info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(1,0)
+        info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(2,1)
+    info_ind.loc[:,'naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     # On fait l'hypothèse qu'on ne tient pas compte de la dernière année :
     date_param = str(yearsim)+ '-05-01'
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
@@ -131,7 +131,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     workstate = TimeArray(workstate, dates, name='workstate')
     workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
    
-    base_regimes = ['FonctionPublique', 'RegimeGeneral', 'RegimeSocialIndependants']
+    base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
     complementaire_regimes = ['ARRCO', 'AGIRC']
     base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
     
