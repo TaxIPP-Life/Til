@@ -125,6 +125,9 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
         info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(1,0)
         info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(2,1)
     info_ind.loc[:,'naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
+    
+    data = PensionData(workstate, sali, info_ind, yearsim)
+    
     # Si aucune année n'est renseignée pour la législation on prend l'année de simulation
     if yearleg is None:
         yearleg = yearsim
@@ -132,7 +135,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
     P, P_longit = load_param(param_file, info_ind, date_param)
-    config = {'dateleg' : yearleg, 'P': P, 'P_longit': P_longit, 'index': info_ind.index,
+    config = {'datesim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
    
     base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
@@ -145,7 +148,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg_trim, reg_sal = reg.get_trimesters_wages(workstate, sali, info_ind, dict_to_check)
+        reg_trim, reg_sal = reg.get_trimesters_wages(data, dict_to_check)
         assert len([x for x in reg_trim.keys() if x in trimesters]) == 0
         trimesters.update(reg_trim)
         assert len([x for x in reg_sal.keys() if x in wages]) == 0
