@@ -123,7 +123,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, to_ch
     date_param = str(yearsim)+ '-05-01'
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
     P, P_longit = load_param(param_file, info_ind, date_param)
-    config = {'yearsim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
+    config = {'datesim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
     
     sali = TimeArray(sali, dates, name='sali')
