@@ -35,6 +35,7 @@ from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regime_general import RegimeGeneral 
 from Regimes.Regime_social_independants import RegimeSocialIndependants
 from time_array import TimeArray
+from pension_data import PensionData
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
 from pension_functions import count_enf_born, count_enf_pac, sum_from_dict, trim_maj_all
 first_year_sal = 1949 
@@ -131,7 +132,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
     P, P_longit = load_param(param_file, info_ind, date_param)
-    config = {'datesim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
+    config = {'dateleg' : yearleg, 'P': P, 'P_longit': P_longit, 'index': info_ind.index,
               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
    
     base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
