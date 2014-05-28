@@ -114,6 +114,11 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     dates = sali.columns.tolist()
     sali = np.array(sali)
     workstate = np.array(workstate)
+    
+    sali = TimeArray(sali, dates, name='sali')
+    sali.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True)
+    workstate = TimeArray(workstate, dates, name='workstate')
+    workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
 
     if max(info_ind.loc[:,'sexe']) == 2:
         info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(1,0)
@@ -128,11 +133,6 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     P, P_longit = load_param(param_file, info_ind, date_param)
     config = {'datesim' : yearsim, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
-    
-    sali = TimeArray(sali, dates, name='sali')
-    sali.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True)
-    workstate = TimeArray(workstate, dates, name='workstate')
-    workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
    
     base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
     complementaire_regimes = ['ARRCO', 'AGIRC']
