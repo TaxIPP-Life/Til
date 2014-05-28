@@ -159,7 +159,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
         reg.set_config(**config)
         trim_regime = select_trim_regime(trimesters, reg.regime)
         sal_regime = select_wage_regime(wages, reg.regime)
-        pension_reg = reg.calculate_pension(workstate, sali, info_ind, trim_regime, sal_regime, dict_to_check)
+        pension_reg = reg.calculate_pension(data, trim_regime, sal_regime, dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
@@ -168,7 +168,7 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
         reg.set_config(**config)
         trim_base = select_trim_base(trimesters, reg.regime, base_to_complementaire)
         #sal_base = select_trim_base(salaires, reg.regime, base_to_complementaire)
-        pension_reg = reg.calculate_pension(workstate, sali, info_ind, trim_base, dict_to_check)
+        pension_reg = reg.calculate_pension(data, trim_base, dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
