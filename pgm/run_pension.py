@@ -120,7 +120,8 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
         info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(2,1)
     info_ind.loc[:,'naiss'] = build_naiss(info_ind.loc[:,'agem'], dt.date(yearsim,1,1))
     # Si aucune année n'est renseignée pour la législation on prend l'année de simulation
-    yearleg = yearsim if yearleg is None else yearleg
+    if yearleg is None:
+        yearleg = yearsim
     date_param = str(yearleg)+ '-05-01'
     
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
