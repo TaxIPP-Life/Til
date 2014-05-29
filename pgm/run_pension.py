@@ -1,26 +1,4 @@
 # -*- coding: utf-8 -*-
-
-
-# OpenFisca -- A versatile microsimulation software
-# By: OpenFisca Team <contact@openfisca.fr>
-#
-# Copyright (C) 2011, 2012, 2013, 2014 OpenFisca Team
-# https://github.com/openfisca
-#
-# This file is part of OpenFisca.
-#
-# OpenFisca is free software; you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# OpenFisca is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import pandas as pd
 import sys
@@ -39,8 +17,11 @@ from pension_data import PensionData
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
 from pension_functions import count_enf_born, count_enf_pac, sum_from_dict, trim_maj_all
 first_year_sal = 1949 
-
 import cProfile
+
+base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
+complementaire_regimes = ['ARRCO', 'AGIRC']
+base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
 
 def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, example=False):
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, yearleg, example)"""
@@ -73,7 +54,7 @@ def select_wage_regime(wages, code_regime):
         if code_regime in key:
             wage_regime[key.replace('_' + code_regime, '')] = wage_regime.pop(key)
     wage_regime['regime'] = sum_from_dict(wage_regime)
-    return wage_regime
+    return wage_regime 
 
 def select_trim_base(trimesters, code_regime_comp, correspondance):
     '''  Selectionne le vecteur du nombre de trimestres côtisés du régime de base 
@@ -84,6 +65,8 @@ def select_trim_base(trimesters, code_regime_comp, correspondance):
         if code_regime_comp in comp:
             regime_base = base
     return trimesters['cot_' + regime_base]
+
+
 
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, to_check=False):
     if yearsim > 2009: 
@@ -131,17 +114,12 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     # Si aucune année n'est renseignée pour la législation on prend l'année de simulation
     if yearleg is None:
         yearleg = yearsim
-    date_param = str(yearleg)+ '-05-01'
+    date_param = str(yearleg)+ '-05-01' #TODO: change for -01-01 ?
     
     date_param = dt.datetime.strptime(date_param ,"%Y-%m-%d").date()
     P, P_longit = load_param(param_file, info_ind, date_param)
     config = {'dateleg' : yearleg, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
-              'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}   
-   
-    base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
-    complementaire_regimes = ['ARRCO', 'AGIRC']
-    base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
-    
+              'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}       
     ### get trimesters and wages: 
     trimesters = dict()
     wages = dict()

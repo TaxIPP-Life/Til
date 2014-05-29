@@ -55,9 +55,7 @@ def compare_til_pensipp(pensipp_input, pensipp_output, var_to_check_montant, var
         result_til_year = run_pension(sali, workstate, info_ind, yearsim=year, time_step='year', to_check=True)
         result_til.loc[result_til_year.index, :] = result_til_year
         result_til.loc[result_til_year.index,'yearliq'] = year
-    #result_pensipp.to_csv('rpensipp.csv')
-    #result_til.to_csv('rtil.csv')
-    
+
     def _check_var(var, threshold, var_conflict, var_not_implemented):
         if var not in result_til.columns:
             print("La variable {} n'est pas bien implémenté dans Til".format(var))
