@@ -22,20 +22,23 @@ base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
 complementaire_regimes = ['ARRCO', 'AGIRC']
 base_to_complementaire = {'RegimeGeneral': ['arrco', 'agirc'], 'FonctionPublique': []}
 
-
-def update_with_others(trimesters_wages, to_other):
+def sum_by_regime(trimesters_wages, to_other):
     for regime, dict_regime in to_other.iteritems():
         for type in dict_regime.keys():
             trimesters_wages[regime][type].update(dict_regime[type])
             
     trim_by_year_regime = {regime : sum_from_dict(trimesters_wages[regime]['trimesters']) for regime in trimesters_wages.keys()} 
     trim_by_year_tot = sum_from_dict(trim_by_year_regime)
-    maj_tot = sum([sum(trimesters_wages[regime]['maj'].values()) for regime in trimesters_wages.keys()])
+    
     for regime in trimesters_wages.keys() :
-        trimesters_wages[regime]['maj'].update({'tot' : maj_tot})
-        trimesters_wages[regime]['trimesters'].update({ 'tot' : trim_by_year_tot})
         trimesters_wages[regime]['wages'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['wages'])})
         trimesters_wages[regime]['trimesters'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['trimesters'])})
+    return trimesters_wages
+
+def update_all_regime(trimesters_wages):
+    trim_by_year_tot = sum_from_dict({ 'regime' : trimesters_wages[regime]['trimesters']['regime'] for regime in trimesters_wages.keys()})
+    maj_tot = sum([sum(trimesters_wages[regime]['maj'].values()) for regime in trimesters_wages.keys()])
+    trimesters_wages['all_regime'] = {'trimesters' : {'tot' : trim_by_year_tot}, 'maj' : {'tot' : maj_tot}}
     return trimesters_wages
 
 def select_regime_base(trimesters_wages, code_regime_comp, correspondance):
@@ -109,12 +112,14 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
         trimesters_wages_regime, to_other_regime = reg.get_trimesters_wages(data, dict_to_check)
         trimesters_wages[reg_name] = trimesters_wages_regime
         to_other.update(to_other_regime)
-    trimesters_wages = update_with_others(trimesters_wages, to_other)
-
+        
+    trimesters_wages = sum_by_regime(trimesters_wages, to_other)
+    trimesters_wages = update_all_regime(trimesters_wages)
+    
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        pension_reg = reg.calculate_pension(data, trimesters_wages[reg_name]['trimesters'], trimesters_wages[reg_name]['wages'], trimesters_wages[reg_name]['maj'], dict_to_check)
+        pension_reg = reg.calculate_pension(data, trimesters_wages[reg_name], trimesters_wages['all_regime'], dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
