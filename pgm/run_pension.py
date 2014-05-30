@@ -20,7 +20,7 @@ import cProfile
 
 base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
 complementaire_regimes = ['ARRCO', 'AGIRC']
-base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
+base_to_complementaire = {'RegimeGeneral': ['arrco', 'agirc'], 'FonctionPublique': []}
 
 
 def update_with_others(trimesters_wages, to_other):
@@ -37,6 +37,13 @@ def update_with_others(trimesters_wages, to_other):
         trimesters_wages[regime]['wages'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['wages'])})
         trimesters_wages[regime]['trimesters'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['trimesters'])})
     return trimesters_wages
+
+def select_regime_base(trimesters_wages, code_regime_comp, correspondance):
+    for base, comp in correspondance.iteritems():
+        if code_regime_comp in comp:
+            regime_base = base
+    return trimesters_wages[regime_base]
+
 
 def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, example=False):
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, yearleg, example)"""
@@ -111,14 +118,13 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
-#     for reg_name in complementaire_regimes:
-#         reg = eval(reg_name + '()')
-#         reg.set_config(**config)
-#         trim_base = select_trim_base(trimesters, reg.regime, base_to_complementaire)
-#         #sal_base = select_trim_base(salaires, reg.regime, base_to_complementaire)
-#         pension_reg = reg.calculate_pension(data, trim_base, dict_to_check)
-#         if to_check == True:
-#             dict_to_check['pension_' + reg.regime] = pension_reg
+    for reg_name in complementaire_regimes:
+        reg = eval(reg_name + '()')
+        reg.set_config(**config)
+        regime_base = select_regime_base(trimesters_wages, reg.regime, base_to_complementaire)
+        pension_reg = reg.calculate_pension(data, regime_base['trimesters'], dict_to_check)
+        if to_check == True:
+            dict_to_check['pension_' + reg.regime] = pension_reg
 
     if to_check == True:
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
