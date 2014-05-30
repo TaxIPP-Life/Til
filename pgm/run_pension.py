@@ -10,8 +10,7 @@ sys.path.append(path_pension)
 
 from Regimes.Fonction_publique import FonctionPublique
 from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
-from Regimes.Regime_general import RegimeGeneral 
-from Regimes.Regime_social_independants import RegimeSocialIndependants
+from Regimes.Regimes_prives import RegimeGeneral, RegimeSocialIndependants
 from time_array import TimeArray
 from pension_data import PensionData
 from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
@@ -23,55 +22,29 @@ base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
 complementaire_regimes = ['ARRCO', 'AGIRC']
 base_to_complementaire = {'RG': ['arrco', 'agirc'], 'FP': []}
 
+
+def update_with_others(trimesters_wages, to_other):
+    for regime, dict_regime in to_other.iteritems():
+        for type in dict_regime.keys():
+            trimesters_wages[regime][type].update(dict_regime[type])
+            
+    trim_by_year_regime = {regime : sum_from_dict(trimesters_wages[regime]['trimesters']) for regime in trimesters_wages.keys()} 
+    trim_by_year_tot = sum_from_dict(trim_by_year_regime)
+    maj_tot = sum([sum(trimesters_wages[regime]['maj'].values()) for regime in trimesters_wages.keys()])
+    for regime in trimesters_wages.keys() :
+        trimesters_wages[regime]['maj'].update({'tot' : maj_tot})
+        trimesters_wages[regime]['trimesters'].update({ 'tot' : trim_by_year_tot})
+        trimesters_wages[regime]['wages'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['wages'])})
+        trimesters_wages[regime]['trimesters'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['trimesters'])})
+    return trimesters_wages
+
 def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, example=False):
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, yearleg, example)"""
     cProfile.runctx( command, globals(), locals(), filename="profile_pension" + str(yearsim))
-    
-def clean_dict_timearray(dictionnary):
-    ''' Cette fonction vérifie que les TimeArray ont bien une dénomination 'by_year' '''
-    clean_dict = dictionnary.copy()
-    for name, timearray_or_vector in dictionnary.iteritems():
-        if isinstance(timearray_or_vector, TimeArray) and 'by_year' not in name:
-            clean_dict['by_year_' + name] = clean_dict.pop(name)
-    return clean_dict
-
-def select_trim_regime(trimesters, code_regime):
-    ''' Cette fonction sélectionne les TimeArray de trimesters par années + les vecteurs propres au régime '''
-    trimesters = clean_dict_timearray(trimesters)
-    trim_regime = dict(trim for trim in trimesters.items() if code_regime in trim[0])
-    for key in trim_regime.keys():
-        if code_regime in key:
-            trim_regime[key.replace('_' + code_regime, '')] = trim_regime.pop(key)
-    trim_regime['by_year_regime'] = sum_from_dict(trim_regime, key='by_year', plafond=4)
-    trim_regime['by_year_tot'] = sum_from_dict(trimesters, key='by_year')
-    trim_regime['maj_tot'] = trim_maj_all(trimesters)
-    return trim_regime
-
-def select_wage_regime(wages, code_regime):
-    ''' Cette fonction sélectionne les TimeArray de salaires propres au régime'''
-    wage_regime = dict(trim for trim in wages.items() if code_regime in trim[0])
-    for key in wage_regime.keys():
-        if code_regime in key:
-            wage_regime[key.replace('_' + code_regime, '')] = wage_regime.pop(key)
-    wage_regime['regime'] = sum_from_dict(wage_regime)
-    return wage_regime 
-
-def select_trim_base(trimesters, code_regime_comp, correspondance):
-    '''  Selectionne le vecteur du nombre de trimestres côtisés du régime de base 
-    dans l'ensemble des vecteurs 
-    
-    Il faut expliquer. Fondamentalement c'est bizarre'''
-    for base, comp in correspondance.iteritems():
-        if code_regime_comp in comp:
-            regime_base = base
-    return trimesters['cot_' + regime_base]
-
-
 
 def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, to_check=False):
     if yearsim > 2009: 
         yearsim = 2009
-
     # I - Chargement des paramètres de la législation (-> stockage au format .json type OF) + des tables d'intéret
     # Pour l'instant on lance le calcul des retraites pour les individus ayant plus de 62 ans (sélection faite dans exprmisc de Til\liam2)
     param_file = path_pension + '\\France\\param.xml' #TODO: Amelioration
@@ -120,35 +93,32 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     P, P_longit = load_param(param_file, info_ind, date_param)
     config = {'dateleg' : yearleg, 'P': P, 'P_longit': P_longit, 'dates': dates, 'index': info_ind.index,
               'time_step': time_step, 'data_type': 'numpy', 'first_year': first_year_sal}       
-    ### get trimesters and wages: 
-    trimesters = dict()
-    wages = dict()
+    ### get trimesters (only TimeArray with trim by year), wages (only TimeArray with wage by year) and trim_maj (only vector of majoration): 
+    trimesters_wages = dict()
+    to_other = dict()
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        reg_trim, reg_sal = reg.get_trimesters_wages(data, dict_to_check)
-        assert len([x for x in reg_trim.keys() if x in trimesters]) == 0
-        trimesters.update(reg_trim)
-        assert len([x for x in reg_sal.keys() if x in wages]) == 0
-        wages.update(reg_sal)
-    
+        trimesters_wages_regime, to_other_regime = reg.get_trimesters_wages(data, dict_to_check)
+        trimesters_wages[reg_name] = trimesters_wages_regime
+        to_other.update(to_other_regime)
+    trimesters_wages = update_with_others(trimesters_wages, to_other)
+
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        trim_regime = select_trim_regime(trimesters, reg.regime)
-        sal_regime = select_wage_regime(wages, reg.regime)
-        pension_reg = reg.calculate_pension(data, trim_regime, sal_regime, dict_to_check)
+        pension_reg = reg.calculate_pension(data, trimesters_wages[reg_name]['trimesters'], trimesters_wages[reg_name]['wages'], trimesters_wages[reg_name]['maj'], dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
 
-    for reg_name in complementaire_regimes:
-        reg = eval(reg_name + '()')
-        reg.set_config(**config)
-        trim_base = select_trim_base(trimesters, reg.regime, base_to_complementaire)
-        #sal_base = select_trim_base(salaires, reg.regime, base_to_complementaire)
-        pension_reg = reg.calculate_pension(data, trim_base, dict_to_check)
-        if to_check == True:
-            dict_to_check['pension_' + reg.regime] = pension_reg
+#     for reg_name in complementaire_regimes:
+#         reg = eval(reg_name + '()')
+#         reg.set_config(**config)
+#         trim_base = select_trim_base(trimesters, reg.regime, base_to_complementaire)
+#         #sal_base = select_trim_base(salaires, reg.regime, base_to_complementaire)
+#         pension_reg = reg.calculate_pension(data, trim_base, dict_to_check)
+#         if to_check == True:
+#             dict_to_check['pension_' + reg.regime] = pension_reg
 
     if to_check == True:
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
