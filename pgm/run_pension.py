@@ -13,8 +13,8 @@ from Regimes.Regimes_complementaires_prive import AGIRC, ARRCO
 from Regimes.Regimes_prives import RegimeGeneral, RegimeSocialIndependants
 from time_array import TimeArray
 from pension_data import PensionData
-from utils_pension import build_naiss, calculate_age, table_selected_dates, load_param
-from pension_functions import count_enf_born, count_enf_pac, sum_from_dict, trim_maj_all
+from utils_pension import build_naiss, load_param
+from pension_functions import sum_from_dict, trim_maj_all
 first_year_sal = 1949 
 import cProfile
 
