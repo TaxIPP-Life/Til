@@ -26,10 +26,6 @@ def sum_by_regime(trimesters_wages, to_other):
     for regime, dict_regime in to_other.iteritems():
         for type in dict_regime.keys():
             trimesters_wages[regime][type].update(dict_regime[type])
-            
-    trim_by_year_regime = {regime : sum_from_dict(trimesters_wages[regime]['trimesters']) for regime in trimesters_wages.keys()} 
-    trim_by_year_tot = sum_from_dict(trim_by_year_regime)
-    
     for regime in trimesters_wages.keys() :
         trimesters_wages[regime]['wages'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['wages'])})
         trimesters_wages[regime]['trimesters'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['trimesters'])})
@@ -44,14 +40,18 @@ def attribution_mda(trimesters_wages):
     RSI_cot = (trimesters_wages['RegimeSocialIndependants']['trimesters']['regime'].sum(1) > 0)
     trimesters_wages['RegimeGeneral']['maj']['DA'] = trimesters_wages['RegimeGeneral']['maj']['DA']*RG_cot
     trimesters_wages['RegimeSocialIndependants']['maj']['DA']= trimesters_wages['RegimeSocialIndependants']['maj']['DA']*RSI_cot*(1-RG_cot)
-    trimesters_wages['RegimeSocialIndependants']['maj']['DA'] = trimesters_wages['RegimeSocialIndependants']['maj']['DA']*RSI_cot*(1-RG_cot)*(1-RSI_cot)
+    trimesters_wages['FonctionPublique']['maj']['DA'] = trimesters_wages['FonctionPublique']['maj']['DA']*FP_cot*(1-RG_cot)*(1-RSI_cot)
+
     return trimesters_wages
     
-def update_all_regime(trimesters_wages):
+def update_all_regime(trimesters_wages, dict_to_check):
     trim_by_year_tot = sum_from_dict({ 'regime' : trimesters_wages[regime]['trimesters']['regime'] for regime in trimesters_wages.keys()})
     trimesters_wages = attribution_mda(trimesters_wages)
     maj_tot = sum([sum(trimesters_wages[regime]['maj'].values()) for regime in trimesters_wages.keys()])
     trimesters_wages['all_regime'] = {'trimesters' : {'tot' : trim_by_year_tot}, 'maj' : {'tot' : maj_tot}}
+    if dict_to_check is not None:
+        for regime in base_regimes:
+            dict_to_check['DA_' + regime] = (trimesters_wages[regime]['trimesters']['regime'].sum(1) + sum(trimesters_wages[regime]['maj'].values()))//4
     return trimesters_wages
 
 def select_regime_base(trimesters_wages, code_regime_comp, correspondance):
@@ -122,12 +122,12 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
         reg.set_config(**config)
-        trimesters_wages_regime, to_other_regime = reg.get_trimesters_wages(data, dict_to_check)
+        trimesters_wages_regime, to_other_regime = reg.get_trimesters_wages(data)
         trimesters_wages[reg_name] = trimesters_wages_regime
         to_other.update(to_other_regime)
         
     trimesters_wages = sum_by_regime(trimesters_wages, to_other)
-    trimesters_wages = update_all_regime(trimesters_wages)
+    trimesters_wages = update_all_regime(trimesters_wages, dict_to_check)
     
     for reg_name in base_regimes:
         reg = eval(reg_name + '()')
@@ -143,7 +143,6 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
         pension_reg = reg.calculate_pension(data, regime_base['trimesters'], dict_to_check)
         if to_check == True:
             dict_to_check['pension_' + reg.regime] = pension_reg
-
     if to_check == True:
         #pd.DataFrame(to_check).to_csv('resultat2004.csv')
         return pd.DataFrame(dict_to_check)
