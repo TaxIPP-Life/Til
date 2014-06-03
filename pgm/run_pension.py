@@ -14,52 +14,13 @@ from Regimes.Regimes_prives import RegimeGeneral, RegimeSocialIndependants
 from time_array import TimeArray
 from pension_data import PensionData
 from utils_pension import build_naiss, load_param
-from pension_functions import sum_from_dict, trim_maj_all
+from pension_functions import select_regime_base, sum_by_regime, update_all_regime
 first_year_sal = 1949 
 import cProfile
 
 base_regimes = ['RegimeGeneral', 'FonctionPublique', 'RegimeSocialIndependants']
 complementaire_regimes = ['ARRCO', 'AGIRC']
 base_to_complementaire = {'RegimeGeneral': ['arrco', 'agirc'], 'FonctionPublique': []}
-
-def sum_by_regime(trimesters_wages, to_other):
-    for regime, dict_regime in to_other.iteritems():
-        for type in dict_regime.keys():
-            trimesters_wages[regime][type].update(dict_regime[type])
-    for regime in trimesters_wages.keys() :
-        trimesters_wages[regime]['wages'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['wages'])})
-        trimesters_wages[regime]['trimesters'].update({ 'regime' : sum_from_dict(trimesters_wages[regime]['trimesters'])})
-    return trimesters_wages
-
-def attribution_mda(trimesters_wages):
-    ''' La Mda (attribuée par tous les régimes de base), ne peut être accordé par plus d'un régime. 
-    Régle d'attribution : a cotisé au régime + si polypensionnés -> ordre d'attribution : RG, RSI, FP
-    Rq : Pas beau mais temporaire, pour comparaison Destinie'''
-    RG_cot = (trimesters_wages['RegimeGeneral']['trimesters']['regime'].sum(1) > 0)
-    FP_cot = (trimesters_wages['FonctionPublique']['trimesters']['regime'].sum(1) > 0)
-    RSI_cot = (trimesters_wages['RegimeSocialIndependants']['trimesters']['regime'].sum(1) > 0)
-    trimesters_wages['RegimeGeneral']['maj']['DA'] = trimesters_wages['RegimeGeneral']['maj']['DA']*RG_cot
-    trimesters_wages['RegimeSocialIndependants']['maj']['DA']= trimesters_wages['RegimeSocialIndependants']['maj']['DA']*RSI_cot*(1-RG_cot)
-    trimesters_wages['FonctionPublique']['maj']['DA'] = trimesters_wages['FonctionPublique']['maj']['DA']*FP_cot*(1-RG_cot)*(1-RSI_cot)
-
-    return trimesters_wages
-    
-def update_all_regime(trimesters_wages, dict_to_check):
-    trim_by_year_tot = sum_from_dict({ 'regime' : trimesters_wages[regime]['trimesters']['regime'] for regime in trimesters_wages.keys()})
-    trimesters_wages = attribution_mda(trimesters_wages)
-    maj_tot = sum([sum(trimesters_wages[regime]['maj'].values()) for regime in trimesters_wages.keys()])
-    trimesters_wages['all_regime'] = {'trimesters' : {'tot' : trim_by_year_tot}, 'maj' : {'tot' : maj_tot}}
-    if dict_to_check is not None:
-        for regime in base_regimes:
-            dict_to_check['DA_' + regime] = (trimesters_wages[regime]['trimesters']['regime'].sum(1) + sum(trimesters_wages[regime]['maj'].values()))//4
-    return trimesters_wages
-
-def select_regime_base(trimesters_wages, code_regime_comp, correspondance):
-    for base, comp in correspondance.iteritems():
-        if code_regime_comp in comp:
-            regime_base = base
-    return trimesters_wages[regime_base]
-
 
 def til_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearleg=None, example=False):
     command = """run_pension(sali, workstate, info_ind, time_step, yearsim, yearleg, example)"""
@@ -96,9 +57,9 @@ def run_pension(sali, workstate, info_ind, time_step='year', yearsim=2009, yearl
     workstate = np.array(workstate)
     
     sali = TimeArray(sali, dates, name='sali')
-    sali.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True)
+    sali.selected_dates(first=first_year_sal, last=yearsim, inplace=True)
     workstate = TimeArray(workstate, dates, name='workstate')
-    workstate.selected_dates(first=first_year_sal, last=yearsim + 1, inplace=True) 
+    workstate.selected_dates(first=first_year_sal, last=yearsim, inplace=True) 
 
     if max(info_ind.loc[:,'sexe']) == 2:
         info_ind.loc[:,'sexe'] = info_ind.loc[:,'sexe'].replace(1,0)
