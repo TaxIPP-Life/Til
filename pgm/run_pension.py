@@ -39,5 +39,4 @@ def run_pension(context, yearleg, time_step='year', to_check=False, cProfile=Fal
         result_til_year = simul_til.profile_main(yearleg, to_check=to_check)
     else:
         result_til_year = simul_til.main(yearleg, to_check=to_check)
-    import pdb
-    pdb.set_trace()
+    return result_til_year
