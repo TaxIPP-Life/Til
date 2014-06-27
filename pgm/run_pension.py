@@ -14,10 +14,9 @@ from pension_data import PensionData
 from pension_legislation import PensionParam, PensionLegislation
 from simulation import PensionSimulation
 
-def run_pension(context, yearleg, time_step='year', to_check=False, cProfile=False):
+def run_pension(context, yearleg, time_step='year', to_check=False, output='pension', cProfile=False):
     ''' run PensionSimulation after having converted the liam context in a PenionData 
         - note there is a selection '''
-    
     sali = context['longitudinal']['sali']
     workstate = context['longitudinal']['workstate']
     # Pour l'instant selection a ce niveau des individus ayant plus de 60 ans pour lancer le calcul des retraites
@@ -26,7 +25,7 @@ def run_pension(context, yearleg, time_step='year', to_check=False, cProfile=Fal
     naiss = [datesim - relativedelta(months=x) for x in context['agem']]
     info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'], 
                               'nb_born': context['nb_born'], 'nb_pac': context['nb_pac']})
-    #print (context.keys())
+    print (context.keys())
     info_ind  = info_ind.loc[(info_ind['agem'] > 10), :] # 708 = 59 *12
     info_ind.set_index('id', inplace=True)
     workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
@@ -36,7 +35,10 @@ def run_pension(context, yearleg, time_step='year', to_check=False, cProfile=Fal
     sali.set_index('id', inplace=True)
     sali.sort_index(inplace=True)
     sali.fillna(0, inplace=True)
-    
+    # TODO : Remove it when appropriate variables will be created on liam
+    for var in ['nb_enf', 'nb_enf_RG', 'nb_enf_FP', 'nb_enf_RSI', 'tauxprime']:
+        if var not in info_ind.columns:
+            info_ind[var] = 0
     yearleg = context['period']//100
     if yearleg > 2009: #TODO: remove
         yearleg = 2009
@@ -45,7 +47,7 @@ def run_pension(context, yearleg, time_step='year', to_check=False, cProfile=Fal
     legislation = PensionLegislation(param)
     simul_til = PensionSimulation(data, legislation)
     if cProfile:
-        result_til_year = simul_til.profile_evaluate(yearleg, to_check=to_check)
+        result_til_year = simul_til.profile_evaluate(yearleg, to_check=to_check, output=output)
     else:
-        result_til_year = simul_til.main(yearleg, to_check=to_check)
+        result_til_year = simul_til.main(yearleg, to_check=to_check, output=output)
     return result_til_year
