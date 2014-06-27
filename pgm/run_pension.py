@@ -24,9 +24,9 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     datesim = dt.date(datesim//100, datesim % 100, 1)
     naiss = [datesim - relativedelta(months=x) for x in context['agem']]
     info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'], 
-                              'nb_born': context['nb_born'], 'nb_pac': context['nb_pac']})
-    print (context.keys())
-    info_ind  = info_ind.loc[(info_ind['agem'] > 10), :] # 708 = 59 *12
+                              'nb_born': context['nb_enf'], 'nb_pac': context['nb_pac'], 'nb_enf_RG': context['nb_enf_RG'],
+                              'nb_enf_RSI': context['nb_enf_RSI'], 'nb_enf_FP': context['nb_enf_FP']})
+    info_ind  = info_ind.loc[(info_ind['agem'] > 55*12), :] # 708 = 59 *12 /to_retire
     info_ind.set_index('id', inplace=True)
     workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
     workstate.set_index('id', inplace=True)

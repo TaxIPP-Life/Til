@@ -11,5 +11,6 @@ def depart_retirement(context, yearleg, time_step='year', to_check=False, behavi
         dates_tauxplein = run_pension(context, yearleg,
                               time_step=time_step, to_check=to_check,
                               output='dates_taux_plein', cProfile=cProfile)
+        date_tauxplein = maximum(dates_taux_plein.values())
         return (yearleg - dates_tauxplein//100 > 0)
         
