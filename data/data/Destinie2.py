@@ -12,7 +12,7 @@ Output :
 
 from data.DataTil import DataTil
 from data.utils.utils import minimal_dtype, drop_consecutive_row
-from pgm.CONFIG import path_data_destinie_old
+from pgm.CONFIG import path_data_destinie
 
 import numpy as np
 from pandas import merge, DataFrame, concat, read_table
@@ -44,7 +44,7 @@ class Destinie(DataTil):
             start_time = time.time()
             # TODO: revoir le colnames de BioEmp : le retirer ?
             colnames = list(range(longueur_carriere)) 
-            BioEmp = read_table(path_data_destinie_old + 'BioEmp.txt', sep=';',
+            BioEmp = read_table(path_data_destinie + 'BioEmp.txt', sep=';',
                                    header=None, names=colnames)
             taille = len(BioEmp)/3
             BioEmp['id'] = BioEmp.index/3
@@ -85,7 +85,7 @@ class Destinie(DataTil):
             return ind, emp
         
         def _lecture_BioFam():
-            BioFam = read_table(path_data_destinie_old + 'BioFam.txt', sep=';',
+            BioFam = read_table(path_data_destinie + 'BioFam.txt', sep=';',
                                    header=None, names=['id','pere','mere','civilstate','conj',
                                                        'enf1','enf2','enf3','enf4','enf5','enf6'])   
             # Index limites pour changement de date
@@ -147,15 +147,24 @@ class Destinie(DataTil):
             #deces = emp.groupby('id')['period'].max()
             emp =  emp[['id','period','workstate','sali']]
             
+            # Séries de nouveaux états (non pris en compte pour l'instant)
+            # contractuel + stagiaire -> RG non-cadre 
+            emp['workstate'].replace([11,12,13],1)
+            
+            # maladie + invalidité  -> inactif
+            emp['workstate'].replace([621,623,624,63],6)
+             
             # Recodage des modalités
             # TO DO : A terme faire une fonction propre à cette étape -> _rename(var)
             # inactif   <-  1  # chomeur   <-  2   # non_cadre <-  3  # cadre     <-  4
             # fonct_a   <-  5  # fonct_s   <-  6   # indep     <-  7  # avpf      <-  8
             # preret    <-  9 #  décès, ou immigré pas encore arrivé en France <- 0
-            emp['workstate'] .replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9],
-                                      [0, 3, 4, 5, 6, 7, 2, 1, 9, 8], 
+            # retraite <- 10 # etudiant <- 11 (scolarité hors cumul)
+            emp['workstate'].replace([0, 1, 2, 31, 32, 4, 5, 6, 7, 9, 8, 63],
+                                      [0, 3, 4, 5, 6, 7, 2, 1, 9, 8, 10, 11], 
                                       inplace=True)
-            return emp #, deces
+            # Séries de nouveaux états (non pris en compte pour l'instant)
+            return emp 
          
         def _ind_total(BioFam, ind, emp):
             ''' fusion : BioFam + ind + emp -> ind '''
@@ -315,42 +324,25 @@ class Destinie(DataTil):
         ind['men'] = -1
         ind['age'] = survey_year - ind['naiss']
         ind.fillna(-1, inplace=True)
+
         # 1ere étape : Détermination des têtes de ménages
         
-        # (a) - Majeurs ne déclarant ni père, ni mère dans le même ménage (+ un cas de 17 ans indep.financièrement)
-        maj = ((ind['men_pere'] == 0) & (ind['men_mere'] == 0) & (ind['age']>16))
-        ind.loc[maj,'quimen'] = 0
+        # (a) - Plus de 25 ans ou plus de 17ans ne déclarant ni pères, ni mères
+        maj = (ind.loc[:,'age']>=25) | ((ind.loc[:,'men_pere'] == 0) & (ind.loc[:,'men_mere'] == 0) & (ind.loc[:,'age']>16))
         
+        ind.loc[maj,'quimen'] = 0
+        print 'nb_sans_menage_a', len(ind.loc[~ind['quimen'].isin([0,1]), :])
         # (b) - Personnes prenant en charge d'autres individus
 
         # Mères avec enfants à charge : (ne rajoute aucun ménage)
-        enf_mere = ind.loc[(ind['men_pere'] == 0) & (ind['men_mere'] == 1) & (ind['age']<26), 'mere'].astype(int)
+        enf_mere = ind.loc[(ind['men_pere'] == 0) & (ind['men_mere'] == 1) & (ind['age']<=25), 'mere'].astype(int)
         ind.loc[enf_mere.values,'quimen'] = 0
 
         # Pères avec enfants à charge :(ne rajoute aucun ménage)
-        enf_pere = ind.loc[(ind['men_mere'] == 0) & (ind['men_pere'] == 1) & (ind['age']<26), 'pere'].astype(int)
+        enf_pere = ind.loc[(ind['men_mere'] == 0) & (ind['men_pere'] == 1) & (ind['age']<=25), 'pere'].astype(int)
         ind.loc[enf_pere.values,'quimen'] = 0
-        
-        # Personnes ayant un parent à charge de plus de 75 ans : (rajoute 190 ménages)
-        care = {}
-        for par in ['mere', 'pere']:
-            care_par = ind.loc[(ind['men_' + par] == 1), ['id', par]].astype(int)
-            par_care = ind.loc[(ind['age'] >74) & (ind['id'].isin(care_par[par].values) & (ind['conj'] == -1)), ['id']]
-            care_par = merge(care_par, par_care, left_on = par, 
-                             right_on='id', how = 'inner', 
-                             suffixes = ('_enf', '_'+par))[['id_enf', 'id_'+par]]
-                             
-            #print 'Nouveaux ménages' ,len(ind.loc[(ind['id'].isin(care_par['id_enf'].values)) & ind['quimen']!= 0])
-            # Enfant ayant des parents à charge deviennent tête de ménage, parents à charge n'ont pas de foyers
-            ind.loc[care_par['id_enf'], 'quimen'] = 0
-            ind.loc[care_par['id_' + par], 'quimen'] = -2 # pour identifier les couples à charge
-            
-            # Si personne potentiellement à la charge de plusieurs enfants -> à charge de l'enfant ayant l'identifiant le plus petit
-            care_par.drop_duplicates('id_' + par, inplace=True)
-            care[par] = care_par
-            
-            print str(len(care_par)) +" " + par + "s à charge"
-            
+        print 'nb_sans_menage_b', len(ind.loc[~ind['quimen'].isin([0,1]), :])
+
         # (c) - Correction pour les personnes en couple non à charge [identifiant le plus petit = tête de ménage]
         ind.loc[( ind['conj'] > ind['id'] ) & ( ind['conj'] != -1)  & (ind['quimen']!=-2), 'quimen'] = 0 
         ind.loc[(ind['conj'] < ind['id']) & ( ind['conj'] != -1) & (ind['quimen']!=-2), 'quimen'] = 1         
@@ -359,7 +351,7 @@ class Destinie(DataTil):
 
         # 2eme étape : attribution du numéro de ménage grâce aux têtes de ménage
         nb_men = len(ind.loc[(ind['quimen'] == 0), :]) 
-        # Rq : les 10 premiers ménages correspondent à des institutions et non des ménages ordianires
+        # Rq : les 10 premiers ménages correspondent à des institutions et non des ménages ordinaires
         # 0 -> DASS, 1 -> 
         ind.loc[ind['quimen'] == 0, 'men'] = range(10, nb_men +10)
 
@@ -374,30 +366,16 @@ class Destinie(DataTil):
             ind['men'][enf_par['id']] = ind['men'][enf_par[par]]
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
 
-        # (c) - Rattachements des éventuels parents à charge
-        ind['tuteur'] = -1
-        for par in ['mere', 'pere']:
-            care_par = care[par]
-            care_par = ind.loc[ind['id'].isin(care_par['id_enf'].values) & (ind['men'] != -1), par]
-            ind['men'][care_par.values] = ind['men'][care_par.index.values]
-            ind['tuteur'][care_par.values] = care_par.index.values
-            #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
-            # Rétablissement de leur quimen
-            ind['quimen'] = ind['quimen'].replace(-2, 2)
-        # Rq : il faut également rattaché le deuxième parent :
-        conj_dep = ind.loc[(ind['men'] == -1) & (ind['conj'] != -1), ['id', 'conj']]
-        ind['men'][conj_dep['id'].values] = ind['men'][conj_dep['conj'].values]
-        assert ind.loc[(ind['tuteur'] != -1), 'age'].min() > 70
         # 4eme étape : création d'un ménage fictif résiduel :
         # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = 0
-        print 'Nombres denfants à la DASS : ', len(ind.loc[ (ind['men']== -1) & (ind['age']<18), 'men' ])
         ind.loc[ (ind['men']== -1) & (ind['age']<18), 'men' ] = 0
 
         # TODO: ( Quand on sera à l'étape gestion de la dépendance ) :
         # créer un ménage fictif maison de retraite + comportement d'affectation.
-        
+        ind['tuteur'] = -1
         # 5eme étape : mises en formes finales
         # attribution des quimen pour les personnes non référentes
+        
         ind.loc[~ind['quimen'].isin([0,1]), 'quimen'] = 2
         
         # suppressions des variables inutiles
@@ -421,6 +399,9 @@ class Destinie(DataTil):
         men['period'] = survey_year
         men.fillna(-1, inplace=True)
         ind.fillna(-1, inplace=True)
+        
+        
+        print ind[ind['men']==-1].to_string()
         
         assert sum((ind['men']==-1)) == 0 # Tout le monde a un ménage : on est content!
         assert sum((ind['quimen'] < 0)) == 0
