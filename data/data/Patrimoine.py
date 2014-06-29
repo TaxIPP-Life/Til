@@ -315,7 +315,7 @@ class Patrimoine(DataTil):
         
         ind['sexe'] = _recode_sexe(ind['sexe'])
         ind['workstate'] = _work_on_workstate(ind)
-        ind['workstate'] = ind['workstate'].fillna('-1').astype(np.int8)
+        ind['workstate'] = ind['workstate'].fillna(-1).astype(np.int8)
         #work in findet
         ind['findet'][ind['findet']==0] = np.nan
         ind['findet'] = ind['findet'] - ind['anais']
