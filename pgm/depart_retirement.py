@@ -3,6 +3,7 @@ import sys
 from numpy import maximum, array, ones
 from pandas import Series
 from CONFIG import path_pension
+from utils import output_til_to_liam
 sys.path.append(path_pension)
 
 from run_pension import run_pension
@@ -14,9 +15,10 @@ def depart_retirement(context, yearleg, time_step='year', to_check=False, behavi
         dates_tauxplein = run_pension(context, yearleg,
                                              time_step=time_step, to_check=to_check,
                                              output='dates_taux_plein', cProfile=cProfile)
-        index_pension = dates_tauxplein['index']
+
         date_tauxplein = maximum(dates_tauxplein['RSI'], dates_tauxplein['RG'], dates_tauxplein['FP'])
-        dates_output = Series(- ones(len(context['id'])), index=context['id'])
-        dates_output[index_pension] = date_tauxplein
-        return array(dates_output)
+        dates = output_til_to_liam(output_til=date_tauxplein, 
+                           index_til=dates_tauxplein['index'], 
+                           context_id=context['id'])
+        return dates.astype(int)
         

@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 import pandas as pd
 import sys
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import time
 
-
+from numpy import array, around
 from CONFIG import path_pension
 sys.path.append(path_pension)
 
 from pension_data import PensionData
 from pension_legislation import PensionParam, PensionLegislation
 from simulation import PensionSimulation
+from utils import output_til_to_liam
 
 def run_pension(context, yearleg, time_step='year', to_check=False, output='pension', cProfile=False):
     ''' run PensionSimulation after having converted the liam context in a PenionData 
@@ -54,4 +54,11 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
         result_til_year = simul_til.profile_evaluate(yearleg, to_check=to_check, output=output)
     else:
         result_til_year = simul_til.main(yearleg, to_check=to_check, output=output)
-    return result_til_year
+    if output == 'dates_taux_plein':
+        # Renvoie un dictionnaire donnant la date de taux plein par régime (format numpy) et l'index associé
+        return result_til_year
+    elif output == 'pension':
+        result_to_liam = output_til_to_liam(output_til=result_til_year, 
+                                            index_til=info_ind.index, 
+                                            context_id=context['id'])
+        return result_to_liam.astype(float)
