@@ -180,8 +180,10 @@ class Destinie(DataTil):
             '''division de la table total entre les informations passées, à la date de l'enquête et futures
             ind -> past, ind, futur '''
             survey_year = self.survey_year
-            ind_survey = ind.loc[ind['period']==survey_year]
+            ind_survey = ind.loc[ind['period']==survey_year,:]
             ind_survey.fillna(-1, inplace=True)
+            if 'tx_prime_fct' in ind_survey.columns:
+                ind_survey.rename(columns={'tx_prime_fct': 'tauxprime'}, inplace=True)
             print "Nombre dindividus présents dans la base en " + str(survey_year) + " : " + str(len(ind_survey))
             past = ind[ind['period'] < survey_year]
             list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']

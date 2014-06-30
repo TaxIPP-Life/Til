@@ -23,7 +23,7 @@ import src.importer as imp
 # entiers, le second celui des floats
 variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy',
                          'pere','mere','conj','civilstate','findet',
-                         'workstate','xpr','anc'],['sali','rsti','choi']),
+                         'workstate','xpr','anc'],['sali','rsti','choi', 'tauxprime']),
                  'men': (['pref'],[]),
                  'foy': (['vous','men'],[]),
                  'futur':(['agem','sexe','men','quimen','foy','quifoy',
