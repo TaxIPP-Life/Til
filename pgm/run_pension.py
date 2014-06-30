@@ -24,10 +24,18 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     datesim = dt.date(datesim//100, datesim % 100, 1)
     naiss = [datesim - relativedelta(months=x) for x in context['agem']]
     info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'], 
-                              'nb_born': context['nb_enf'], 'nb_pac': context['nb_pac'], 'nb_enf_RG': context['nb_enf_RG'],
-                              'nb_enf_RSI': context['nb_enf_RSI'], 'nb_enf_FP': context['nb_enf_FP']})
-    info_ind  = info_ind.loc[(info_ind['agem'] > 55*12), :] # 708 = 59 *12 /to_retire
+                              'nb_enf': context['nb_enf'], 'nb_pac': context['nb_pac'], 'nb_enf_RG': context['nb_enf_RG'],
+                              'nb_enf_RSI': context['nb_enf_RSI'], 'nb_enf_FP': context['nb_enf_FP'], 'tauxprime': context['tauxprime']})
     info_ind.set_index('id', inplace=True)
+    
+    if output == 'dates_taux_plein':
+        # But: déterminer les personnes partant à la retraite avec préselection des plus de 55 ans
+        #TODO: faire la préselection dans Liam
+        info_ind  = info_ind.loc[(info_ind['agem'] > 55*12), :] 
+
+    if output == 'pension':
+        info_ind = info_ind.loc[context['to_be_retired'], :] #TODO: filter should be done in yaml
+    
     workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
     workstate.set_index('id', inplace=True)
     workstate.sort_index(inplace=True)
@@ -35,10 +43,6 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     sali.set_index('id', inplace=True)
     sali.sort_index(inplace=True)
     sali.fillna(0, inplace=True)
-    # TODO : Remove it when appropriate variables will be created on liam
-    for var in ['nb_enf', 'nb_enf_RG', 'nb_enf_FP', 'nb_enf_RSI', 'tauxprime']:
-        if var not in info_ind.columns:
-            info_ind[var] = 0
     yearleg = context['period']//100
     if yearleg > 2009: #TODO: remove
         yearleg = 2009
