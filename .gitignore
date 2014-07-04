@@ -47,3 +47,4 @@ output/check_simul/*.csv
 
 pgm/CONFIG.py
 pgm/CONFIG.pydata/Patrimoine/path_config.R
+til/data/Patrimoine/path_config.R
