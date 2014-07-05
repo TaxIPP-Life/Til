@@ -121,6 +121,7 @@ class Patrimoine(DataTil):
             '''
             ind.loc[ind['pacs']==1,'etamatri'] = 5 
             ind = ind.rename(columns={'etamatri': 'civilstate', 'identind': 'id'})
+            ind['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5])
             return ind
             
         def _champ_metro(ind,men):
@@ -275,7 +276,7 @@ class Patrimoine(DataTil):
             # 1- Personne se déclarant mariées/pacsées mais pas en couples
             statu_mari = ind[['men','couple','civilstate','pacs','lienpref']].fillna(-1)
             # (a) Si deux mariés/pacsés pas en couple vivent dans le même ménage -> en couple (2)
-            prob_couple = (ind['civilstate'].isin([2,5])) & (ind['couple'] == 3) 
+            prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) 
             if sum(prob_couple) != 0 :
                 statu_marit = statu_mari[prob_couple]
                 many_by_men = statu_marit['men'].value_counts() > 1
@@ -284,11 +285,11 @@ class Patrimoine(DataTil):
                 ind.loc[prob_couple_ident.index,'couple'] = 1
                 
             # (b) si un marié/pacsé pas en couple est conjoint de la personne de ref -> en couple (0)
-            prob_couple = (ind['civilstate'].isin([2,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 1)
+            prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 1)
             ind.loc[prob_couple_ident.index,'couple'] = 1
             
             # (c) si un marié/pacsé pas en couple est ref et l'unique conjoint déclaré dans le ménage se dit en couple -> en couple (0)
-            prob_couple = (ind['civilstate'].isin([2,5])) & (ind['couple'] == 3)& (ind['lienpref'] == 0)
+            prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 0)
             men_conj = statu_mari[prob_couple]
             men_conj = statu_mari.loc[(statu_mari['men'].isin(men_conj['men'].values))& (statu_mari['lienpref'] == 1), 'men' ].value_counts() == 1
             ind.loc[prob_couple_ident.index,'couple'] = 1
@@ -630,7 +631,7 @@ class Patrimoine(DataTil):
         ind = self.ind  
         couple_hdom = ind['couple']==2
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
-        ind.loc[(couple_hdom) & (ind['civilstate']==5),  'civilstate'] = 2
+        ind.loc[(couple_hdom) & (ind['civilstate']==5), 'civilstate'] = 1
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
         # ne gère pas les couples homosexuels
                 
@@ -645,10 +646,10 @@ class Patrimoine(DataTil):
         ind['nb_enf'] = 0
         ind['nb_enf'][enf_tot['id'].values] = enf_tot['nb_enf']
         
-        men_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
-        women_contrat = couple_hdom & (ind['civilstate'].isin([2,5])) & (ind['sexe']==1)
-        men_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==0)
-        women_libre = couple_hdom & (~ind['civilstate'].isin([2,5])) & (ind['sexe']==1)   
+        men_contrat = couple_hdom & (ind['civilstate'].isin([1,5])) & (ind['sexe']==0)
+        women_contrat = couple_hdom & (ind['civilstate'].isin([1,5])) & (ind['sexe']==1)
+        men_libre = couple_hdom & (~ind['civilstate'].isin([1,5])) & (ind['sexe']==0)
+        women_libre = couple_hdom & (~ind['civilstate'].isin([1,5])) & (ind['sexe']==1)   
         
         var_match = ['age','findet','nb_enf'] #,'classif','dip6'
         score = "- 0.4893 * other.age + 0.0131 * other.age **2 - 0.0001 * other.age **3 "\
@@ -664,8 +665,8 @@ class Patrimoine(DataTil):
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.loc[match_found.values,'conj'] =  match_found.index
         ind.loc[match_found.index,'conj'] =  match_found.values
-        ind.loc[men_libre & ind['conj'].isnull(),['civilstate','couple']] =  [1,3]
-        ind.loc[women_libre & ind['conj'].isnull(),['civilstate','couple']] =  [1,3]  
+        ind.loc[men_libre & ind['conj'].isnull(),['civilstate','couple']] =  [2,3]
+        ind.loc[women_libre & ind['conj'].isnull(),['civilstate','couple']] =  [2,3]  
     
         self.ind = ind   
         self.drop_variable({'ind':['couple']})        

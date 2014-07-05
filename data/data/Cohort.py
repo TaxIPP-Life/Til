@@ -52,7 +52,7 @@ class Cohort(DataTil):
     def imputations(self):
         #TODO: findet ? 
         self.ind['sexe'] = np.random.random_integers(0, 1, size = self.size)
-        self.ind['civilstate'] = 1
+        self.ind['civilstate'] = 2
         self.ind['workstate'] = 11
         
     def links(self):

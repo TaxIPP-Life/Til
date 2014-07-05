@@ -96,7 +96,7 @@ class DataTil(object):
         #1 -Vérifie que les conjoints sont bien reciproques 
         ind = ind.fillna(-1)
         def _reciprocite_conj(ind):
-            test = ind.loc[(ind['conj'] != -1),['id','conj','civilstate']] #| ind['civilstate'].isin([2,5])
+            test = ind.loc[(ind['conj'] != -1),['id','conj','civilstate']] #| ind['civilstate'].isin([1,5])
             test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
             try: 
                 assert(sum(test['conj_x'] == test['id_y']) == 0)
@@ -105,13 +105,13 @@ class DataTil(object):
                 print "Nombre d'époux non réciproques : " + str(len(test)) 
                 
                 # (a) - l'un des deux se déclare célibataire -> le second le devient
-                celib_y = test.loc[test['civilstate_x'].isin([2,5]) & ~test['civilstate_y'].isin([2,5,-1]) & (test['id_x']< test['conj_x']),
+                celib_y = test.loc[test['civilstate_x'].isin([1,5]) & ~test['civilstate_y'].isin([1,5,-1]) & (test['id_x']< test['conj_x']),
                                             ['id_x', 'civilstate_y']]
                 if len(celib_y)>0:
                     ind.loc[celib_y['id_x'].values, 'civilstate']= celib_y['civilstate_y']
                     ind.loc[celib_y['id_x'].values, 'conj'] = np.nan
     
-                celib_x = test.loc[test['civilstate_y'].isin([2,5]) & ~test['civilstate_x'].isin([2,5,-1]) & (test['id_x']< test['conj_x']), 
+                celib_x = test.loc[test['civilstate_y'].isin([1,5]) & ~test['civilstate_x'].isin([1,5,-1]) & (test['id_x']< test['conj_x']), 
                                             ['id_y','civilstate_x']]
                 if len(celib_x>0):
                     ind.loc[celib_x['id_y'].values, 'civilstate'] = celib_x['civilstate_x']
@@ -119,7 +119,7 @@ class DataTil(object):
     
                 # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
                 # -> Conjoint réattribué à qui de droit
-                no_conj = test[test['civilstate_x'].isin([2,5]) & test['civilstate_y'].isin([2,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
+                no_conj = test[test['civilstate_x'].isin([1,5]) & test['civilstate_y'].isin([1,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
                 if len(no_conj)>0:
                     print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
                     ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
@@ -142,18 +142,18 @@ class DataTil(object):
             
         # 2.b - Un déclarant marié/pacsé l'autre veuf/divorcé -> marié/pacsé devient célibataire
         conf = test[(test['civilstate_y']!= test['civilstate_x']) & (test['civilstate_y'].isin([3,4]) |  test['civilstate_x'].isin([3,4]))]
-        confusion = conf[conf['civilstate_y'].isin([3,4]) & conf['civilstate_x'].isin([2,5]) ]
+        confusion = conf[conf['civilstate_y'].isin([3,4]) & conf['civilstate_x'].isin([1,5]) ]
         if len(confusion)>0:
             print "Nombre de couples marié/veuf (corrigés) : ", len(confusion)
-            ind['civilstate'][confusion['id_x'].values] = 1
+            ind['civilstate'][confusion['id_x'].values] = 2
         
         #3- Nombre de personnes avec conjoint hdom
-        conj_hdom = ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]
+        conj_hdom = ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]
         print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
         if couple_hdom == False : 
             print "Ces personnes sont considérées célibataires "
-            ind.loc[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1), 'civilstate'] = 1
-            assert len(ind[ind['civilstate'].isin([2,5]) & (ind['conj'] == -1)]) == 0
+            ind.loc[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1), 'civilstate'] = 2
+            assert len(ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]) == 0
         self.ind = ind
         #ind = _reciprocite_conj(ind)
         print ("Fin de la vérification sur les conjoints")

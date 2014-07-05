@@ -162,6 +162,8 @@ class Destinie(DataTil):
             emp['workstate'].replace([0,1,2,31,32,4,5,6,7,9, 8,63],
                                      [0,3,4, 5, 6,7,2,1,9,8,10,11], 
                                       inplace=True)
+
+            emp['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5])
             return emp
          
         def _ind_total(BioFam, ind, emp):
@@ -180,7 +182,7 @@ class Destinie(DataTil):
             survey_year = self.survey_year
             ind_survey = ind.loc[ind['period']==survey_year,:]
             ind_survey.fillna(-1, inplace=True)
-            ind_survey['civilstate'].replace(-1,1,inplace=True)
+            ind_survey['civilstate'].replace(-1,2,inplace=True)
             ind_survey['workstate'].replace(-1,1,inplace=True)
             if 'tx_prime_fct' in ind_survey.columns:
                 ind_survey.rename(columns={'tx_prime_fct': 'tauxprime'}, inplace=True)
