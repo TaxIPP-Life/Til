@@ -180,6 +180,8 @@ class Destinie(DataTil):
             survey_year = self.survey_year
             ind_survey = ind.loc[ind['period']==survey_year,:]
             ind_survey.fillna(-1, inplace=True)
+            ind_survey['civilstate'].replace(-1,1,inplace=True)
+            ind_survey['workstate'].replace(-1,1,inplace=True)
             if 'tx_prime_fct' in ind_survey.columns:
                 ind_survey.rename(columns={'tx_prime_fct': 'tauxprime'}, inplace=True)
             print "Nombre dindividus présents dans la base en " + str(survey_year) + " : " + str(len(ind_survey))

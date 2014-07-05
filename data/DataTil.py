@@ -475,10 +475,16 @@ class DataTil(object):
 #                    table[vars_link] = table[vars_link].replace(0,-1)  
 
     def final_check(self):
+        ''' Les checks sont censés vérifiés toutes les conditions 
+            que doit vérifier une base pour tourner sur Til '''
         men = self.men   
         ind = self.ind
         foy = self.foy
         futur = self.futur
+        
+        assert all(ind['workstate'].isin([range(1,12)]))
+        assert all(ind['civilstate'].isin([range(1,6)]))
+        
         
         if self.name == 'Destinie':
             men =  men[men['period']==self.survey_date]
