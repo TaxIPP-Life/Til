@@ -117,8 +117,8 @@ class Destinie(DataTil):
         def _recode_sexe(sexe):
             ''' devrait etre dans format mais plus pratique ici'''
             if sexe.max() == 2:
-                sexe = sexe.replace(1,0)
-                sexe = sexe.replace(2,1)
+                sexe.replace(1,0, inplace=True)
+                sexe.replace(2,1, inplace=True)
             return sexe
         
         self.ind['sexe'] = _recode_sexe(self.ind['sexe'])
@@ -149,9 +149,9 @@ class Destinie(DataTil):
             ## Deux étapes pour recoder une nouvelle base Destinie avec le code d'une
             ## ancienne base : nouveaux états non pris en compte pour l'instant
             # contractuel + stagiaire -> RG non-cadre 
-            emp['workstate'].replace([11,12,13], 1)
+            emp['workstate'].replace([11,12,13], 1, inplace=True)
             # maladie + invalidité  -> inactif
-            emp['workstate'].replace([621,623,624,63], 6)
+            emp['workstate'].replace([621,623,624,63], 6, inplace=True)
             
             # Recodage des modalités
             # TO DO : A terme faire une fonction propre à cette étape -> _rename(var)
@@ -163,7 +163,7 @@ class Destinie(DataTil):
                                      [0,3,4, 5, 6,7,2,1,9,8,10,11], 
                                       inplace=True)
 
-            emp['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5])
+            emp['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5], inplace=True)
             return emp
          
         def _ind_total(BioFam, ind, emp):
@@ -396,7 +396,7 @@ class Destinie(DataTil):
             ind['tuteur'][care_par.values] = care_par.index.values
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
             # Rétablissement de leur quimen
-            ind['quimen'] = ind['quimen'].replace(-2, 2)
+            ind['quimen'].replace(-2, 2, inplace=True)
         # Rq : il faut également rattaché le deuxième parent :
         conj_dep = ind.loc[(ind['men'] == -1) & (ind['conj'] != -1), ['id', 'conj']]
         ind['men'][conj_dep['id'].values] = ind['men'][conj_dep['conj'].values]

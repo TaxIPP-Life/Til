@@ -121,7 +121,7 @@ class Patrimoine(DataTil):
             '''
             ind.loc[ind['pacs']==1,'etamatri'] = 5 
             ind = ind.rename(columns={'etamatri': 'civilstate', 'identind': 'id'})
-            ind['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5])
+            ind['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5], inplace=True)
             return ind
             
         def _champ_metro(ind,men):
@@ -229,8 +229,8 @@ class Patrimoine(DataTil):
         
         def _recode_sexe(sexe):
             if sexe.max() == 2:
-                sexe = sexe.replace(1,0)
-                sexe = sexe.replace(2,1)
+                sexe.replace(1,0, inplace=True)
+                sexe.replace(2,1, inplace=True)
             return sexe
 
         def _work_on_workstate(ind):
@@ -307,7 +307,7 @@ class Patrimoine(DataTil):
             
             # Présence du fils/fille de la personne de ref si déclaration belle-fille/beau-fils
             pref2 = conj.loc[conj['lienpref']==2,'men']
-            pref31 = conj.loc[conj['lienpref']==31,'men'] 
+            pref31 = conj.loc[conj['lienpref']==31,'men']
             assert sum(~pref31.isin(pref2)) == 0          
             manque_conj = pref2[~pref2.isin(pref31)]
             ind.loc[manque_conj.index,'couple'] = 2

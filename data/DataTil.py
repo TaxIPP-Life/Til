@@ -472,7 +472,7 @@ class DataTil(object):
 #                if table is not None:
 #                    vars_link = [x for x in table.columns if x in links]
 #                    table[vars_link] += 1
-#                    table[vars_link] = table[vars_link].replace(0,-1)  
+#                    table[vars_link].replace(0,-1, inplace=True)  
 
     def final_check(self):
         ''' Les checks sont censés vérifiés toutes les conditions 
