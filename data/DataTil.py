@@ -198,7 +198,7 @@ class DataTil(object):
         men, ind = _name_var(ind, men)
             
         # 1ere étape : Identification des personnes mariées/pacsées
-        spouse = (ind['conj'] != -1) & ind['civilstate'].isin([2,5]) 
+        spouse = (ind['conj'] != -1) & ind['civilstate'].isin([1,5]) 
         print str(sum(spouse)) + " personnes en couples"
         
         # 2eme étape : rôles au sein du foyer fiscal
@@ -207,7 +207,7 @@ class DataTil(object):
         conj = spouse & ( ind['conj'] < ind['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac_condition = (ind['civilstate']==1)  & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) &(ind['nb_enf']==0)
+        pac_condition = (ind['civilstate']==2)  & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) &(ind['nb_enf']==0)
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition 
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
@@ -227,7 +227,7 @@ class DataTil(object):
         
         # 4eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples 
-        conj = ind.loc[(ind['conj'] != -1) & (ind['civilstate'].isin([2,5]))& (ind['quifoy'] == 0), ['conj','foy']]
+        conj = ind.loc[(ind['conj'] != -1) & (ind['civilstate'].isin([1,5]))& (ind['quifoy'] == 0), ['conj','foy']]
         ind['foy'][conj['conj'].values] = conj['foy'].values
         
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
@@ -482,8 +482,8 @@ class DataTil(object):
         foy = self.foy
         futur = self.futur
         
-        assert all(ind['workstate'].isin([range(1,12)]))
-        assert all(ind['civilstate'].isin([range(1,6)]))
+        assert all(ind['workstate'].isin(range(1,12)))
+        assert all(ind['civilstate'].isin(range(1,6)))
         
         
         if self.name == 'Destinie':

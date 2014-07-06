@@ -270,6 +270,7 @@ class Patrimoine(DataTil):
             ind.loc[(ind['anais'] < 2009-64)  & (ind['workstate']==1), 'workstate'] = 10
             # print ind.groupby(['workstate','statut']).size()
             # print ind.groupby(['workstate','situa']).size()
+            ind['workstate'].fillna(1, inplace=True)
             return ind['workstate']
         
         def _work_on_couple(self):
