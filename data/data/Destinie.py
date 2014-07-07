@@ -342,26 +342,6 @@ class Destinie(DataTil):
         enf_pere = ind.loc[(ind['men_mere'] == 0) & (ind['men_pere'] == 1) & (ind['age']<=25), 'pere'].astype(int)
         ind.loc[enf_pere.values,'quimen'] = 0
         print 'nb_sans_menage_b', len(ind.loc[~ind['quimen'].isin([0,1]), :])
-        
-        # Personnes ayant un parent à charge de plus de 75 ans : (rajoute 190 ménages)
-        care = {}
-        for par in ['mere', 'pere']:
-            care_par = ind.loc[(ind['men_' + par] == 1), ['id', par]].astype(int)
-            par_care = ind.loc[(ind['age'] >74) & (ind['id'].isin(care_par[par].values) & (ind['conj'] == -1)), ['id']]
-            care_par = merge(care_par, par_care, left_on = par, 
-                             right_on='id', how = 'inner', 
-                             suffixes = ('_enf', '_'+par))[['id_enf', 'id_'+par]]
-                             
-            #print 'Nouveaux ménages' ,len(ind.loc[(ind['id'].isin(care_par['id_enf'].values)) & ind['quimen']!= 0])
-            # Enfant ayant des parents à charge deviennent tête de ménage, parents à charge n'ont pas de foyers
-            ind.loc[care_par['id_enf'], 'quimen'] = 0
-            ind.loc[care_par['id_' + par], 'quimen'] = -2 # pour identifier les couples à charge
-            
-            # Si personne potentiellement à la charge de plusieurs enfants -> à charge de l'enfant ayant l'identifiant le plus petit
-            care_par.drop_duplicates('id_' + par, inplace=True)
-            care[par] = care_par
-            
-            print str(len(care_par)) +" " + par + "s à charge"
             
         # (c) - Correction pour les personnes en couple non à charge [identifiant le plus petit = tête de ménage]
         ind.loc[( ind['conj'] > ind['id'] ) & ( ind['conj'] != -1)  & (ind['quimen']!=-2), 'quimen'] = 0 
@@ -386,27 +366,44 @@ class Destinie(DataTil):
             ind['men'][enf_par['id']] = ind['men'][enf_par[par]]
             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
 
-        # (c) - Rattachements des éventuels parents à charge
+        # TODO: ( Quand on sera à l'étape gestion de la dépendance ) :
+        # créer un ménage fictif maison de retraite + comportement d'affectation.
         ind['tuteur'] = -1
-        for par in ['mere', 'pere']:
-            care_par = care[par]
-            care_par = ind.loc[ind['id'].isin(care_par['id_enf'].values) & (ind['men'] != -1), par]
-            ind['men'][care_par.values] = ind['men'][care_par.index.values]
-            ind['tuteur'][care_par.values] = care_par.index.values
-            #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
-            # Rétablissement de leur quimen
-            ind['quimen'].replace(-2, 2, inplace=True)
-        # Rq : il faut également rattaché le deuxième parent :
-        conj_dep = ind.loc[(ind['men'] == -1) & (ind['conj'] != -1), ['id', 'conj']]
-        ind['men'][conj_dep['id'].values] = ind['men'][conj_dep['conj'].values]
-        assert ind.loc[(ind['tuteur'] != -1), 'age'].min() > 70
+        
+#         # (c) - Rattachements des éventuels parents à charge
+#         # Personnes ayant un parent à charge de plus de 75 ans : (rajoute 190 ménages)
+#         care = {}
+#         for par in ['mere', 'pere']:
+#             care_par = ind.loc[(ind['men_' + par] == 1), ['id',par]].astype(int)
+#             par_care = ind.loc[(ind['age'] > 74) & (ind['id'].isin(care_par[par].values) & (ind['conj'] == -1)), ['id']]
+#             care_par = care_par.merge(par_care, left_on=par, right_on='id', how='inner',
+#                               suffixes = ('_enf', '_'+par))[['id_enf', 'id_'+par]]
+#             #print 'Nouveaux ménages' ,len(ind.loc[(ind['id'].isin(care_par['id_enf'].values)) & ind['quimen']!= 0])
+#             # Enfant ayant des parents à charge deviennent tête de ménage, parents à charge n'ont pas de foyers
+#             ind.loc[care_par['id_enf'], 'quimen'] = 0
+#             ind.loc[care_par['id_' + par], 'quimen'] = -2 # pour identifier les couples à charge
+#             # Si personne potentiellement à la charge de plusieurs enfants -> à charge de l'enfant ayant l'identifiant le plus petit
+#             care_par.drop_duplicates('id_' + par, inplace=True)
+#             care[par] = care_par
+#             print str(len(care_par)) +" " + par + "s à charge"
+#
+#         for par in ['mere', 'pere']:
+#             care_par = care[par]
+#             care_par = ind.loc[ind['id'].isin(care_par['id_enf'].values) & (ind['men'] != -1), par]
+#             ind.loc[care_par.values,'men'] = ind.loc[care_par.index.values,'men']
+#             ind.loc[care_par.values,'tuteur'] = care_par.index.values
+#             #print str(sum((ind['men']!= -1)))  + " personnes ayant un ménage attribué"
+#             # Rétablissement de leur quimen
+#             ind['quimen'].replace(-2, 2, inplace=True)
+#         # Rq : il faut également rattacher le deuxième parent :
+#         conj_dep = ind.loc[(ind['men'] == -1) & (ind['conj'] != -1), ['id', 'conj']]
+#         ind['men'][conj_dep['id'].values] = ind['men'][conj_dep['conj'].values]
+#         assert ind.loc[(ind['tuteur'] != -1), 'age'].min() > 70
+
         # 4eme étape : création d'un ménage fictif résiduel :
         # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = 0
         ind.loc[(ind['men']== -1) & (ind['age']<18), 'men'] = 0
 
-        # TODO: ( Quand on sera à l'étape gestion de la dépendance ) :
-        # créer un ménage fictif maison de retraite + comportement d'affectation.
-        ind['tuteur'] = -1
         # 5eme étape : mises en formes finales
         # attribution des quimen pour les personnes non référentes
         ind.loc[~ind['quimen'].isin([0,1]), 'quimen'] = 2
