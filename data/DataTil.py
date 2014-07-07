@@ -21,7 +21,7 @@ import src.importer as imp
 # Dictionnaire des variables, cohérent avec les imports du modèle. 
 # il faut que ce soit à jour. Le premier éléments est la liste des
 # entiers, le second celui des floats
-variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy',
+variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy','tuteur',
                          'pere','mere','conj','civilstate','findet',
                          'workstate','xpr','anc'],['sali','rsti','choi', 'tauxprime']),
                  'men': (['pref'],[]),
@@ -424,13 +424,14 @@ class DataTil(object):
                 data['period'] = data['period'].astype(int)
                 data['period'] = 100*data['period'] + 1
         
-        if ('age' not in ind.columns) & ('anais' in ind.columns):
-            ind['age'] = self.survey_date//100 - ind['anais']
-            ind['age'] = ind['age'].astype(np.int8)
+#         if ('age' not in ind.columns) & ('anais' in ind.columns):
+#             ind['age'] = self.survey_date//100 - ind['anais']
+#             ind['age'] = ind['age'].astype(np.int8)
             
         if 'agem' not in ind.columns :
             ind['agem'] = ind['age'].astype(np.int16)
             ind.loc[ind['agem'] !=-1, 'agem'] = ind.loc[ind['agem'] !=-1, 'agem'] * 12
+            ind.drop('age', axis=1, inplace=True)
 
         ind_men = ind.groupby('men')       
         ind = ind.set_index('men')
@@ -553,8 +554,8 @@ class DataTil(object):
     def store_to_liam(self):
         '''
         Sauvegarde des données au format utilisé ensuite par le modèle Til
+        Séléctionne les variables appelée par Til derrière
         Appelle des fonctions de Liam2
-        Le mieux serait que Liam2 puisse tourner sur un h5 en entrée
         '''
         
         path = path_model + self._output_name()
