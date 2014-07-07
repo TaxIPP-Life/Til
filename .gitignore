@@ -44,7 +44,7 @@ output/*.h5
 output/*.csv
 output/check_simul/*.csv
 
-
+til/pgm/profile_pension*
 pgm/CONFIG.py
 pgm/CONFIG.pydata/Patrimoine/path_config.R
 til/data/Patrimoine/path_config.R

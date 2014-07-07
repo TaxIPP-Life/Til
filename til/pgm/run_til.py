@@ -1,18 +1,18 @@
 # -*- coding:utf-8 -*-
 
-from CONFIG import path_liam, path_til, path_model 
-import sys 
+from CONFIG import path_liam, path_til, path_model
+import sys
 
 sys.path.append(path_liam)
 from src.simulation import Simulation
 
-fichier = path_model + 'console.yml'
+fichier = path_model + '/console.yml'
 
 
 simulation = Simulation.from_yaml( fichier,
                     input_dir = None,
                     input_file = None,
-                    output_dir = path_til + 'output',                    
+                    output_dir = path_til + 'output',
                     output_file = None)
 simulation.run(False)
 

@@ -3,19 +3,21 @@ import pandas as pd
 import sys
 import datetime as dt
 from dateutil.relativedelta import relativedelta
-import time
 
 from numpy import array, around
+import time
+
 from CONFIG import path_pension
 sys.path.append(path_pension)
 
-from pension_data import PensionData
-from pension_legislation import PensionParam, PensionLegislation
-from simulation import PensionSimulation
+from til_pension.pension_data import PensionData
+from til_pension.pension_legislation import PensionParam, PensionLegislation
+from til_pension.simulation import PensionSimulation
 from utils import output_til_to_liam
 
+
 def run_pension(context, yearleg, time_step='year', to_check=False, output='pension', cProfile=False):
-    ''' run PensionSimulation after having converted the liam context in a PenionData 
+    ''' run PensionSimulation after having converted the liam context in a PenionData
         - note there is a selection '''
     sali = context['longitudinal']['sali']
     workstate = context['longitudinal']['workstate']
@@ -25,23 +27,23 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     age_month = context['agem'] % 12 + 1
     naiss_year = datesim // 100 - age_year
     naiss_month = datesim % 100 - age_month + 1
-    naiss = pd.Series(naiss_year*100 + naiss_month)
+    naiss = pd.Series(naiss_year * 100 + naiss_month)
     naiss = naiss.map(lambda t: dt.date(t // 100, t % 100, 1))
 
-    info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'], 
+    info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'],
                               'nb_enf': context['nb_enf'], 'nb_pac': context['nb_pac'], 'nb_enf_RG': context['nb_enf_RG'],
                               'nb_enf_RSI': context['nb_enf_RSI'], 'nb_enf_FP': context['nb_enf_FP'], 'tauxprime': context['tauxprime']})
     info_ind.set_index('id', inplace=True)
-    
+
     # TODO: filter should be done in liam
     if output == 'dates_taux_plein':
         # But: déterminer les personnes partant à la retraite avec préselection des plus de 55 ans
         #TODO: faire la préselection dans Liam
-        info_ind  = info_ind.loc[(info_ind['agem'] > 55*12), :] 
+        info_ind = info_ind.loc[(info_ind['agem'] > 55 * 12), :]
 
     if output == 'pension':
         info_ind = info_ind.loc[context['to_be_retired'], :] #TODO: filter should be done in yaml
-    
+
     workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
     workstate.set_index('id', inplace=True)
     workstate.sort_index(inplace=True)
@@ -49,7 +51,7 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     sali.set_index('id', inplace=True)
     sali.sort_index(inplace=True)
     sali.fillna(0, inplace=True)
-    yearleg = context['period']//100
+    yearleg = context['period'] // 100
     if yearleg > 2009: #TODO: remove
         yearleg = 2009
     data = PensionData.from_arrays(workstate, sali, info_ind)
@@ -64,7 +66,7 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
         # Renvoie un dictionnaire donnant la date de taux plein par régime (format numpy) et l'index associé
         return result_til_year
     elif output == 'pension':
-        result_to_liam = output_til_to_liam(output_til=result_til_year, 
-                                            index_til=info_ind.index, 
+        result_to_liam = output_til_to_liam(output_til=result_til_year,
+                                            index_til=info_ind.index,
                                             context_id=context['id'])
         return result_to_liam.astype(float)
