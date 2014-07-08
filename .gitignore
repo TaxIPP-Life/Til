@@ -23,28 +23,30 @@ local.properties
 *.Rhistory
 *.gzip
 
-data/Destinie/Import
-data/archives_R/Patrimoine/Archives/
-data/Patrimoine/archives_R/*.xls
-data/Patrimoine/archives_R/*.csv
-data/Patrimoine/archives_R/*.h5
-data/Destinie/*.csv
-data/Destinie/*.txt
-data/Destinie/*.doc
-data/Patrimoine/*.csv
-data/archives_R/Patrimoine/subset.Rdata
-data/Patrimoine/lien_parent_enfant/*.csv
-data/Patrimoine/lien_parent_enfant/*.h5
-data/Patrimoine/archives_R/lien_parent_enfant/*.csv
-data/Patrimoine/archives_R/lien_parent_enfant/*.h5
+til/data/Destinie/Import
+til/data/archives_R/Patrimoine/Archives/
+til/data/Patrimoine/archives_R/*.xls
+til/data/Patrimoine/archives_R/*.csv
+til/data/Patrimoine/archives_R/*.h5
+til/data/Destinie/*.csv
+til/data/Destinie/*.txt
+til/data/Destinie/*.doc
+til/data/Patrimoine/*.csv
+til/data/archives_R/Patrimoine/subset.Rdata
+til/data/Patrimoine/lien_parent_enfant/*.csv
+til/data/Patrimoine/lien_parent_enfant/*.h5
+til/data/Patrimoine/archives_R/lien_parent_enfant/*.csv
+til/data/Patrimoine/archives_R/lien_parent_enfant/*.h5
 
-data/Patrimoine/Past/*.dta
+til/data/Patrimoine/Past/*.dta
 
-output/*.h5
-output/*.csv
-output/check_simul/*.csv
+til/output/*.h5
+til/output/*.csv
+til/output/check_simul/*.csv
+
 
 til/pgm/profile_pension*
-pgm/CONFIG.py
-pgm/CONFIG.pydata/Patrimoine/path_config.R
+til/pgm/CONFIG.py
+til/pgm/CONFIG.pydata/Patrimoine/path_config.R
 til/data/Patrimoine/path_config.R
+
