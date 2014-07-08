@@ -10,5 +10,5 @@ path_pension = "/home/benjello/til/Til-Pension"
 path_model = "/home/benjello/til/Til-BaseModel/til_base_model"
 
 path_data_patr = None
-path_data_destinie = None
-path_data_destinie_old = None
+path_data_destinie = "/home/benjello/data/destinie/"
+path_data_destinie_old = "/home/benjello/data/destinie/"

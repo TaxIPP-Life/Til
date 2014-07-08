@@ -44,10 +44,10 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     if output == 'pension':
         info_ind = info_ind.loc[context['to_be_retired'], :] #TODO: filter should be done in yaml
 
-    workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
+    workstate = workstate.loc[workstate['id'].isin(info_ind.index), :].copy()
     workstate.set_index('id', inplace=True)
     workstate.sort_index(inplace=True)
-    sali = sali.loc[sali['id'].isin(info_ind.index), :]
+    sali = sali.loc[sali['id'].isin(info_ind.index), :].copy()
     sali.set_index('id', inplace=True)
     sali.sort_index(inplace=True)
     sali.fillna(0, inplace=True)
