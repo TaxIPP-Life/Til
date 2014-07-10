@@ -9,6 +9,7 @@ Alexis Eidelman
 from utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
 from til.pgm.CONFIG import path_liam, path_model
 import numpy as np
+import os
 import tables
 
 from pandas import merge, notnull, DataFrame, concat, HDFStore
@@ -557,7 +558,7 @@ class DataTil(object):
         Appelle des fonctions de Liam2
         '''
 
-        path = path_model + self._output_name()
+        path = os.path.join(path_model, self._output_name())
         h5file = tables.openFile( path, mode="w")
         # 1 - on met d'abord les global en recopiant le code de liam2
         globals_def = {'periodic': {'path': 'param/globals.csv'}}
