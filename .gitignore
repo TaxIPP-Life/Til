@@ -50,3 +50,5 @@ til/pgm/CONFIG.py
 til/pgm/CONFIG.pydata/Patrimoine/path_config.R
 til/data/Patrimoine/path_config.R
 
+*.csv
+*.h5
