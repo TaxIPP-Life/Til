@@ -52,3 +52,6 @@ til/data/Patrimoine/path_config.R
 
 *.csv
 *.h5
+til/pgm/CONFIG.py
+til/pgm/tout_pension*
+til/CONFIG.py

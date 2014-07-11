@@ -15,7 +15,7 @@ import pdb
 from til.data.DataTil import DataTil
 from til.data.utils.matching import Matching
 from til.data.utils.utils import recode, minimal_dtype
-from til.pgm.CONFIG import path_data_patr
+from til.CONFIG import path_data_patr
 
 
 # Patrimoine est définie comme une classe fille de DataTil
