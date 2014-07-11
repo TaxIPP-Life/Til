@@ -7,8 +7,6 @@ from dateutil.relativedelta import relativedelta
 from numpy import array, around
 import time
 
-from CONFIG import path_pension
-sys.path.append(path_pension)
 
 from til_pension.pension_data import PensionData
 from til_pension.pension_legislation import PensionParam, PensionLegislation

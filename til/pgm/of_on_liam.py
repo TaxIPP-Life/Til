@@ -12,11 +12,11 @@ import pdb
 import time
 import gc
 import datetime as dt
+import os
 
 from scipy.stats import rankdata
 
-from CONFIG import path_til
-
+from til import __path__ as path_til
 import openfisca_france
 from openfisca_core import simulations
 
@@ -98,7 +98,8 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
             annee_base = [annee_base]
     else:
         #TODO: ? peut-être updater pour qaund
-        get_years =  HDFStore(path_til + "/output/to_run_leg.h5")
+        output_tab = os.path.join(path_til[0], "output", "to_run_leg.h5" )
+        get_years =  HDFStore(output_tab)
         years = [x[-4:] for x in dir(get_years.root) if x[0]!='_' ]
         get_years.close()
 

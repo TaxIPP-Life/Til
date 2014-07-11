@@ -2,11 +2,10 @@
 import sys
 from numpy import maximum, array, ones
 from pandas import Series
-from CONFIG import path_pension
 from utils import output_til_to_liam
-sys.path.append(path_pension)
 
-from run_pension import run_pension
+
+from til.pgm.run_pension import run_pension
 
 def depart_retirement(context, yearleg, time_step='year', to_check=False, behavior='taux_plein', cProfile=False):
     ''' cette fonction renvoie un vecteur de booleens indiquant les personnes partant en retraite 

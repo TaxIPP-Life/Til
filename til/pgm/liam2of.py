@@ -11,12 +11,12 @@ import pdb
 import time
 import os
 
-from CONFIG import path_til
+from til import __path__ as path_til
 from utils import of_name_to_til, concatenated_ranges
 
 def table_for_of(simulation, period=None, check_validity=False, save_tables=False):
-    temps = time.clock()    
-    output_tab = path_til + "/output/to_run_leg.h5"
+    temps = time.clock()
+    output_tab = os.path.join(path_til[0], "output", "to_run_leg.h5" )
     # on travaille d'abord sur l'ensemble des tables puis on selectionne chaque annee
     # on étudie d'abord la table individu pour pouvoir séléctionner les identifiants
     # step 1
