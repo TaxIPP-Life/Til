@@ -6,15 +6,17 @@ Created on 2 août 2013
 
 '''
 
-# 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
-from data.DataTil import DataTil
-from data.utils.matching import Matching
-from data.utils.utils import recode, minimal_dtype
-from pgm.CONFIG import path_data_patr
-
+import os
 import numpy as np
 from pandas import merge, DataFrame, Series, concat, read_csv
 import pdb
+
+# 1- Importation des classes/librairies/tables nécessaires à l'importation des données de l'enquête Patrimoine
+from til.data.DataTil import DataTil
+from til.data.utils.matching import Matching
+from til.data.utils.utils import recode, minimal_dtype
+from til.pgm.CONFIG import path_data_patr
+
 
 # Patrimoine est définie comme une classe fille de DataTil
 class Patrimoine(DataTil):   
@@ -48,8 +50,10 @@ class Patrimoine(DataTil):
             
     def load(self):
         print "début de l'importation des données"
-        ind = read_csv(path_data_patr + 'individu.csv')
-        men = read_csv(path_data_patr + 'menage.csv')
+        path_ind = os.path.join(path_data_patr, 'individu.csv')
+        ind = read_csv(path_ind)
+        path_men = os.path.join(path_data_patr, 'menage.csv')
+        men = read_csv(path_men)
               
         #check parce qu'on a un probleme dans l'import au niveau de identmen(pas au format numérique)
         men['identmen'] = men['identmen'].apply(int)

@@ -14,6 +14,7 @@ from til.data.DataTil import DataTil
 from til.data.utils.utils import minimal_dtype, drop_consecutive_row
 from til.pgm.CONFIG import path_data_destinie
 
+import os
 import numpy as np
 from pandas import merge, DataFrame, concat, read_table
 
@@ -43,7 +44,8 @@ class Destinie(DataTil):
             start_time = time.time()
             # TODO: revoir le colnames de BioEmp : le retirer ?
             colnames = list(range(longueur_carriere))
-            BioEmp = read_table(path_data_destinie + 'BioEmp.txt', sep=';',
+            path = os.path.join(path_data_destinie, 'BioEmp.txt')
+            BioEmp = read_table(path, sep=';',
                                    header=None, names=colnames)
             taille = len(BioEmp)/3
             BioEmp['id'] = BioEmp.index/3
@@ -91,7 +93,8 @@ class Destinie(DataTil):
             return ind, emp
 
         def _lecture_BioFam():
-            BioFam = read_table(path_data_destinie + 'BioFam.txt', sep=';',
+            path = os.path.join(path_data_destinie, 'BioFam.txt')
+            BioFam = read_table(path, sep=';',
                                    header=None, names=['id', 'pere', 'mere', 'civilstate', 'conj',
                                                        'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6'])
             # Index limites pour changement de date
