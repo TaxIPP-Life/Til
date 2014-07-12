@@ -28,19 +28,18 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     naiss = pd.Series(naiss_year * 100 + naiss_month)
     naiss = naiss.map(lambda t: dt.date(t // 100, t % 100, 1))
 
-    info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'],
-                              'nb_enf': context['nb_enf'], 'nb_pac': context['nb_pac'], 'nb_enf_RG': context['nb_enf_RG'],
+    info_ind = pd.DataFrame({'index':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'],
+                              'nb_enf_all': context['nb_enf'], 'nb_pac': context['nb_pac'], 'nb_enf_RG': context['nb_enf_RG'],
                               'nb_enf_RSI': context['nb_enf_RSI'], 'nb_enf_FP': context['nb_enf_FP'], 'tauxprime': context['tauxprime']})
-    info_ind.set_index('id', inplace=True)
-
+    info_ind = info_ind.to_records(index=False)
     # TODO: filter should be done in liam
     if output == 'dates_taux_plein':
         # But: déterminer les personnes partant à la retraite avec préselection des plus de 55 ans
         #TODO: faire la préselection dans Liam
-        info_ind = info_ind.loc[(info_ind['agem'] > 55 * 12), :]
+        info_ind = info_ind[(info_ind['agem'] > 55 * 12)]
 
     if output == 'pension':
-        info_ind = info_ind.loc[context['to_be_retired'], :] #TODO: filter should be done in yaml
+        info_ind = info_ind[context['to_be_retired']] #TODO: filter should be done in yaml
 
     workstate = workstate.loc[workstate['id'].isin(info_ind.index), :].copy()
     workstate.set_index('id', inplace=True)
