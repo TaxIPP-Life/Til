@@ -22,6 +22,7 @@ def concatenated_ranges(ranges_list) :
 
 
 def output_til_to_liam(output_til, index_til, context_id):
+    ''' pour jouer avec les indices mais est inutile maintenant je pense '''
     output_liam = Series(- ones(len(context_id)), index=context_id)
     if isinstance(output_til, DataFrame) or isinstance(output_til, Series):
         output_liam[output_til.index.values] = output_til.values

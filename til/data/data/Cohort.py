@@ -10,7 +10,7 @@ Input :
 Output :
 '''
 
-from data.DataTil import DataTil, variables_til
+from til.data.DataTil import DataTil, variables_til
 import numpy as np
 from pandas import DataFrame
 
