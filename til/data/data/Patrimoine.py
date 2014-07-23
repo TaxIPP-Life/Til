@@ -149,7 +149,36 @@ class Patrimoine(DataTil):
         self.ind = ind 
         all = self.ind.columns.tolist()
         carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif','prodep']
-        self.drop_variable(dict_to_drop={'ind':carriere})  
+        
+        # travail sur les carrières         
+        survey_year = self.survey_year
+        date_deb = int(min(ind['cydeb1']))
+        n_ind = len(ind)
+        calend = np.zeros((n_ind, survey_year-date_deb), dtype=int)
+        
+        nb_even = range(16)
+        cols_deb = ['cydeb' + str(i+1) for i in nb_even]
+        tab_deb = ind[cols_deb].fillna(0).astype(int).values
+        cols_act = ['cyact' + str(i+1) for i in nb_even]
+        tab_act = np.empty((n_ind,len(nb_even)+1), dtype=int)
+        tab_act[:,0] = -1
+        tab_act[:,1:] = ind[cols_act].fillna(0).astype(int).values
+
+        idx = range(n_ind)
+        col_idx = np.zeros(n_ind, dtype=int)
+        # c'est la colonne correspondant à l'indice de la prochaine date
+        # comme tab_act est décalé de 1, c'est aussi l'indice de la situation en cours
+        for year in range(date_deb, survey_year):
+            to_change = (tab_deb[idx, col_idx] == year) & (col_idx < 15)
+            col_idx[to_change] += 1
+            calend[:,year - date_deb] = tab_act[idx, col_idx]
+        colnames = [100*year + 1 for year in range(date_deb, survey_year)]
+        self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
+        self.longitudinal['workstate']['id'] = ind['id']
+        #TODO: imputation for sali
+        self.longitudinal['sali'] = 0*self.longitudinal['workstate']
+        self.longitudinal['sali']['id'] = ind['id']
+        self.drop_variable(dict_to_drop={'ind':carriere})
         
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
