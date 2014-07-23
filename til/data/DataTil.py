@@ -542,15 +542,6 @@ class DataTil(object):
     def _output_name(self):
         raise NotImplementedError()
 
-    def longitudinal_data(self):
-        ''' It's a bit strange because that data where in the right shape
-        at first but it more general like that '''
-        table = self.longitudinal
-        self.longitudinal = {}
-        for varname in ['sali', 'workstate']:
-            self.longitudinal[varname] = \
-                table.pivot(index='id', columns='period', values=varname)
-
     def store_to_liam(self):
         '''
         Sauvegarde des données au format utilisé ensuite par le modèle Til

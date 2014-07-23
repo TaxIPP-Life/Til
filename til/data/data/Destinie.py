@@ -17,7 +17,7 @@ import time
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des données de Destinie -> Recup des infos dans Patrimoine
 from til.data.DataTil import DataTil
 from til.data.utils.utils import minimal_dtype, drop_consecutive_row
-from til.pgm.CONFIG import path_data_destinie
+from til.CONFIG import path_data_destinie
 
 class Destinie(DataTil):
 
@@ -30,7 +30,7 @@ class Destinie(DataTil):
         # TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         # TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
         self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_conjoint', 'creation_menage', 'creation_foy',
-                               'var_sup', 'longitudinal', 'add_futur', 'store_to_liam']
+                               'var_sup', 'add_futur', 'store_to_liam']
 
     def _output_name(self):
         return 'Destinie.h5'
@@ -199,8 +199,12 @@ class Destinie(DataTil):
             list_intraseques = ['sexe', 'naiss', 'findet', 'tx_prime_fct']
             list_to_drop = list_intraseques + list_enf
             past.drop(list_to_drop, axis=1, inplace=True)
-            self.longitudinal = past
-#             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
+            
+            # It's a bit strange because that data where in the right shape
+            # at first but it more general like that '''
+            for varname in ['sali', 'workstate']:
+                self.longitudinal[varname] = \
+                    past.pivot(index='id', columns='period', values=varname)
             print ("Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + \
                     str(past['period'].min()) +" à " + str(past['period'].max()) + ")")
 
@@ -497,7 +501,6 @@ if __name__ == '__main__':
     #data.add_futur()
     data.format_to_liam()
     data.final_check()
-    data.longitudinal_data()
     data.store_to_liam()
     print ("Temps Destiny.py : " + str(time.time() - start_t) + "s, dont " +
             str(futur_t - ini_t) + "s pour les mises en formes/corrections initiales et " +
