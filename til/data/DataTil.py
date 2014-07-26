@@ -415,6 +415,7 @@ class DataTil(object):
         foy = self.foy
         futur = self.futur
         past = self.past
+        longit = self.longitudinal
 
         for data in [ind, men, foy]:
             if data is not None:
@@ -427,6 +428,9 @@ class DataTil(object):
 #         if ('age' not in ind.columns) & ('anais' in ind.columns):
 #             ind['age'] = self.survey_date//100 - ind['anais']
 #             ind['age'] = ind['age'].astype(np.int8)
+
+        for name, table in longit.iteritems():
+            table.columns = [100*year + 1 for year in table.columns]
 
         if 'agem' not in ind.columns :
             ind['agem'] = ind['age'].astype(np.int16)

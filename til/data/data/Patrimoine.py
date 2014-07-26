@@ -172,7 +172,7 @@ class Patrimoine(DataTil):
             to_change = (tab_deb[idx, col_idx] == year) & (col_idx < 15)
             col_idx[to_change] += 1
             calend[:,year - date_deb] = tab_act[idx, col_idx]
-        colnames = [100*year + 1 for year in range(date_deb, survey_year)]
+        colnames = range(date_deb, survey_year)
         self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
         self.longitudinal['workstate']['id'] = ind['id']
         #TODO: imputation for sali
