@@ -555,32 +555,7 @@ class DataTil(object):
 
         path = os.path.join(path_model, self._output_name())
         h5file = tables.openFile( path, mode="w")
-        # 1 - on met d'abord les global en recopiant le code de liam2
-        globals_def = {'periodic': {'path': 'param/globals.csv'}}
 
-        const_node = h5file.createGroup("/", "globals", "Globals")
-        localdir = path_model
-        for global_name, global_def in globals_def.iteritems():
-            print(" %s" % global_name)
-            req_fields = ([('PERIOD', int)] if global_name == 'periodic'
-                                            else [])
-            kind, info = imp.load_def(localdir, global_name,
-                                  global_def, req_fields)
-            # comme dans import
-#             if kind == 'ndarray':
-#                 imp.array_to_disk_array(h5file, const_node, global_name, info,
-#                                     title=global_name,
-#                                     compression=compression)
-#             else:
-            assert kind == 'table'
-            fields, numlines, datastream, csvfile = info
-            imp.stream_to_table(h5file, const_node, global_name, fields,
-                            datastream, numlines,
-                            title="%s table" % global_name,
-                            buffersize=10 * 2 ** 20,
-                            compression=None)
-
-        # 2 - ensuite on s'occupe des entities
         ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name in ['ind','foy','men','futur','past']:
             entity = eval('self.'+ ent_name)
