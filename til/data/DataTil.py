@@ -7,7 +7,7 @@ Alexis Eidelman
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
 from til.data.utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
-from til.CONFIG import path_liam, path_model
+from til.CONFIG import path_model
 import numpy as np
 import os
 import tables
@@ -15,9 +15,6 @@ import tables
 from pandas import merge, notnull, DataFrame, concat, HDFStore
 import pdb
 
-import sys
-sys.path.append(path_liam)
-import src.importer as imp
 
 # Dictionnaire des variables, cohérent avec les imports du modèle.
 # il faut que ce soit à jour. Le premier éléments est la liste des
