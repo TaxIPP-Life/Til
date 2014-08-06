@@ -150,7 +150,21 @@ class Patrimoine(DataTil):
         all = self.ind.columns.tolist()
         carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif','prodep']
         
-        # travail sur les carrières         
+        # travail sur les carrières
+        try:
+            path_patr_past = os.path.join(path_data_patr, 'carriere_passee_patrimoine.csv')
+            past = read_csv(path_patr_past)
+            (past['pond'].astype(int)).isin(ind['pond'].astype(int))
+            past['identmen']
+            past['pond']
+            ind['identmen'] = ind['identmen'].astype(float)
+            past['identmen'] = past['identmen'].astype(float)
+            assert past['identmen'].isin(ind['identmen']).all()
+            assert past['identind'].isin(ind['id']).all()
+            test = past.merge(ind, left_on=['identind'], right_on=['id'],  how='inner')
+        except: 
+            pdb.set_trace()
+
         survey_year = self.survey_year
         date_deb = int(min(ind['cydeb1']))
         n_ind = len(ind)
@@ -174,10 +188,10 @@ class Patrimoine(DataTil):
             calend[:,year - date_deb] = tab_act[idx, col_idx]
         colnames = range(date_deb, survey_year)
         self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
-        self.longitudinal['workstate']['id'] = ind['id']
+#         self.longitudinal['workstate']['id'] = ind['id']
         #TODO: imputation for sali
         self.longitudinal['sali'] = 0*self.longitudinal['workstate']
-        self.longitudinal['sali']['id'] = ind['id']
+#         self.longitudinal['sali']['id'] = ind['id']
         self.drop_variable(dict_to_drop={'ind':carriere})
         
     def drop_variable(self, dict_to_drop=None, option='white'):
@@ -327,7 +341,6 @@ class Patrimoine(DataTil):
             men_conj = statu_mari[prob_couple]
             men_conj = statu_mari.loc[(statu_mari['men'].isin(men_conj['men'].values))& (statu_mari['lienpref'] == 1), 'men' ].value_counts() == 1
             ind.loc[prob_couple_ident.index,'couple'] = 1
-
             
             # 2 - Check présence d'un conjoint dans le ménage si couple=1 et lienpref in 0,1
             conj = ind.loc[ind['couple']==1,['men','lienpref','id']]
@@ -366,9 +379,8 @@ class Patrimoine(DataTil):
         ind = self.ind.fillna(-1).replace(-1,np.nan)
         ind = minimal_dtype(ind)
         self.ind = ind
-        
-        
-        
+
+
     def conjoint(self):
         '''
         Calcul de l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
