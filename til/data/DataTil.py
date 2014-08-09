@@ -540,8 +540,12 @@ class DataTil(object):
                     + str( len(id_ok)) + " ("+ str( len(id_ini))
                     + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")
 
-    def _output_name(self):
-        raise NotImplementedError()
+    def _output_name(self, extension='.h5'):
+        if self.seuil is None:
+            name = self.name + extension
+        else: 
+            name = self.name + '_' + str(self.seuil) + extension
+        return os.path.join(path_model, name)
 
     def store_to_liam(self):
         '''
@@ -550,8 +554,8 @@ class DataTil(object):
         Appelle des fonctions de Liam2
         '''
 
-        path = os.path.join(path_model, self._output_name())
-        h5file = tables.openFile( path, mode="w")
+        path = self._output_name()
+        h5file = tables.openFile(path, mode="w")
 
         ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name in ['ind','foy','men','futur','past']:
@@ -592,7 +596,7 @@ class DataTil(object):
         store.close()
 
     def store(self):
-        path = os.path.join(path_model, self._output_name())
+        path = self._output_name()
         self.men.to_hdf(path, 'entites/men')
         self.ind.to_hdf(path, 'entites/ind')
         self.foy.to_hdf(path, 'entites/foy')

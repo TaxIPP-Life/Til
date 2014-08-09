@@ -32,7 +32,7 @@ class Patrimoine(DataTil):
         self.methods_order = ['load','correction_initial','drop_variable','format_initial','conjoint','enfants',
                       'expand_data','creation_child_out_of_house','matching_par_enf','matching_couple_hdom',
                       'creation_foy','mise_au_format','var_sup','store_to_liam']
-    
+
 # drop_variable() doit tourner avant table_initial() car on aurait un problème avec les variables qui sont renommées.
 # explication de l'ordre en partant de la fin, besoin des couples pour et des liens parents enfants pour les mariages.
 # Ces liens ne peuvent se faire qu'après la dupplication pour pouvoir avoir le bon nombre de parents et de bons matchs
@@ -40,13 +40,6 @@ class Patrimoine(DataTil):
 # Pour les enfants, on cherche leur parent un peu en fonction de s'ils sont en couple ou non, ça doit donc touner après conjoint.
 # Ensuite, c'est assez évident que le format initial et le drop_variable doivent se faire le plus tôt possible
 # on choisit de faire le drop avant le format intitial, on pourrait faire l'inverse en étant vigilant sur les noms
-
-    def _output_name(self):
-        #return 'Patrimoine_' + str(self.size) + '.h5'
-        if self.seuil is None:
-            return 'Patrimoine_0.h5' # + survey_date
-        else: 
-            return 'Patrimoine_' + str(self.seuil) +'.h5' # + survey_date 
             
     def load(self):
         print "début de l'importation des données"
@@ -62,6 +55,9 @@ class Patrimoine(DataTil):
         print "Nombre d'individus dans l'enquête initiale : " + str(len(ind['identind'].drop_duplicates()))
         self.men = men
         self.ind = ind
+        
+        assert (men['identmen'].isin(ind['identmen'])).all()
+        assert (ind['identmen'].isin(men['identmen'])).all()
         print "fin de l'importation des données"
         
     def correction_initial(self):
@@ -123,8 +119,7 @@ class Patrimoine(DataTil):
             '''
             Création de pacs comme un modalité de l'union (5) 
             '''
-            ind.loc[ind['pacs']==1,'etamatri'] = 5 
-            ind = ind.rename(columns={'etamatri': 'civilstate', 'identind': 'id'})
+            ind.loc[ind['pacs']==1,'civilstate'] = 5 
             ind['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5], inplace=True)
             return ind
             
@@ -138,6 +133,21 @@ class Patrimoine(DataTil):
             ind = ind[~ind['identmen'].isin(antilles)]
             return ind, men  
         
+        try:
+            path_patr_past = os.path.join(path_data_patr, 'base.csv')
+            past = read_csv(path_patr_past)
+            dates = [100*year + 1 for year in range(1980, 2010)]
+            sali = DataFrame(columns=dates)
+            workstate = DataFrame(columns=dates)
+            for year in range(1980, 2010):
+                workstate[100*year+1] = past['statut' + str(year)]
+                workstate[100*year+1] = past[['indep_tot' + str(year),'cadre_tot' + str(year),'chom_tot_brut' + str(year)]].sum(axis=1)
+                
+            assert past['identind'].isin(ind['identind']).all()
+            test = past.merge(ind, on=['identind'], how='inner')          
+        except: 
+            pdb.set_trace() 
+            
         # Note avec la version Python3.x on utiliserait la notion de nonlocal pour ne pas mettre de paramètre 
         # et d'affectation aux fonctions ci-dessous
         ind = _correction_carriere(ind)
@@ -148,23 +158,9 @@ class Patrimoine(DataTil):
         self.men = men
         self.ind = ind 
         all = self.ind.columns.tolist()
-        carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif','prodep']
-        
-        # travail sur les carrières
-        try:
-            path_patr_past = os.path.join(path_data_patr, 'carriere_passee_patrimoine.csv')
-            past = read_csv(path_patr_past)
-            (past['pond'].astype(int)).isin(ind['pond'].astype(int))
-            past['identmen']
-            past['pond']
-            ind['identmen'] = ind['identmen'].astype(float)
-            past['identmen'] = past['identmen'].astype(float)
-            assert past['identmen'].isin(ind['identmen']).all()
-            assert past['identind'].isin(ind['id']).all()
-            test = past.merge(ind, left_on=['identind'], right_on=['id'],  how='inner')
-        except: 
-            pdb.set_trace()
-
+        carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif','prodep'] 
+                    
+        # travail sur les carrières         
         survey_year = self.survey_year
         date_deb = int(min(ind['cydeb1']))
         n_ind = len(ind)
@@ -186,7 +182,8 @@ class Patrimoine(DataTil):
             to_change = (tab_deb[idx, col_idx] == year) & (col_idx < 15)
             col_idx[to_change] += 1
             calend[:,year - date_deb] = tab_act[idx, col_idx]
-        colnames = range(date_deb, survey_year)
+              
+        colnames = [100*year + 1 for year in range(date_deb, survey_year)]
         self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
 #         self.longitudinal['workstate']['id'] = ind['id']
         #TODO: imputation for sali
@@ -258,20 +255,14 @@ class Patrimoine(DataTil):
         ind = self.ind 
         men.index = range(10, len(men)+ 10)
         men['id'] = men.index
-        #passage de ind à men, variable ind['men']
-        idmen = men[['id', 'identmen']].rename(columns = {'id': 'men'})
-        verif_match = len(ind)
-        ind = merge(ind, idmen, on = 'identmen')
-        if len(ind) != verif_match:
-            raise Exception("On a perdu le lien entre ind et men via identmen")
         ind['id'] = ind.index
                 # Pour avoir un age plus "continu" sans gap d'une année de naissance à l'autre
         age = self.survey_date/100 - ind['anais']
         ind['age'] = (12*age + 11 - ind['mnais'])/12
-        
+    
         dict_rename = {"zsalaires_i":"sali", "zchomage_i":"choi",
         "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
-        "cyder":"anc", "duree":"xpr"}
+        'etamatri': 'civilstate', "cyder":"anc", "duree":"xpr"}
         ind = ind.rename(columns=dict_rename)
         
         def _recode_sexe(sexe):
@@ -341,6 +332,7 @@ class Patrimoine(DataTil):
             men_conj = statu_mari[prob_couple]
             men_conj = statu_mari.loc[(statu_mari['men'].isin(men_conj['men'].values))& (statu_mari['lienpref'] == 1), 'men' ].value_counts() == 1
             ind.loc[prob_couple_ident.index,'couple'] = 1
+
             
             # 2 - Check présence d'un conjoint dans le ménage si couple=1 et lienpref in 0,1
             conj = ind.loc[ind['couple']==1,['men','lienpref','id']]
@@ -379,8 +371,9 @@ class Patrimoine(DataTil):
         ind = self.ind.fillna(-1).replace(-1,np.nan)
         ind = minimal_dtype(ind)
         self.ind = ind
-
-
+        
+        
+        
     def conjoint(self):
         '''
         Calcul de l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
