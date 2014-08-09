@@ -29,7 +29,7 @@ class Patrimoine(DataTil):
         self.survey_date = 100*self.survey_year + 1
         #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
-        self.methods_order = ['load','correction_initial','drop_variable','format_initial','conjoint','enfants',
+        self.methods_order = ['load','correction_initial','drop_variable','format_initial','champ','conjoint','enfants',
                       'expand_data','creation_child_out_of_house','matching_par_enf','matching_couple_hdom',
                       'creation_foy','mise_au_format','var_sup','store_to_liam']
 
@@ -62,30 +62,28 @@ class Patrimoine(DataTil):
         
     def correction_initial(self):
         ind = self.ind
-        men = self.men
-                    
         def _correction_etamatri():
             ''' Création de pacs comme un modalité de l'union (5) '''
             ind.loc[ind['pacs'] == 1, 'civilstate'] = 5 
-            ind['civilstate'].replace([2,1,4,3,5], [1,2,3,4,5], inplace=True)
+        # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
+        _correction_etamatri()
+        self.ind = ind
             
-        def _champ_metro(ind,men):
-            ''' 
-            Se place sur le champ France métropolitaine en supprimant les antilles
-            Pourquoi ? - elles n'ont pas les memes variables + l'appariemment EIR n'est pas possible
-            '''
+    def champ(self, option='metropole'):
+        ''' Limite la base à un champ d'étude défini '''
+        ind = self.ind
+        men = self.men
+        assert option in ['metropole']
+        #TODO: enable multplie restriction (option is a list)
+        if option == 'metropole':
+        #  Se place sur le champ France métropolitaine en supprimant les antilles
+        #  Pourquoi ? - elles n'ont pas les memes variables + l'appariemment EIR n'est pas possible
             antilles = men.ix[ men['zeat'] == 0,'identmen']
             men = men[~men['identmen'].isin(antilles)]
             ind = ind[~ind['identmen'].isin(antilles)]
-
-        # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
-        ind = _correction_etamatri()
-        ind, men = _champ_metro(ind, men)
-
         self.men = men
         self.ind = ind
             
-        
     def work_on_past(self):
         ind = self.ind
         def _correction_carriere():
@@ -108,7 +106,6 @@ class Patrimoine(DataTil):
             ind['cyact2'][23584] = 11
             ind['cyact3'][27816] = 5
             ind['modif'].iloc[[10833,23584,27816]] = "cyact manq"
-            
             var = ["cyact","cydeb","cycaus","cytpto"]
             #Note : la solution ne semble pas être parfaite au sens qu'elle ne résout pas tout
             # cond : gens pour qui on a un probleme de date
@@ -187,126 +184,44 @@ class Patrimoine(DataTil):
 #         self.longitudinal['sali']['id'] = ind['id']
         self.drop_variable(dict_to_drop={'ind':carriere})
 
-        
-    def drop_variable(self, dict_to_drop=None, option='white'):
-        '''
-        - Si on dict_to_drop is not None, il doit avoir la forme table: [liste de variables],
-        on retire alors les variable de la liste de la table nommée.
-        - Sinon, on se sert de cette méthode pour faire la première épuration des données, on
-         a deux options:
-             - passer par la liste blanche ce que l'on recommande pour l'instant 
-             - passer par  liste noire. 
-        '''
-        men = self.men
-        ind = self.ind
-        
-        if dict_to_drop is None:
-            dict_to_drop={}
-            
-        # travail sur men 
-            all = men.columns.tolist()
-            #liste noire
-            pr_or_cj = [x for x in all if (x[-2:]=='pr' or x[-2:]=='cj') and x not in ['indepr','r_dcpr','r_detpr']]
-            detention = [x for x in all if len(x)==6 and x[0]=='p' and x[1] in ['0','1']]
-            diplom = [x for x in all if x[:6]=='diplom']
-            conj_died = [x for x in all if x[:2]=='cj']
-            even_rev =  [x for x in all if x[:3]=='eve']
-            black_list = pr_or_cj + detention + diplom + conj_died +even_rev #+ enfants_hdom 
-            #liste blanche
-            var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
-            var_apjf = ['asf','allocpar','complfam','paje']
-            enfants_hdom = [x for x in all if x[:3]=='hod']
-            white_list = ['identmen','pond'] + var_apjf + enfants_hdom + var_to_declar 
-            if option=='white':
-                dict_to_drop['men'] = [x for x in all if x not in white_list]
-            else:
-                dict_to_drop['men'] = black_list
-            
-        # travail sur ind 
-            all = ind.columns.tolist()
-            #liste noire
-            parent_prop = [x for x in all if x[:6]=='jepro_']
-            jeunesse_grave = [x for x in all if x[:6]=='jepro_']
-            jeunesse = [x for x in all if x[:7]=='jegrave']
-            black_list = jeunesse_grave + parent_prop  + diplom
-            #liste blanche
-            info_pers = ['anais','mnais','sexe','dip14']
-            famille = ['couple','lienpref','enf','civilstate','pacs','grandpar','per1e','mer1e']
-            jobmarket = ['statut','situa','preret','classif', 'cs42']
-            info_parent = ['jepnais','jemnais','jemprof']
-            carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
-            revenus = ["zsalaires_i", "zchomage_i", "zpenalir_i", "zretraites_i", "cyder", "duree"]           
-            
-            white_list = ['identmen','noi', 'pond', 'id'] + info_pers + famille + jobmarket + carriere + info_parent + revenus 
-            
-            if option=='white':
-                dict_to_drop['ind'] = [x for x in all if x not in white_list]
-                
-            else:
-                dict_to_drop['ind'] = black_list            
-            
-        DataTil.drop_variable(self, dict_to_drop, option)
-    
-    def format_initial(self):
+
+    def to_DataTil_format(self):
         men = self.men      
         ind = self.ind 
-        men.index = range(10, len(men)+ 10)
-        men['id'] = men.index
-        ind['id'] = ind.index
-                # Pour avoir un age plus "continu" sans gap d'une année de naissance à l'autre
-        age = self.survey_date/100 - ind['anais']
-        ind['age'] = (12*age + 11 - ind['mnais'])/12
-    
+        
         dict_rename = {"zsalaires_i":"sali", "zchomage_i":"choi",
         "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
         'etamatri': 'civilstate', "cyder":"anc", "duree":"xpr"}
         ind = ind.rename(columns=dict_rename)
-        
-        def _recode_sexe(sexe):
-            if sexe.max() == 2:
-                sexe.replace(1,0, inplace=True)
-                sexe.replace(2,1, inplace=True)
-            return sexe
+        # id, men
+        men.index = range(10, len(men)+ 10)
+        men['id'] = men.index
+        ind['id'] = ind.index
+        idmen = men[['id', 'identmen']].rename(columns = {'id': 'men'})
+        ind = merge(ind, idmen, on='identmen')
+        # agem
+        age = self.survey_date/100 - ind['anais']
+        ind['agem'] = 12*age + 11 - ind['mnais']
+                
+        ind['sexe'].replace([1,2], [0,1], inplace=True)
+        ind['civilstate'].replace([2,1,4,3,5], [1,2,3,4,5], inplace=True)
 
-        def _work_on_workstate(ind):
-            '''
-            On code en s'inspirant de destinie et de PENSIPP ici. 
-            Il faudrait voir à modifier pour avoir des temps partiel
-            '''
-
-            # inactif   <-  1  # chomeur   <-  2   # non_cadre <-  3  # cadre     <-  4
-            # fonct_a   <-  5  # fonct_s   <-  6   # indep     <-  7  # avpf      <-  8
-            # preret    <-  9
-            #on travaille avec situa puis avec statut puis avec classif
-            list_situa_work = [ [[1,2],3], 
-                                  [[4],2], 
-                                  [[5,6,7],1], 
-                                  [[1,2],3] ]
-            recode(ind,'situa','workstate', list_situa_work ,'isin')
-#           Note:  ind['workstate'][ ind['situa']==3] =  0 : etudiant -> NA
-            #precision inactif
-            ind.loc[ind['preret']==1, 'workstate'] = 9
-            # precision AVPF
-            #TODO: "vous pouverz bénéficier de l'AVPF si vous n'exercez aucune activité 
-            # professionnelle (ou seulement à temps partiel) et avez 
-            # la charge d'une personne handicapée (enfant de moins de 20 ans ou adulte).
-            # Pour l'instant, on fait ça parce que ça colle avec PensIPP mais il faudrait faire mieux.
-            #en particulier c'est de la législation l'avpf finalement.
-            cond =  (men['paje']==1) | (men['complfam']==1) | (men['allocpar']==1) | (men['asf']==1)
-            avpf = men.ix[cond,:].index.values + 1 
-            ind.loc[(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2])), 'workstate'] = 8
-            # public, privé, indépendant
-            ind.loc[ind['statut'].isin([1,2]), 'workstate'] = 5
-            ind.loc[ind['statut']==7, 'workstate'] =  7
-            # cadre, non cadre
-            ind.loc[(ind['classif']==6)  & (ind['workstate']==5), 'workstate'] = 6
-            ind.loc[(ind['classif']==7)  & (ind['workstate']==3), 'workstate'] = 4
-            #retraite
-            ind.loc[(ind['anais'] < 2009-64)  & (ind['workstate']==1), 'workstate'] = 10
-            # print ind.groupby(['workstate','statut']).size()
-            # print ind.groupby(['workstate','situa']).size()
-            ind['workstate'].fillna(1, inplace=True)
-            return ind['workstate']
+        # workstate
+        # Code DataTil : {inactif: 1, chomeur: 2, non_cadre: 3, cadre: 4,
+        # fonct_a: 5, fonct_s: 6, indep: 7, avpf: 8, preret: 9}
+        ind['workstate'] = ind['statut'].replace([1,2,3,4,5,6,7],[6,6,3,3,1,7,7])
+        # AVPF
+        # TODO: l'avpf est de la législation, ne devrait pas être un statut de workstate
+        cond_avpf = (men['paje']==1) | (men['complfam']==1) | (men['allocpar']==1) | (men['asf']==1)
+        avpf = men.loc[cond_avpf,'id'] 
+        ind.loc[(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2])), 'workstate'] = 8
+        # cadre, non cadre
+        ind.loc[(ind['classif'].isin([6,7]))  & (ind['workstate']==5), 'workstate'] = 6
+        ind.loc[(ind['classif'].isin([6,7]))  & (ind['workstate']==3), 'workstate'] = 4 #Pas très bon car actif, sedentaire et pas cadre non cadre
+        #retraite
+        ind.loc[ind['preret']==1, 'workstate'] = 9
+        ind.loc[(ind['anais'] < self.survey_year-64)  & (ind['workstate']==1), 'workstate'] = 10
+        ind['workstate'].fillna(1, inplace=True)
         
         def _work_on_couple(self):
             # 1- Personne se déclarant mariées/pacsées mais pas en couples
@@ -349,11 +264,9 @@ class Patrimoine(DataTil):
             ind.loc[manque_conj.index,'couple'] = 2
    
             return ind
-        
-        ind['sexe'] = _recode_sexe(ind['sexe'])
-        ind['workstate'] = _work_on_workstate(ind)
+
         ind['workstate'] = ind['workstate'].fillna(-1).astype(np.int8)
-        #work in findet
+        # work in findet
         ind['findet'][ind['findet']==0] = np.nan
         ind['findet'] = ind['findet'] - ind['anais']
         ind['findet'][ind['findet'].isnull()] = np.nan
@@ -368,13 +281,72 @@ class Patrimoine(DataTil):
         ind = self.ind.fillna(-1).replace(-1,np.nan)
         ind = minimal_dtype(ind)
         self.ind = ind
+
+
         
+    def drop_variable(self, dict_to_drop=None, option='white'):
+        '''
+        - Si on dict_to_drop is not None, il doit avoir la forme table: [liste de variables],
+        on retire alors les variable de la liste de la table nommée.
+        - Sinon, on se sert de cette méthode pour faire la première épuration des données, on
+         a deux options:
+             - passer par la liste blanche ce que l'on recommande pour l'instant 
+             - passer par  liste noire. 
+        '''
+        men = self.men
+        ind = self.ind
+        
+        if dict_to_drop is None:
+            dict_to_drop={}
+            
+        # travail sur men 
+            all = men.columns.tolist()
+            #liste noire
+            pr_or_cj = [x for x in all if (x[-2:]=='pr' or x[-2:]=='cj') and x not in ['indepr','r_dcpr','r_detpr']]
+            detention = [x for x in all if len(x)==6 and x[0]=='p' and x[1] in ['0','1']]
+            diplom = [x for x in all if x[:6]=='diplom']
+            conj_died = [x for x in all if x[:2]=='cj']
+            even_rev =  [x for x in all if x[:3]=='eve']
+            black_list = pr_or_cj + detention + diplom + conj_died +even_rev #+ enfants_hdom 
+            #liste blanche
+            var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
+            var_apjf = ['asf','allocpar','complfam','paje']
+            enfants_hdom = [x for x in all if x[:3]=='hod']
+            white_list = ['identmen','pond'] + var_apjf + enfants_hdom + var_to_declar 
+            if option=='white':
+                dict_to_drop['men'] = [x for x in all if x not in white_list]
+            else:
+                dict_to_drop['men'] = black_list
+
+        # travail sur ind 
+            all = ind.columns.tolist()
+            #liste noire
+            parent_prop = [x for x in all if x[:6]=='jepro_']
+            jeunesse_grave = [x for x in all if x[:6]=='jepro_']
+            jeunesse = [x for x in all if x[:7]=='jegrave']
+            black_list = jeunesse_grave + parent_prop  + diplom
+            #liste blanche
+            info_pers = ['anais','mnais','sexe','dip14']
+            famille = ['couple','lienpref','enf','civilstate','pacs','grandpar','per1e','mer1e']
+            jobmarket = ['statut','situa','preret','classif', 'cs42']
+            info_parent = ['jepnais','jemnais','jemprof']
+            carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
+            revenus = ["zsalaires_i", "zchomage_i", "zpenalir_i", "zretraites_i", "cyder", "duree"]           
+            white_list = ['identmen','noi', 'pond', 'id'] + info_pers + famille + jobmarket + carriere + info_parent + revenus 
+            
+            if option=='white':
+                dict_to_drop['ind'] = [x for x in all if x not in white_list]
+            else:
+                dict_to_drop['ind'] = black_list            
+            
+        DataTil.drop_variable(self, dict_to_drop, option)
+    
         
         
     def conjoint(self):
         '''
         Calcul de l'identifiant du conjoint et vérifie que les conjoint sont bien reciproques 
-        '''     
+        '''
         print ("Travail sur les conjoints")
         ind = self.ind
         conj = ind.loc[ind['couple']==1, ['men','lienpref','id','civilstate']]
@@ -707,7 +679,6 @@ class Patrimoine(DataTil):
         self.ind = ind   
         self.drop_variable({'ind':['couple']})        
 
-
 if __name__ == '__main__':
     
     import time
@@ -718,7 +689,7 @@ if __name__ == '__main__':
     data.drop_variable()
     # drop_variable() doit tourner avant table_initial() car on fait comme si diplome par exemple n'existait pas
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
-    data.format_initial()
+    data.to_DataTil_format()
     data.conjoint()
     data.check_conjoint(couple_hdom = True)
     data.enfants()
