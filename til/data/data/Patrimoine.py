@@ -63,7 +63,32 @@ class Patrimoine(DataTil):
     def correction_initial(self):
         ind = self.ind
         men = self.men
-        def _correction_carriere(ind):
+                    
+        def _correction_etamatri():
+            ''' Création de pacs comme un modalité de l'union (5) '''
+            ind.loc[ind['pacs'] == 1, 'civilstate'] = 5 
+            ind['civilstate'].replace([2,1,4,3,5], [1,2,3,4,5], inplace=True)
+            
+        def _champ_metro(ind,men):
+            ''' 
+            Se place sur le champ France métropolitaine en supprimant les antilles
+            Pourquoi ? - elles n'ont pas les memes variables + l'appariemment EIR n'est pas possible
+            '''
+            antilles = men.ix[ men['zeat'] == 0,'identmen']
+            men = men[~men['identmen'].isin(antilles)]
+            ind = ind[~ind['identmen'].isin(antilles)]
+
+        # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
+        ind = _correction_etamatri()
+        ind, men = _champ_metro(ind, men)
+
+        self.men = men
+        self.ind = ind
+            
+        
+    def work_on_past(self):
+        ind = self.ind
+        def _correction_carriere():
             '''
             Fait des corrections sur le déroulé des carrières(à partir de vérif écrit en R)
             ''' 
@@ -114,49 +139,20 @@ class Patrimoine(DataTil):
             cond2 = ind['cydeb1'] > ind['cydeb2']
             ind.ix[ cond2,'cydeb1'] = ind.ix[ cond2,['jeactif','anfinetu']].min(axis=1)
             return ind
-            
-        def _correction_etamatri(ind):
-            '''
-            Création de pacs comme un modalité de l'union (5) 
-            '''
-            ind.loc[ind['pacs']==1,'civilstate'] = 5 
-            ind['civilstate'].replace([2,1,4,3,5],[1,2,3,4,5], inplace=True)
-            return ind
-            
-        def _champ_metro(ind,men):
-            ''' 
-            Se place sur le champ France métropolitaine en supprimant les antilles
-            Pourquoi ? - elles n'ont pas les memes variables + l'appariemment EIR n'est pas possible
-            '''
-            antilles = men.ix[ men['zeat'] == 0,'identmen']
-            men = men[~men['identmen'].isin(antilles)]
-            ind = ind[~ind['identmen'].isin(antilles)]
-            return ind, men  
         
-        try:
-            path_patr_past = os.path.join(path_data_patr, 'base.csv')
-            past = read_csv(path_patr_past)
-            dates = [100*year + 1 for year in range(1980, 2010)]
-            sali = DataFrame(columns=dates)
-            workstate = DataFrame(columns=dates)
-            for year in range(1980, 2010):
-                workstate[100*year+1] = past['statut' + str(year)]
-                workstate[100*year+1] = past[['indep_tot' + str(year),'cadre_tot' + str(year),'chom_tot_brut' + str(year)]].sum(axis=1)
-                
-            assert past['identind'].isin(ind['identind']).all()
-            test = past.merge(ind, on=['identind'], how='inner')          
-        except: 
-            pdb.set_trace() 
+        _correction_carriere()
+        path_patr_past = os.path.join(path_data_patr, 'base.csv')
+        past = read_csv(path_patr_past)
+        dates = [100*year + 1 for year in range(1980, 2010)]
+        sali = DataFrame(columns=dates)
+        workstate = DataFrame(columns=dates)
+        for year in range(1980, 2010):
+            workstate[100*year+1] = past['statut' + str(year)]
+            workstate[100*year+1] = past[['indep_tot' + str(year),'cadre_tot' + str(year),'chom_tot_brut' + str(year)]].sum(axis=1)
             
-        # Note avec la version Python3.x on utiliserait la notion de nonlocal pour ne pas mettre de paramètre 
-        # et d'affectation aux fonctions ci-dessous
-        ind = _correction_carriere(ind)
-        # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
-        ind = _correction_etamatri(ind)
-        ind, men = _champ_metro(ind, men)
+        assert past['identind'].isin(ind['identind']).all()
+        test = past.merge(ind, on=['identind'], how='inner')          
 
-        self.men = men
-        self.ind = ind 
         all = self.ind.columns.tolist()
         carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif','prodep'] 
                     
@@ -190,6 +186,7 @@ class Patrimoine(DataTil):
         self.longitudinal['sali'] = 0*self.longitudinal['workstate']
 #         self.longitudinal['sali']['id'] = ind['id']
         self.drop_variable(dict_to_drop={'ind':carriere})
+
         
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
