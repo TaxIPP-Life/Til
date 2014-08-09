@@ -345,73 +345,60 @@ class Patrimoine(DataTil):
         info_par = ind.loc[:, ['men','lienpref','id', 'sexe']]
         
         # [0] Enfants de la personne de référence
-        enf_pref =  ind.loc[ind[ind['enf'].isin([1,2])], ['id','men']] 
+        enf_pref = ind.loc[ind['enf'].isin([1,2]), ['id','men','sexe']]
         enf_pref = enf_pref.merge(info_par[info_par['lienpref']==0],
-                                  on=['men'], how='left', suffixes=('_enf', '_par'))
+                                  on=['men'], suffixes=('_enf', '_par'))
         # [1] Enfants du conjoint de la personne de référence
-        enf_conj =  ind.loc[ind[ind['enf'].isin([1,3])], ['id','men']] 
-        enf_conj = enf_pref.merge(info_par[info_par['lienpref']==1],
-                                  on=['men'], how='left', suffixes=('_enf', '_par'))
-
-        enf_tot = enf0.append(enf1)
-        # [2] Parents à charge
-        par_pref = ind.loc[ind['lienpref'] == 3, ['men','sexe','id']]
+        enf_conj = ind.loc[ind['enf'].isin([1,3]), ['id','men','sexe']] 
+        enf_conj = enf_conj.merge(info_par[info_par['lienpref']==1],
+                                  on=['men'], suffixes=('_enf', '_par'))
+        
+        # Parents de la personne de référence
+        par_pref = ind.loc[ind['lienpref'] == 3, ['id','men','sexe']]
         par_pref = par_pref.merge(info_par[info_par['lienpref']==0],
-                                  on=['men'], how='left', suffixes=('_par', '_enf'))
+                                  on=['men'], suffixes=('_par', '_enf'))
         
+        # Beaux-Parents de la personne de référence
+        bo_par_pref = ind.loc[ind['lienpref'] == 32, ['id','men','sexe']]
+        bo_par_pref = bo_par_pref.merge(info_par[info_par['lienpref']==1],
+                                  on=['men'], suffixes=('_par', '_enf'))
+      
+        # Grand -parents de la personne de référence (2 cas)
+        gpar_pref = ind.loc[ind['lienpref'] == 22, ['id','men','sexe']]
+        gpar_pref = gpar_pref.merge(info_par[info_par['lienpref']==3],
+                                  on=['men'], suffixes=('_par', '_enf'))
         
-        gpar0 = merge(gpar0, info_par, on=['men','lienpref'], how='left', suffixes=('_par', '_enf'))
-        #enf_tot = enf_tot.append(gpar0)
-        gpar1 = ind.loc[(ind['lienpref'] == 32), ['men','lienpref','id']]
-        gpar1['lienpref'] = 1
-        gpar1 = merge(gpar1, info_par, on=['men','lienpref'], how='left', suffixes=('_par', '_enf'))
-        gpar = gpar0.append(gpar1)
-        # TODO: des personnes du même sexe se déclare parent de la personne de ref
-        gpar = gpar.drop_duplicates(['id_enf', 'sexe_par'])
-        enf_tot = enf_tot.append(gpar)
-        
-        # [3] Petits-enfants : on cherche les enfants de la personne de référence ou de son conjoint et on tente de les associer 
-        # à des petits enfants (lienpref=21)
+        # Petits-enfants de la personne de référence
+        petit_enfant = ind.loc[ind['lienpref'] == 21, ['id','men','sexe']]
+        par_petit_enfant = ind.loc[(ind['enf'].isin([2])) & (ind['enfant'] == 2), ['men','lienpref','id','sexe','agem','enfant']]
         # TODO: en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le registre...
-        # et savoir que ce sont les petites enfants (pour l'héritage par exemple)
-        parents = ind.loc[(ind['enf'].isin([2])) & (ind['enfant'] == 2), ['men','lienpref','id','sexe','agem','enfant']]
-        parents.rename(columns = {'sexe': 'sexe_par', 'age' : 'age_par'}, inplace=True)
-        parents['lienpref'] = 21
-        linked = merge(parents, ind.loc[ind['lienpref'] == 21,['men','id', 'agem']], on=['men'], how='inner', suffixes=('_par', '_enf'))
-        
+        # et savoir que ce sont les petites enfants (pour l'héritage par exemple), pareil pour grands-parents quand parents inconnus
+        petit_enfant = merge(petit_enfant, par_petit_enfant, on=['men'], suffixes=('_enf', '_par'))       
+                                
+        linked = enf_pref.append([enf_conj, par_pref, bo_par_pref, gpar_pref, petit_enfant])
+
+
+        pdb.set_trace()
         assert linked.groupby(['id_enf', 'sexe_par']).size().max() == 1
         linked_pere = linked.loc[linked['sexe_par']==0]
         ind.loc[linked_pere['id_enf'].values, 'pere'] = linked_pere['id_par'].values
         linked_mere = linked.loc[linked['sexe_par']==1]
         ind.loc[linked_mere['id_enf'].values, 'mere'] = linked_mere['id_par'].values     
         
-
-
-        enf = DataFrame(enf_tot[['sexe_par', 'id_enf', 'id_par']].fillna(-1), dtype = np.int32)
-        enf = enf[enf['id_enf'] != -1]
-
-        # [4] Création des variables 'pere' et 'mere'
-        ind.index = ind['id']
-        for par in ['pere', 'mere'] :
-            ind[par] = -1
-            if par == 'pere':
-                sexe = 0
-            else:
-                sexe = 1  
-            ind[par][enf.loc[(enf['sexe_par'] == sexe),'id_enf'].values] = enf.loc[(enf['sexe_par'] == sexe),'id_par'].values
-            
-        print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['age']<18))
-        par_mineur = ind.loc[(ind['age']<18), 'id']
-        assert sum((ind['pere'].isin(par_mineur)) | (ind['mere'].isin(par_mineur))) == 0
-        #-> Cas exotiques : bcp de lien indéterminé + frères/soeur : ind[(ind['pere'] == -1) & (ind['mere']==-1) & (ind['age']<18)].to_csv('mineurs.csv')
+        ind['pere'].fillna(-1, inplace=True)
+        ind['mere'].fillna(-1, inplace=True)
         
         # frere soeur 
         sibblings = ind.loc[ind['lienpref'] == 10, ['men','id']]
         sibblings = sibblings.merge(ind.loc[ind['lienpref']==0, ['pere','mere','men']], on='men', how='inner')
         ind.loc[sibblings['id'].values, 'pere'] = sibblings['pere'].values
         ind.loc[sibblings['id'].values, 'mere'] = sibblings['mere'].values
-        
-        # grand_pere
+
+        print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18))
+        test = (ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18)
+        par_trop_jeune = ind.loc[(ind['agem']<12*17), 'id']
+        assert sum((ind['pere'].isin(par_trop_jeune)) | (ind['mere'].isin(par_trop_jeune))) == 0       
+
         
         self.ind = ind
         
