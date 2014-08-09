@@ -83,6 +83,7 @@ class Patrimoine(DataTil):
         "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
         'etamatri': 'civilstate', "cyder":"anc", "duree":"xpr"}
         
+        
         ind.rename(columns=dict_rename, inplace=True)
         # id, men
         men.index = range(10, len(men)+ 10)
@@ -96,8 +97,7 @@ class Patrimoine(DataTil):
                 
         ind['sexe'].replace([1,2], [0,1], inplace=True)
         ind['civilstate'].replace([2,1,4,3,5], [1,2,3,4,5], inplace=True)
-        ind.loc[ind['pacs'] == 1, 'civilstate'] = 5 
-        
+        ind.loc[ind['pacs'] == 1, 'civilstate'] = 5         
         # workstate
         # Code DataTil : {inactif: 1, chomeur: 2, non_cadre: 3, cadre: 4,
         # fonct_a: 5, fonct_s: 6, indep: 7, avpf: 8, preret: 9}
@@ -272,8 +272,8 @@ class Patrimoine(DataTil):
             jeunesse = [x for x in all if x[:7]=='jegrave']
             black_list = jeunesse_grave + parent_prop  + diplom
             #liste blanche
-            info_pers = ['anais','mnais','sexe','dip14']
-            famille = ['couple','lienpref','enf','civilstate','pacs','grandpar','per1e','mer1e']
+            info_pers = ['anais','mnais','sexe','dip14', 'agem']
+            famille = ['couple','lienpref','enf','civilstate','pacs','grandpar','per1e','mer1e','enfant']
             jobmarket = ['statut','situa','preret','classif', 'cs42']
             info_parent = ['jepnais','jemnais','jemprof']
             carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
@@ -348,24 +348,21 @@ class Patrimoine(DataTil):
         enf0 = enf[(enf['enf'].isin([1,2]))].drop('enf', axis = 1)
         enf0['lienpref'] = 0
         enf0 = merge(enf0, info_par, on=['men','lienpref'], how='left', suffixes=('_enf', '_par'))
-
         # [1] Enfants du conjoint de la personne de référence
         enf1 = enf[(enf['enf'].isin([1,3]))].drop('enf', axis = 1)
         enf1['lienpref'] = 1
         enf1 = merge(enf1, info_par, on=['men','lienpref'], how='left', suffixes=('_enf', '_par'))
         enf_tot = enf0.append(enf1)
-        
         # [2] Parents à charge
         gpar0 = ind.loc[ (ind['lienpref'] ==3), ['men','lienpref','id']]
         gpar0['lienpref'] = 0
         gpar0 = merge(gpar0, info_par, on=['men','lienpref'], how='left', suffixes=('_par', '_enf'))
         #enf_tot = enf_tot.append(gpar0)
-
-        gpar1 = ind.loc[ (ind['lienpref'] == 32), ['men','lienpref','id']]
+        gpar1 = ind.loc[(ind['lienpref'] == 32), ['men','lienpref','id']]
         gpar1['lienpref'] = 1
         gpar1 = merge(gpar1, info_par, on=['men','lienpref'], how='left', suffixes=('_par', '_enf'))
         gpar = gpar0.append(gpar1)
-        # TODO: pas normal que plusieurs personnes du même sexe se déclare parent de la personne de ref
+        # TODO: des personnes du même sexe se déclare parent de la personne de ref
         gpar = gpar.drop_duplicates(['id_enf', 'sexe_par'])
         enf_tot = enf_tot.append(gpar)
         
@@ -373,20 +370,18 @@ class Patrimoine(DataTil):
         # à des petits enfants (lienpref=21)
         # TODO: en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le registre...
         # et savoir que ce sont les petites enfants (pour l'héritage par exemple)
-        par = ind.loc[ (ind['enf'] != -1) & ind['enf'].isin([1,2,3]), ['men','lienpref','id', 'sexe', 'age']].rename(columns = {'sexe': 'sexe_par', 'age' : 'age_par'})
-        par['lienpref'] = 21
-        par = merge(par, ind[['men','lienpref','id']], on=['men','lienpref'], how='inner', suffixes=('_par', '_enf'))
-        enf3 = par.drop_duplicates(['id_enf', 'sexe_par'])
-        for enf in par['id_enf']:
-            parent = par[par['id_enf']== enf]
-            if len(parent) > 1:
-                pot_mother = parent[parent['sexe_par']==1].sort('age_par')
-                if len(pot_mother) > 1:
-                    enf3.loc[enf3['id_enf']==enf] =  pot_mother.drop_duplicates('id_enf', take_last=True)
-                pot_father = parent[parent['sexe_par']==0].sort('age_par')
-                if len(pot_father) > 1:
-                    enf3.loc[enf3['id_enf']==enf] =  pot_father.drop_duplicates('id_enf', take_last=True)
-        enf_tot = enf_tot.append(enf3)
+        parents = ind.loc[(ind['enf'].isin([2])) & (ind['enfant'] == 2), ['men','lienpref','id','sexe','agem','enfant']]
+        parents.rename(columns = {'sexe': 'sexe_par', 'age' : 'age_par'}, inplace=True)
+        parents['lienpref'] = 21
+        linked = merge(parents, ind.loc[ind['lienpref'] == 21,['men','id', 'agem']], on=['men'], how='inner', suffixes=('_par', '_enf'))
+        
+        assert linked.groupby(['id_enf', 'sexe_par']).size().max() == 1
+        linked_pere = linked.loc[linked['sexe_par']==0]
+        ind.loc[linked_pere['id_enf'].values, 'pere'] = linked_pere['id_par'].values
+        linked_mere = linked.loc[linked['sexe_par']==1]
+        ind.loc[linked_mere['id_enf'].values, 'mere'] = linked_mere['id_par'].values     
+        
+
 
         enf = DataFrame(enf_tot[['sexe_par', 'id_enf', 'id_par']].fillna(-1), dtype = np.int32)
         enf = enf[enf['id_enf'] != -1]
