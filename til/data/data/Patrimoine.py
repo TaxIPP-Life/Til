@@ -1,4 +1,4 @@
-# -*- coding:utf-8 -*-
+﻿# -*- coding:utf-8 -*-
 '''
 Created on 2 août 2013
 
@@ -29,7 +29,7 @@ class Patrimoine(DataTil):
         self.survey_date = 100*self.survey_year + 1
         #TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         #TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
-        self.methods_order = ['load','correction_initial','drop_variable','format_initial','champ','conjoint','enfants',
+        self.methods_order = ['load','drop_variable','to_DataTil_format','champ','conjoint','enfants',
                       'expand_data','creation_child_out_of_house','matching_par_enf','matching_couple_hdom',
                       'creation_foy','mise_au_format','var_sup','store_to_liam']
 
@@ -59,16 +59,7 @@ class Patrimoine(DataTil):
         assert (men['identmen'].isin(ind['identmen'])).all()
         assert (ind['identmen'].isin(men['identmen'])).all()
         print "fin de l'importation des données"
-        
-    def correction_initial(self):
-        ind = self.ind
-        def _correction_etamatri():
-            ''' Création de pacs comme un modalité de l'union (5) '''
-            ind.loc[ind['pacs'] == 1, 'civilstate'] = 5 
-        # Remarque: correction_carriere() doit être lancer avant champ_metro à cause des numeros de ligne en dur
-        _correction_etamatri()
-        self.ind = ind
-            
+                    
     def champ(self, option='metropole'):
         ''' Limite la base à un champ d'étude défini '''
         ind = self.ind
@@ -83,7 +74,102 @@ class Patrimoine(DataTil):
             ind = ind[~ind['identmen'].isin(antilles)]
         self.men = men
         self.ind = ind
-            
+
+    def to_DataTil_format(self):
+        men = self.men      
+        ind = self.ind 
+        
+        dict_rename = {"zsalaires_i":"sali", "zchomage_i":"choi",
+        "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
+        'etamatri': 'civilstate', "cyder":"anc", "duree":"xpr"}
+        
+        ind.rename(columns=dict_rename, inplace=True)
+        # id, men
+        men.index = range(10, len(men)+ 10)
+        men['id'] = men.index
+        ind['id'] = ind.index
+        idmen = men[['id', 'identmen']].rename(columns = {'id': 'men'})
+        ind = merge(ind, idmen, on='identmen')
+        # agem
+        age = self.survey_date/100 - ind['anais']
+        ind['agem'] = 12*age + 11 - ind['mnais']
+                
+        ind['sexe'].replace([1,2], [0,1], inplace=True)
+        ind['civilstate'].replace([2,1,4,3,5], [1,2,3,4,5], inplace=True)
+        ind.loc[ind['pacs'] == 1, 'civilstate'] = 5 
+        
+        # workstate
+        # Code DataTil : {inactif: 1, chomeur: 2, non_cadre: 3, cadre: 4,
+        # fonct_a: 5, fonct_s: 6, indep: 7, avpf: 8, preret: 9}
+        ind['workstate'] = ind['statut'].replace([1,2,3,4,5,6,7],[6,6,3,3,1,7,7])
+        # AVPF
+        # TODO: l'avpf est de la législation, ne devrait pas être un statut de workstate
+        cond_avpf = (men['paje']==1) | (men['complfam']==1) | (men['allocpar']==1) | (men['asf']==1)
+        avpf = men.loc[cond_avpf,'id'] 
+        ind.loc[(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2])), 'workstate'] = 8
+        # cadre, non cadre
+        ind.loc[(ind['classif'].isin([6,7]))  & (ind['workstate']==5), 'workstate'] = 6
+        ind.loc[(ind['classif'].isin([6,7]))  & (ind['workstate']==3), 'workstate'] = 4 #Pas très bon car actif, sedentaire et pas cadre non cadre
+        #retraite
+        ind.loc[ind['preret']==1, 'workstate'] = 9
+        ind.loc[(ind['anais'] < self.survey_year-64)  & (ind['workstate']==1), 'workstate'] = 10
+        ind['workstate'].fillna(1, inplace=True)
+        ind['workstate'] = ind['workstate'].astype(np.int8)
+                
+        # findet
+        ind['findet'].replace(0, np.nan, inplace=True)
+        ind['findet'] = ind['findet'] - ind['anais']
+        
+        self.men = men
+        self.ind = ind
+        self.drop_variable({'men':['identmen','paje','complfam','allocpar','asf'], 'ind':['identmen','preret']})
+        
+        # Sorties au format minimal
+        # format minimal
+        ind = self.ind.fillna(-1).replace(-1,np.nan)
+        self.ind = ind
+
+
+    def corrections(self):
+        ind = self.ind 
+        # _work_on_couple(self):
+        # 1- Personne se déclarant mariées/pacsées mais pas en couples
+        # (a) Si deux mariés/pacsés pas en couple vivent dans le même ménage -> en couple (2 cas)
+        prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3)
+        if sum(prob_couple):
+            statu_marit = ind.loc[prob_couple,['men','couple','civilstate','lienpref']].fillna(-1)
+            prob_by_men = statu_marit['men'].value_counts()
+            many_by_men = prob_by_men.loc[prob_by_men > 1].index.values
+            prob_couple_ident = statu_marit[statu_marit['men'].isin(many_by_men)]
+            ind.loc[prob_couple_ident.index,'couple'] = 1
+        # (b) si un marié/pacsé pas en couple est conjoint de la personne de ref -> en couple (0 cas)
+        prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 1)
+        ind.loc[prob_couple,'couple'] = 1
+        # (c) si un marié/pacsé pas en couple est ref et l'unique conjoint déclaré dans le ménage se dit en couple -> en couple (0)
+        prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 0)
+        if sum(prob_couple):
+            statu_marit = ind.loc[prob_couple,['men','couple','civilstate','lienpref']].fillna(-1)
+            men_conj = ind.loc[(ind['men'].isin(statu_marit['men'])) & (ind['lienpref'] == 1), 'men'].value_counts() == 1
+            ind.loc[men_conj.index.values, 'couple'] = 1
+
+        # 2 - Check présence d'un conjoint dans le ménage si couple=1 et lienpref in 0,1
+        conj = ind.loc[ind['couple']==1,['men','lienpref','id']]
+        # pref signifie "personne de reference"
+        pref0 = conj.loc[conj['lienpref']==0, 'men']
+        pref1 = conj.loc[conj['lienpref']==1, 'men']
+        assert sum(~pref1.isin(pref0)) == 0
+        conj_hdom = pref0[~pref0.isin(pref1)]
+        ind.loc[conj_hdom.index,'couple'] = 2
+
+        # Présence du fils/fille de la personne de ref si déclaration belle-fille/beau-fils
+        pref2 = conj.loc[conj['lienpref']==2,'men']
+        pref31 = conj.loc[conj['lienpref']==31,'men']
+        assert sum(~pref31.isin(pref2)) == 0          
+        manque_conj = pref2[~pref2.isin(pref31)]
+        ind.loc[manque_conj.index,'couple'] = 2
+        self.ind = ind
+        
+
     def work_on_past(self):
         ind = self.ind
         def _correction_carriere():
@@ -184,105 +270,6 @@ class Patrimoine(DataTil):
 #         self.longitudinal['sali']['id'] = ind['id']
         self.drop_variable(dict_to_drop={'ind':carriere})
 
-
-    def to_DataTil_format(self):
-        men = self.men      
-        ind = self.ind 
-        
-        dict_rename = {"zsalaires_i":"sali", "zchomage_i":"choi",
-        "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
-        'etamatri': 'civilstate', "cyder":"anc", "duree":"xpr"}
-        ind = ind.rename(columns=dict_rename)
-        # id, men
-        men.index = range(10, len(men)+ 10)
-        men['id'] = men.index
-        ind['id'] = ind.index
-        idmen = men[['id', 'identmen']].rename(columns = {'id': 'men'})
-        ind = merge(ind, idmen, on='identmen')
-        # agem
-        age = self.survey_date/100 - ind['anais']
-        ind['agem'] = 12*age + 11 - ind['mnais']
-                
-        ind['sexe'].replace([1,2], [0,1], inplace=True)
-        ind['civilstate'].replace([2,1,4,3,5], [1,2,3,4,5], inplace=True)
-
-        # workstate
-        # Code DataTil : {inactif: 1, chomeur: 2, non_cadre: 3, cadre: 4,
-        # fonct_a: 5, fonct_s: 6, indep: 7, avpf: 8, preret: 9}
-        ind['workstate'] = ind['statut'].replace([1,2,3,4,5,6,7],[6,6,3,3,1,7,7])
-        # AVPF
-        # TODO: l'avpf est de la législation, ne devrait pas être un statut de workstate
-        cond_avpf = (men['paje']==1) | (men['complfam']==1) | (men['allocpar']==1) | (men['asf']==1)
-        avpf = men.loc[cond_avpf,'id'] 
-        ind.loc[(ind['men'].isin(avpf)) & (ind['workstate'].isin([1,2])), 'workstate'] = 8
-        # cadre, non cadre
-        ind.loc[(ind['classif'].isin([6,7]))  & (ind['workstate']==5), 'workstate'] = 6
-        ind.loc[(ind['classif'].isin([6,7]))  & (ind['workstate']==3), 'workstate'] = 4 #Pas très bon car actif, sedentaire et pas cadre non cadre
-        #retraite
-        ind.loc[ind['preret']==1, 'workstate'] = 9
-        ind.loc[(ind['anais'] < self.survey_year-64)  & (ind['workstate']==1), 'workstate'] = 10
-        ind['workstate'].fillna(1, inplace=True)
-        
-        def _work_on_couple(self):
-            # 1- Personne se déclarant mariées/pacsées mais pas en couples
-            statu_mari = ind[['men','couple','civilstate','pacs','lienpref']].fillna(-1)
-            # (a) Si deux mariés/pacsés pas en couple vivent dans le même ménage -> en couple (2)
-            prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) 
-            if sum(prob_couple) != 0 :
-                statu_marit = statu_mari[prob_couple]
-                many_by_men = statu_marit['men'].value_counts() > 1
-                many_by_men = statu_marit['men'].value_counts()[many_by_men]
-                prob_couple_ident = statu_marit[statu_marit['men'].isin(many_by_men.index.values.tolist())]
-                ind.loc[prob_couple_ident.index,'couple'] = 1
-                
-            # (b) si un marié/pacsé pas en couple est conjoint de la personne de ref -> en couple (0)
-            prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 1)
-            ind.loc[prob_couple_ident.index,'couple'] = 1
-            
-            # (c) si un marié/pacsé pas en couple est ref et l'unique conjoint déclaré dans le ménage se dit en couple -> en couple (0)
-            prob_couple = (ind['civilstate'].isin([1,5])) & (ind['couple'] == 3) & (ind['lienpref'] == 0)
-            men_conj = statu_mari[prob_couple]
-            men_conj = statu_mari.loc[(statu_mari['men'].isin(men_conj['men'].values))& (statu_mari['lienpref'] == 1), 'men' ].value_counts() == 1
-            ind.loc[prob_couple_ident.index,'couple'] = 1
-
-            
-            # 2 - Check présence d'un conjoint dans le ménage si couple=1 et lienpref in 0,1
-            conj = ind.loc[ind['couple']==1,['men','lienpref','id']]
-#             conj['lienpref'].value_counts()
-            # pref signifie "personne de reference"
-            pref0 = conj.loc[conj['lienpref']==0,'men']
-            pref1 = conj.loc[conj['lienpref']==1,'men']
-            assert sum(~pref1.isin(pref0)) == 0
-            conj_hdom = pref0[~pref0.isin(pref1)]
-            ind.loc[conj_hdom.index,'couple'] = 2
-            
-            # Présence du fils/fille de la personne de ref si déclaration belle-fille/beau-fils
-            pref2 = conj.loc[conj['lienpref']==2,'men']
-            pref31 = conj.loc[conj['lienpref']==31,'men']
-            assert sum(~pref31.isin(pref2)) == 0          
-            manque_conj = pref2[~pref2.isin(pref31)]
-            ind.loc[manque_conj.index,'couple'] = 2
-   
-            return ind
-
-        ind['workstate'] = ind['workstate'].fillna(-1).astype(np.int8)
-        # work in findet
-        ind['findet'][ind['findet']==0] = np.nan
-        ind['findet'] = ind['findet'] - ind['anais']
-        ind['findet'][ind['findet'].isnull()] = np.nan
-        
-        ind = _work_on_couple(ind)
-        self.men = men
-        self.ind = ind
-        self.drop_variable({'men':['identmen','paje','complfam','allocpar','asf'], 'ind':['identmen','preret']})
-        
-        # Sorties au format minimal
-        # format minimal
-        ind = self.ind.fillna(-1).replace(-1,np.nan)
-        ind = minimal_dtype(ind)
-        self.ind = ind
-
-
         
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
@@ -338,7 +325,6 @@ class Patrimoine(DataTil):
                 dict_to_drop['ind'] = [x for x in all if x not in white_list]
             else:
                 dict_to_drop['ind'] = black_list            
-            
         DataTil.drop_variable(self, dict_to_drop, option)
     
         
@@ -685,11 +671,10 @@ if __name__ == '__main__':
     start_t = time.time()
     data = Patrimoine()
     data.load()
-    data.correction_initial()
-    data.drop_variable()
     # drop_variable() doit tourner avant table_initial() car on fait comme si diplome par exemple n'existait pas
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
+    data.drop_variable()
     data.conjoint()
     data.check_conjoint(couple_hdom = True)
     data.enfants()
