@@ -258,7 +258,7 @@ class Patrimoine(DataTil):
             var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
             var_apjf = ['asf','allocpar','complfam','paje']
             enfants_hdom = [x for x in all if x[:3]=='hod']
-            white_list = ['identmen','pond'] + var_apjf + enfants_hdom + var_to_declar 
+            white_list = ['id','identmen','pond'] + var_apjf + enfants_hdom + var_to_declar 
             if option=='white':
                 dict_to_drop['men'] = [x for x in all if x not in white_list]
             else:
@@ -272,8 +272,8 @@ class Patrimoine(DataTil):
             jeunesse = [x for x in all if x[:7]=='jegrave']
             black_list = jeunesse_grave + parent_prop  + diplom
             #liste blanche
-            info_pers = ['anais','mnais','sexe','dip14', 'agem']
-            famille = ['couple','lienpref','enf','civilstate','pacs','grandpar','per1e','mer1e','enfant']
+            info_pers = ['anais','mnais','sexe','dip14', 'agem','findet']
+            famille = ['couple','lienpref','enf','civilstate','workstate', 'pacs','grandpar','per1e','mer1e','enfant']
             jobmarket = ['statut','situa','preret','classif', 'cs42']
             info_parent = ['jepnais','jemnais','jemprof']
             carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
@@ -370,20 +370,18 @@ class Patrimoine(DataTil):
         
         # Petits-enfants de la personne de référence
         petit_enfant = ind.loc[ind['lienpref'] == 21, ['id','men','sexe']]
-        par_petit_enfant = ind.loc[(ind['enf'].isin([2])) & (ind['enfant'] == 2), ['men','lienpref','id','sexe','agem','enfant']]
+        par_petit_enfant = ind.loc[(ind['enf'].isin([1,2,3])) & (ind['enfant'] == 2), ['men','lienpref','id','sexe','agem','enfant']]
+        par_petit_enfant.drop_duplicates('men', inplace=True)
         # TODO: en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le registre...
         # et savoir que ce sont les petites enfants (pour l'héritage par exemple), pareil pour grands-parents quand parents inconnus
-        petit_enfant = merge(petit_enfant, par_petit_enfant, on=['men'], suffixes=('_enf', '_par'))       
-                                
+        petit_enfant = merge(petit_enfant, par_petit_enfant, on=['men'], suffixes=('_enf', '_par'))
+ 
         linked = enf_pref.append([enf_conj, par_pref, bo_par_pref, gpar_pref, petit_enfant])
-
-
-        pdb.set_trace()
         assert linked.groupby(['id_enf', 'sexe_par']).size().max() == 1
         linked_pere = linked.loc[linked['sexe_par']==0]
         ind.loc[linked_pere['id_enf'].values, 'pere'] = linked_pere['id_par'].values
         linked_mere = linked.loc[linked['sexe_par']==1]
-        ind.loc[linked_mere['id_enf'].values, 'mere'] = linked_mere['id_par'].values     
+        ind.loc[linked_mere['id_enf'].values, 'mere'] = linked_mere['id_par'].values
         
         ind['pere'].fillna(-1, inplace=True)
         ind['mere'].fillna(-1, inplace=True)
@@ -394,8 +392,28 @@ class Patrimoine(DataTil):
         ind.loc[sibblings['id'].values, 'pere'] = sibblings['pere'].values
         ind.loc[sibblings['id'].values, 'mere'] = sibblings['mere'].values
 
+        # Last call, find the parent when we know he or she is there
+        look_mother = ind.loc[(ind['mer1e'] == 1) & (ind['mere'] == -1), ['men','lienpref','id','agem']]
+        look_mother = look_mother[look_mother['lienpref'].isin([0,1,2])]
+        potential_mother = ind.loc[(ind['sexe']==1) & (~ind['lienpref'].isin([0,2,3])), ['id','men','sexe','agem','lienpref']]
+        potential_mother = potential_mother[~potential_mother['id'].isin(look_mother['id'])]
+        match_mother = look_mother.merge(potential_mother, on=['men'], suffixes=('_enf', '_par'))
+        match_mother.sort(columns=['men','lienpref_par','agem_par'], ascending=[True,False,False], inplace=True)
+        match_mother.drop_duplicates('id_enf', take_last=False, inplace=True)
+        ind.loc[match_mother['id_enf'].values, 'mere'] = match_mother['id_par'].values
+        # TODO: Find a better afectation rule
+        look_father = ind.loc[(ind['per1e'] == 1) & (ind['pere'] == -1), ['men','lienpref','id','agem']]
+        look_father = look_father[look_father['lienpref'].isin([0,1,2])]
+        potential_father = ind.loc[(ind['sexe']==0) & (~ind['lienpref'].isin([0,2,3])), ['id','men','sexe','agem','lienpref']]
+        potential_father = potential_father[~potential_father['id'].isin(look_father['id'])]
+        match_father = look_father.merge(potential_father, on=['men'], suffixes=('_enf', '_par'))
+        match_father.sort(columns=['men','lienpref_par','agem_par'], ascending=[True,False,False], inplace=True)
+        match_father.drop_duplicates('id_enf', take_last=False, inplace=True)
+        ind.loc[match_father['id_enf'].values, 'pere'] = match_father['id_par'].values
+        
         print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18))
         test = (ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18)
+        ind.loc[test, ['lienpref','mer1e','per1e']]
         par_trop_jeune = ind.loc[(ind['agem']<12*17), 'id']
         assert sum((ind['pere'].isin(par_trop_jeune)) | (ind['mere'].isin(par_trop_jeune))) == 0       
 
@@ -583,7 +601,6 @@ class Patrimoine(DataTil):
         Comme pour les liens parents-enfants, on néglige ici la possibilité que le conjoint soit hors champ (étrange, prison, casernes, etc).
         Calcul aussi la variable ind['nb_enf']
         '''
-
         ind = self.ind  
         couple_hdom = ind['couple']==2
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
@@ -607,11 +624,11 @@ class Patrimoine(DataTil):
         men_libre = couple_hdom & (~ind['civilstate'].isin([1,5])) & (ind['sexe']==0)
         women_libre = couple_hdom & (~ind['civilstate'].isin([1,5])) & (ind['sexe']==1)   
         
+        ind['age'] = ind['agem']//12
         var_match = ['age','findet','nb_enf'] #,'classif','dip6'
         score = "- 0.4893 * other.age + 0.0131 * other.age **2 - 0.0001 * other.age **3 "\
                  " + 0.0467 * (other.age - age)  - 0.0189 * (other.age - age) **2 + 0.0003 * (other.age - age) **3 " \
                  " + 0.05   * (other.findet - findet) - 0.5 * (other.nb_enf - nb_enf) **2 "
-         
         match_contrat = Matching(ind.loc[women_contrat, var_match], ind.loc[men_contrat, var_match], score)
         match_found = match_contrat.evaluate(orderby=None, method='cells')
         ind.ix[match_found.values,'conj'] =  match_found.index
@@ -624,8 +641,8 @@ class Patrimoine(DataTil):
         ind.loc[men_libre & ind['conj'].isnull(),['civilstate','couple']] =  [2,3]
         ind.loc[women_libre & ind['conj'].isnull(),['civilstate','couple']] =  [2,3]  
     
-        self.ind = ind   
-        self.drop_variable({'ind':['couple']})        
+        ind.drop(['couple','age'], axis=1, inplace=True)
+        self.ind = ind     
 
 if __name__ == '__main__':
     

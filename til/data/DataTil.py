@@ -205,7 +205,7 @@ class DataTil(object):
         conj = spouse & ( ind['conj'] < ind['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac_condition = (ind['civilstate']==2)  & ( ((ind['age'] <25) & (ind['workstate']==11)) | (ind['age']<21) ) &(ind['nb_enf']==0)
+        pac_condition = (ind['civilstate']==2)  & ( ((ind['agem'] <12*25) & (ind['workstate']==11)) | (ind['agem']<12*21) ) &(ind['nb_enf']==0)
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
