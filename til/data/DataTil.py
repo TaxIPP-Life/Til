@@ -172,7 +172,7 @@ class DataTil(object):
         '''
         ind = self.ind
         men = self.men
-        survey_year = self.survey_year
+        survey_date = self.survey_date
         print ("Creation des declarations fiscales")
         # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
         if 'nb_enf' not in ind.columns:
@@ -205,7 +205,8 @@ class DataTil(object):
         conj = spouse & ( ind['conj'] < ind['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac_condition = (ind['civilstate']==2)  & ( ((ind['agem'] <12*25) & (ind['workstate']==11)) | (ind['agem']<12*21) ) &(ind['nb_enf']==0)
+        pac_condition = (ind['civilstate'] == 2)  & ( ((ind['agem'] < 12*25) & \
+                                                        (ind['workstate'] == 11)) | (ind['agem'] < 12*21) ) &(ind['nb_enf'] == 0)
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
@@ -254,7 +255,7 @@ class DataTil(object):
             for var in impots :
                 foy_men[var] = foy_men[var] / nb_foy_men
             foy = merge(foy, foy_men, on = 'men', how ='left', right_index=True)
-        foy['period'] = survey_year
+        foy['period'] = survey_date
 
         # Ajouts des 'communautés' dans la table foyer
         for k in [0]:
@@ -262,7 +263,7 @@ class DataTil(object):
                 to_add = DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
                 to_add['id'] = k
                 to_add['vous'] = -1
-                to_add['period'] = survey_year
+                to_add['period'] = survey_date
                 foy = concat([foy, to_add], axis = 0, ignore_index=True)
 
         foy.index = foy['id']
@@ -414,26 +415,6 @@ class DataTil(object):
         past = self.past
         longit = self.longitudinal
 
-        for data in [ind, men, foy]:
-            if data is not None:
-                data['period'] =  self.survey_year*100 + 1
-
-        for data in [past, futur]:
-            if data is not None:
-                data['period'] = data['period'].astype(int)
-                data['period'] = 100*data['period'] + 1
-#         if ('age' not in ind.columns) & ('anais' in ind.columns):
-#             ind['age'] = self.survey_date//100 - ind['anais']
-#             ind['age'] = ind['age'].astype(np.int8)
-
-        for name, table in longit.iteritems():
-            table.columns = [100*year + 1 for year in table.columns]
-
-        if 'agem' not in ind.columns :
-            ind['agem'] = ind['age'].astype(np.int16)
-            ind.loc[ind['agem'] !=-1, 'agem'] = ind.loc[ind['agem'] !=-1, 'agem'] * 12
-            ind.drop('age', axis=1, inplace=True)
-
         ind_men = ind.groupby('men')
         ind = ind.set_index('men')
         ind['nb_men'] = ind_men.size().astype(np.int)
@@ -483,15 +464,10 @@ class DataTil(object):
         ind = self.ind
         foy = self.foy
         futur = self.futur
-
+        longit = self.longitudinal
+        
         assert all(ind['workstate'].isin(range(1,12)))
         assert all(ind['civilstate'].isin(range(1,6)))
-
-
-        if self.name == 'Destinie':
-            men =  men[men['period']==self.survey_date]
-            ind =  ind[ind['period']==self.survey_date]
-            foy =  foy[foy['period']==self.survey_date]
 
         # Foyers et ménages bien attribués
         assert sum((ind['foy'] == -1)) == 0
@@ -540,6 +516,20 @@ class DataTil(object):
                     + str( len(id_ok)) + " ("+ str( len(id_ini))
                     + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")
 
+        for table in [ind, men, foy, futur]:
+            if table is not None:
+                test_month = table['period'] % 100
+                assert all(test_month.isin(range(1,13)))
+                test_year = table['period'] // 100
+                assert all(test_year.isin(range(1900,2100)))
+                
+        for name, table in longit.iteritems():
+            cols = table.columns
+            cols_year = [(col // 100 in range(1900,2100))  for col in cols]
+            cols_month = [(col % 100 in range(1,13)) for col in cols]
+            assert all(cols_year)
+            assert all(cols_month)
+                
     def _output_name(self, extension='.h5'):
         if self.seuil is None:
             name = self.name + extension

@@ -83,7 +83,6 @@ class Patrimoine(DataTil):
         "zpenalir_i":"alr", "zretraites_i":"rsti", "anfinetu":"findet",
         'etamatri': 'civilstate', "cyder":"anc", "duree":"xpr"}
         
-        
         ind.rename(columns=dict_rename, inplace=True)
         # id, men
         men.index = range(10, len(men)+ 10)
@@ -91,6 +90,9 @@ class Patrimoine(DataTil):
         ind['id'] = ind.index
         idmen = men[['id', 'identmen']].rename(columns = {'id': 'men'})
         ind = merge(ind, idmen, on='identmen')
+        
+        ind['period'] = self.survey_date
+        men['period'] = self.survey_date
         # agem
         age = self.survey_date/100 - ind['anais']
         ind['agem'] = 12*age + 11 - ind['mnais']
@@ -258,7 +260,7 @@ class Patrimoine(DataTil):
             var_to_declar = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
             var_apjf = ['asf','allocpar','complfam','paje']
             enfants_hdom = [x for x in all if x[:3]=='hod']
-            white_list = ['id','identmen','pond'] + var_apjf + enfants_hdom + var_to_declar 
+            white_list = ['id','identmen','pond', 'period'] + var_apjf + enfants_hdom + var_to_declar 
             if option=='white':
                 dict_to_drop['men'] = [x for x in all if x not in white_list]
             else:
@@ -278,7 +280,7 @@ class Patrimoine(DataTil):
             info_parent = ['jepnais','jemnais','jemprof']
             carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'anfinetu','prodep']
             revenus = ["zsalaires_i", "zchomage_i", "zpenalir_i", "zretraites_i", "cyder", "duree"]           
-            white_list = ['identmen','men','noi', 'pond', 'id', 'identind'] + info_pers + famille + jobmarket + carriere + info_parent + revenus 
+            white_list = ['identmen','men','noi', 'pond', 'id', 'identind', 'period'] + info_pers + famille + jobmarket + carriere + info_parent + revenus 
             
             if option=='white':
                 dict_to_drop['ind'] = [x for x in all if x not in white_list]
@@ -415,9 +417,7 @@ class Patrimoine(DataTil):
         test = (ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18)
         ind.loc[test, ['lienpref','mer1e','per1e']]
         par_trop_jeune = ind.loc[(ind['agem']<12*17), 'id']
-        assert sum((ind['pere'].isin(par_trop_jeune)) | (ind['mere'].isin(par_trop_jeune))) == 0       
-
-        
+        assert sum((ind['pere'].isin(par_trop_jeune)) | (ind['mere'].isin(par_trop_jeune))) == 0
         self.ind = ind
         
     def creation_child_out_of_house(self):
@@ -660,10 +660,10 @@ if __name__ == '__main__':
     data.enfants()
     data.expand_data(seuil=400)
     data.creation_child_out_of_house()
-    data.matching_par_enf() 
+    data.matching_par_enf()
     data.match_couple_hdom()
     data.check_conjoint(couple_hdom = False)
-    data.creation_foy()   
+    data.creation_foy()
     data.format_to_liam()
     data.final_check()
     data.store_to_liam()
