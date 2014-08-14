@@ -21,12 +21,11 @@ def run_pension(context, yearleg, time_step='year', to_check=False, output='pens
     workstate = context['longitudinal']['workstate']
     # calcul de la date de naissance au bon format
     datesim = context['period']
-    age_year = context['agem'] // 12
-    age_month = context['agem'] % 12 + 1
-    naiss_year = datesim // 100 - age_year
-    naiss_month = datesim % 100 - age_month + 1
-    naiss = pd.Series(naiss_year * 100 + naiss_month)
-    naiss = naiss.map(lambda t: dt.date(t // 100, t % 100, 1))
+    datesim_in_month = 12*(datesim // 100) + datesim % 100
+    datenaiss_in_month = datesim_in_month - context['agem']
+    naiss = 100*(datenaiss_in_month // 12) + datenaiss_in_month % 12 + 1
+    naiss = pd.Series(naiss)
+    naiss = pd.Series(naiss).map(lambda t: dt.date(t // 100, t % 100, 1))
 
     info_ind = pd.DataFrame({'index':context['id'], 'agem': context['agem'],'naiss': naiss, 'sexe' : context['sexe'],
                               'nb_enf_all': context['nb_enf'], 'nb_pac': context['nb_pac'], 'nb_enf_RG': context['nb_enf_RG'],
