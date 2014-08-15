@@ -314,6 +314,7 @@ class DataTil(object):
         ind = self.ind
         foy = self.foy
         par = self.child_out_of_house
+        longit = self.longitudinal
 
         if par is None:
             print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables " \
@@ -337,7 +338,7 @@ class DataTil(object):
         # 3- Nouvelles pondérations (qui seront celles associées aux individus après réplication)
         men['pond'] = men['pond'].div(men['nb_rep'])
         # TO DO: réflechir pondération des personnes en collectivité pour l'instant = 1
-        men.loc[men['id']<10, 'pond'] = 1
+        men.loc[men['id'] < 10, 'pond'] = 1
         men_exp = replicate(men)
 
         # pour conserver les 10 premiers ménages = collectivités
@@ -395,6 +396,12 @@ class DataTil(object):
             ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]
             pac_mere = pac & ~notnull(ind['foy'])
             ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']]
+
+        for name, table in longit.iteritems():
+            table = table.merge(ind_exp[['id_ini', 'id']], right_on='id', left_index=True, how='right')
+            table.set_index('id', inplace=True)
+            table.drop('id_ini', axis=1, inplace=True)
+            self.longitudinal[name] = table
 
         assert sum(ind['id']==-1) == 0
         self.child_out_of_house = par
