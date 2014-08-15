@@ -150,45 +150,43 @@ class Patrimoine(DataTil):
     def corrections(self):
         ind = self.ind
         pass
-        
 
 
-    def work_on_past(self):
+    def work_on_past(self, method='from_external_match'):
+        assert method in ['from_external_match', 'from_data']
         ind = self.ind
-
         def _correction_carriere():
             '''
             Fait des corrections sur le déroulé des carrières
             ( à partir de vérif écrit en R)
             '''
             # Note faire attention à la numérotation à partir de 0
-            # TODO: verifier que c'est bien pris en compte malgré le fait qu'on ne passe pas par .loc
             # TODO: faire une verif avec des asserts
             ind['cydeb1'] = ind['prodep']
             liste1 = [6723,7137,10641,21847,30072,31545,33382]
             liste1 = [x - 1 for x in liste1]
-            ind.iloc[liste1, 'cydeb1'] = ind.iloc[liste1, 'naiss'] + 20
-            ind.iloc[15206, 'cydeb1'] = 1963
-            ind.iloc[27800, 'cydeb1'] = 1999
+            ind['cydeb1'][liste1] = ind.anais[liste1] + 20
+            ind['cydeb1'][15206] = 1963
+            ind['cydeb1'][27800] = 1999
             ind['modif'] = Series("", index=ind.index)
             ind['modif'].iloc[liste1 +[15206,27800]] =  "cydeb1_manq"
 
-            ind.iloc[10833, 'cyact3'] = 4
-            ind.iloc[23584, 'cyact2'] = 11
-            ind.iloc[27816, 'cyact3'] = 5
+            ind['cyact3'][10833] = 4
+            ind['cyact2'][23584] = 11
+            ind['cyact3'][27816] = 5
             ind['modif'].iloc[[10833,23584,27816]] = "cyact manq"
-            var = ["cyact","cydeb","cycaus","cytpto"]
-            #Note : la solution ne semble pas être parfaite au sens qu'elle ne résout pas tout
+            var = ["cyact", "cydeb", "cycaus", "cytpto"]
+            # Note : la solution ne semble pas être parfaite au sens qu'elle ne résout pas tout
             # cond : gens pour qui on a un probleme de date
-            cond1 = ind['cyact2'].notnull() & ind['cyact1'].isnull() & \
+            cond0 = ind['cyact2'].notnull() & ind['cyact1'].isnull() & \
                 ((ind['cydeb1'] == ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1'] == (ind['cydeb2'] - 1)))
-            cond1.iloc[8297] = True
-            ind['modif'][cond1] = "decal act"
+            cond0.iloc[8297] = True
+            ind['modif'][cond0] = "decal act"
             # on decale tout de 1 à gauche en espérant que ça résout le problème
             for k in range(1, 16):
                 var_k = [x + str(k) for x in var]
                 var_k1 = [x + str(k+1) for x in var]
-                ind.ix[cond1, var_k] = ind.ix[cond1, var_k1]
+                ind.loc[cond0, var_k] = ind.loc[cond0, var_k1]
 
 
             # si le probleme n'est pas resolu, le souci était sur cycact seulement, on met une valeur
@@ -200,58 +198,74 @@ class Patrimoine(DataTil):
 
             cond2 = ind['cydeb1'].isnull() & (ind['cyact1'].notnull() | ind['cyact2'].notnull())
             ind.loc[cond2, 'modif'] = "jeact ou anfinetu manq"
-            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'anfinetu']].max(axis=1)
+            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'findet']].max(axis=1)
             # quand l'ordre des dates n'est pas le bon on fait l'hypothèse que
             # c'est la première date entre anfinetu et jeactif qu'il faut prendre en non pas l'autre
             cond2 = ind['cydeb1'] > ind['cydeb2']
-            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'anfinetu']].min(axis=1)
+            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'findet']].min(axis=1)
             return ind
 
-        _correction_carriere()
-        path_patr_past = os.path.join(path_data_patr, 'base.csv')
-        past = read_csv(path_patr_past)
-        dates = [100*year + 1 for year in range(1980, 2010)]
-        sali = DataFrame(columns=dates)
-        workstate = DataFrame(columns=dates)
-        for year in range(1980, 2010):
-            workstate[100*year + 1] = past['statut' + str(year)]
-            workstate[100*year + 1] = past[['indep_tot' + str(year), 'cadre_tot' + str(year), 'chom_tot_brut' + str(year)]].sum(axis=1)
+        # travail sur les carrières
+        if method == 'from_external_match':
+            path_patr_past = os.path.join(path_data_patr, 'carriere_passee_patrimoine.csv')
+            past = read_csv(path_patr_past)
+            assert past['identind'].isin(ind['identind']).all()
 
-        assert past['identind'].isin(ind['identind']).all()
-        test = past.merge(ind, on=['identind'], how='inner')
+            # TODO: it's hard-coded
+            past_years = range(1980, 2010)
+            dates = [100*year + 1 for year in past_years]
+            sali = DataFrame(columns=dates)
+            workstate = DataFrame(columns=dates)
+            for year in past_years:
+                workstate[100*year + 1] = past['statut' + str(year)]
+                sali[100*year + 1] = past[['indep_tot' + str(year), 'cadre_tot' + str(year), 'chom_tot_brut' + str(year)]].sum(axis=1)
+
+            # TODO: add id in longitudinal
+            workstate['identind'] = past['identind']           
+            workstate = ind[['identind']].merge(workstate, on=['identind'], how='left')
+            workstate.fillna(-1, inplace=True)
+            workstate.drop('identind', axis=1, inplace=True)
+            self.longitudinal['workstate'] = workstate
+            sali['identind'] = past['identind']
+            sali = ind[['identind']].merge(sali, on=['identind'], how='left')
+            sali.fillna(-1, inplace=True)
+            sali.drop('identind', axis=1, inplace=True)
+            self.longitudinal['sali'] = sali
+
+        if method == 'from_data':
+            _correction_carriere()
+            # travail sur les carrières
+            survey_year = self.survey_year
+            date_deb = int(min(ind['cydeb1']))
+            n_ind = len(ind)
+            calend = np.zeros((n_ind, survey_year-date_deb), dtype=int)
+
+            nb_even = range(16)
+            cols_deb = ['cydeb' + str(i+1) for i in nb_even]
+            tab_deb = ind[cols_deb].fillna(0).astype(int).values
+            cols_act = ['cyact' + str(i+1) for i in nb_even]
+            tab_act = np.empty((n_ind, len(nb_even) + 1), dtype=int)
+            tab_act[:, 0] = -1
+            tab_act[:, 1:] = ind[cols_act].fillna(0).astype(int).values
+
+            idx = range(n_ind)
+            col_idx = np.zeros(n_ind, dtype=int)
+            # c'est la colonne correspondant à l'indice de la prochaine date
+            # comme tab_act est décalé de 1, c'est aussi l'indice de la situation en cours
+            for year in range(date_deb, survey_year):
+                to_change = (tab_deb[idx, col_idx] == year) & (col_idx < 15)
+                col_idx[to_change] += 1
+                calend[:, year - date_deb] = tab_act[idx, col_idx]
+            colnames = [100*year + 1 for year in range(date_deb, survey_year)]
+
+            self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
+            self.longitudinal['workstate']['id'] = ind['id']
+            # TODO: imputation for sali
+            self.longitudinal['sali'] = 0*self.longitudinal['workstate']
+            self.longitudinal['sali']['id'] = ind['id']
 
         all = self.ind.columns.tolist()
         carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'prodep']
-
-        # travail sur les carrières
-        survey_year = self.survey_year
-        date_deb = int(min(ind['cydeb1']))
-        n_ind = len(ind)
-        calend = np.zeros((n_ind, survey_year-date_deb), dtype=int)
-
-        nb_even = range(16)
-        cols_deb = ['cydeb' + str(i+1) for i in nb_even]
-        tab_deb = ind[cols_deb].fillna(0).astype(int).values
-        cols_act = ['cyact' + str(i+1) for i in nb_even]
-        tab_act = np.empty((n_ind, len(nb_even) + 1), dtype=int)
-        tab_act[:, 0] = -1
-        tab_act[:, 1:] = ind[cols_act].fillna(0).astype(int).values
-
-        idx = range(n_ind)
-        col_idx = np.zeros(n_ind, dtype=int)
-        # c'est la colonne correspondant à l'indice de la prochaine date
-        # comme tab_act est décalé de 1, c'est aussi l'indice de la situation en cours
-        for year in range(date_deb, survey_year):
-            to_change = (tab_deb[idx, col_idx] == year) & (col_idx < 15)
-            col_idx[to_change] += 1
-            calend[:, year - date_deb] = tab_act[idx, col_idx]
-
-        colnames = [100*year + 1 for year in range(date_deb, survey_year)]
-        self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
-#         self.longitudinal['workstate']['id'] = ind['id']
-        # TODO: imputation for sali
-        self.longitudinal['sali'] = 0*self.longitudinal['workstate']
-#         self.longitudinal['sali']['id'] = ind['id']
         self.drop_variable(dict_to_drop={'ind':carriere})
 
 
@@ -286,7 +300,7 @@ class Patrimoine(DataTil):
                              'zpenalir', 'zpsocm', 'zrevfin']
             var_apjf = ['asf', 'allocpar', 'complfam', 'paje']
             enfants_hdom = [x for x in all if x[:3] == 'hod']
-            white_list = ['identmen', 'pond'] + var_apjf + enfants_hdom + var_to_declar
+            white_list = ['id', 'identmen', 'pond', 'period'] + var_apjf + enfants_hdom + var_to_declar
             if option == 'white':
                 dict_to_drop['men'] = [x for x in all if x not in white_list]
             else:
@@ -372,7 +386,7 @@ class Patrimoine(DataTil):
         var_to_keep = ['id', 'men', 'sexe']
 
         # [0] Enfants de la personne de référence
-        enf_pref = ind.loc[ind[ind['enf'].isin([1,2])], var_to_keep]
+        enf_pref = ind.loc[ind['enf'].isin([1,2]), var_to_keep]
         enf_pref = enf_pref.merge(info_par[info_par['lienpref'] == 0],
                                   on=['men'], how='left', suffixes=('_enf', '_par'))
         # [1] Enfants du conjoint de la personne de référence
@@ -409,7 +423,7 @@ class Patrimoine(DataTil):
         ind.loc[linked_pere['id_enf'].values, 'pere'] = linked_pere['id_par'].values
         linked_mere = linked.loc[linked['sexe_par'] == 1]
         ind.loc[linked_mere['id_enf'].values, 'mere'] = linked_mere['id_par'].values
-        
+
         ind['pere'].fillna(-1, inplace=True)
         ind['mere'].fillna(-1, inplace=True)
 
@@ -443,7 +457,6 @@ class Patrimoine(DataTil):
         ind.loc[test, ['lienpref','mer1e','per1e']]
         par_trop_jeune = ind.loc[(ind['agem']<12*17), 'id']
         assert sum((ind['pere'].isin(par_trop_jeune)) | (ind['mere'].isin(par_trop_jeune))) == 0
-
         self.ind = ind
 
     def creation_child_out_of_house(self):
@@ -473,12 +486,12 @@ class Patrimoine(DataTil):
             temp.rename(columns=dict_rename, inplace=True)
 
             temp['situa'] = Series(dtype=np.int8)
-            temp['situa'][temp['hodemp'] == 1] = 1
-            temp['situa'][temp['hodemp'] == 2] = 5
-            temp['situa'][temp['hodcho'] == 1] = 4
-            temp['situa'][temp['hodcho'] == 2] = 6
-            temp['situa'][temp['hodcho'] == 3] = 3
-            temp['situa'][temp['hodcho'] == 4] = 7
+            temp.loc[temp['hodemp'] == 1, 'situa'] = 1
+            temp.loc[temp['hodemp'] == 2, 'situa'] = 5
+            temp.loc[temp['hodcho'] == 1, 'situa'] = 4
+            temp.loc[temp['hodcho'] == 2, 'situa'] = 6
+            temp.loc[temp['hodcho'] == 3, 'situa'] = 3
+            temp.loc[temp['hodcho'] == 4, 'situa'] = 7
 
             temp['classif'] = Series()
             prive = temp['hodpri'].isin([1,2,3,4])
@@ -569,7 +582,7 @@ class Patrimoine(DataTil):
         enf_tot = concat([enf_tot_dom, enf_tot_hdom], axis = 1).fillna(0)
         enf_tot = enf_tot[0] + enf_tot[1]
         # Sélection des parents ayant des enfants (enf_tot) à qui on veut associer des parents (enf_look_par)
-        enf_tot = enf_tot.ix[enf_tot.index.isin(enf_look_par.index)].astype(int)
+        enf_tot = enf_tot.loc[enf_tot.index.isin(enf_look_par.index)].astype(int)
 
         enf_look_par.index = enf_look_par['id']
         enf_look_par['nb_enf'] = 0
@@ -588,28 +601,28 @@ class Patrimoine(DataTil):
         # TODO: si on fait les modif de variables plus tôt, on peut mettre directement child_out_of_house1
 
         #à cause du append plus haut, on prend en fait ici les premiers de child_out_of_house
-        match1 = Matching(enf_look_par.ix[cond1_enf, var_match],
-                          child_out_of_house.ix[cond1_par, var_match], score)
+        match1 = Matching(enf_look_par.loc[cond1_enf, var_match],
+                          child_out_of_house.loc[cond1_par, var_match], score)
         parent_found = match1.evaluate(orderby=None, method='cells')
-        ind.ix[parent_found.index.values, ['pere','mere']] = child_out_of_house.ix[parent_found.values, ['pere','mere']]
+        ind.loc[parent_found.index.values, ['pere','mere']] = child_out_of_house.loc[parent_found.values, ['pere','mere']]
 
         #etape 2 : seulement mère vivante
-        enf_look_par.ix[parent_found.index, ['pere','mere']] = child_out_of_house.ix[parent_found, ['pere','mere']]
+        enf_look_par.loc[parent_found.index, ['pere','mere']] = child_out_of_house.loc[parent_found, ['pere','mere']]
         cond2_enf = ((enf_look_par['mere'] == -1)) & (enf_look_par['mer1e'] == 2)
         cond2_par = ~child_out_of_house.index.isin(parent_found) & (child_out_of_house['mere'] != -1)
-        match2 = Matching(enf_look_par.ix[cond2_enf, var_match],
-                          child_out_of_house.ix[cond2_par, var_match], score)
+        match2 = Matching(enf_look_par.loc[cond2_enf, var_match],
+                          child_out_of_house.loc[cond2_par, var_match], score)
         parent_found2 = match2.evaluate(orderby=None, method='cells')
         ind.loc[parent_found2.index, ['mere']] = child_out_of_house.loc[parent_found2, ['mere']]
 
         #étape 3 : seulement père vivant
-        enf_look_par.ix[parent_found2.index, ['pere','mere']] = child_out_of_house.ix[parent_found2, ['pere','mere']]
+        enf_look_par.loc[parent_found2.index, ['pere','mere']] = child_out_of_house.loc[parent_found2, ['pere','mere']]
         cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
         cond3_par = ~child_out_of_house.index.isin(parent_found) & (child_out_of_house['pere'] != -1)
 
         # TODO: changer le score pour avoir un lien entre pere et mere plus évident
-        match3 = Matching(enf_look_par.ix[cond3_enf, var_match],
-                          child_out_of_house.ix[cond3_par, var_match], score)
+        match3 = Matching(enf_look_par.loc[cond3_enf, var_match],
+                          child_out_of_house.loc[cond3_par, var_match], score)
         parent_found3 = match3.evaluate(orderby=None, method='cells')
         ind.loc[parent_found3.index, ['pere']] = child_out_of_house.loc[parent_found3, ['pere']]
 
@@ -657,10 +670,10 @@ class Patrimoine(DataTil):
                  " + 0.05   * (other.findet - findet) - 0.5 * (other.nb_enf - nb_enf) **2 "
         match_contrat = Matching(ind.loc[women_contrat, var_match], ind.loc[men_contrat, var_match], score)
         match_found = match_contrat.evaluate(orderby=None, method='cells')
-        ind.ix[match_found.values,'conj'] =  match_found.index
-        ind.ix[match_found.index,'conj'] =  match_found.values
+        ind.loc[match_found.values,'conj'] =  match_found.index
+        ind.loc[match_found.index,'conj'] =  match_found.values
 
-        match_libre = Matching(ind.ix[women_libre, var_match], ind.ix[men_libre, var_match], score)
+        match_libre = Matching(ind.loc[women_libre, var_match], ind.loc[men_libre, var_match], score)
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.loc[match_found.values,'conj'] =  match_found.index
         ind.loc[match_found.index,'conj'] =  match_found.values
@@ -679,6 +692,7 @@ if __name__ == '__main__':
     # drop_variable() doit tourner avant table_initial() car on fait comme si diplome par exemple n'existait pas
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
+    data.work_on_past()
     data.drop_variable()
 #     data.corrections()
     data.conjoint()
@@ -701,4 +715,3 @@ if __name__ == '__main__':
     ind['en_couple'] = ind['conj']>-1
     test = ind['conj']>-1
     print ind.groupby(['civilstate','en_couple']).size()
-    
