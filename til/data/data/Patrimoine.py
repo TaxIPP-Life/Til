@@ -210,7 +210,6 @@ class Patrimoine(DataTil):
             path_patr_past = os.path.join(path_data_patr, 'carriere_passee_patrimoine.csv')
             past = read_csv(path_patr_past)
             assert past['identind'].isin(ind['identind']).all()
-
             # TODO: it's hard-coded
             past_years = range(1980, 2010)
             dates = [100*year + 1 for year in past_years]
@@ -259,10 +258,8 @@ class Patrimoine(DataTil):
             colnames = [100*year + 1 for year in range(date_deb, survey_year)]
 
             self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
-            self.longitudinal['workstate']['id'] = ind['id']
             # TODO: imputation for sali
             self.longitudinal['sali'] = 0*self.longitudinal['workstate']
-            self.longitudinal['sali']['id'] = ind['id']
 
         all = self.ind.columns.tolist()
         carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'prodep']

@@ -486,7 +486,7 @@ class DataTil(object):
         for ent in ['men', 'foy']:
             ind['qui0'] = (ind['qui' + ent] == 0).astype(int)
             ind['qui1'] = (ind['qui' + ent] == 1).astype(int)
-            ind0 = ind[ind[ent]>9].groupby(ent) # on exclut les collectivités
+            ind0 = ind[ind[ent] > 9].groupby(ent) # on exclut les collectivités
             # on vérifie qu'on a un et un seul qui = 0
             assert ind0['qui0'].sum().max() == 1
             assert ind0['qui0'].sum().min() == 1
@@ -526,14 +526,14 @@ class DataTil(object):
         for table in [ind, men, foy, futur]:
             if table is not None:
                 test_month = table['period'] % 100
-                assert all(test_month.isin(range(1,13)))
+                assert all(test_month.isin(range(1, 13)))
                 test_year = table['period'] // 100
-                assert all(test_year.isin(range(1900,2100)))
+                assert all(test_year.isin(range(1900, 2100)))
                 
         for name, table in longit.iteritems():
             cols = table.columns
-            cols_year = [(col // 100 in range(1900,2100))  for col in cols]
-            cols_month = [(col % 100 in range(1,13)) for col in cols]
+            cols_year = [(col // 100 in range(1900, 2100))  for col in cols]
+            cols_month = [(col % 100 in range(1, 13)) for col in cols]
             assert all(cols_year)
             assert all(cols_month)
                 
@@ -584,11 +584,8 @@ class DataTil(object):
         # 3 - table longitudinal
         # Note: on conserve le format pandas ici
         store = HDFStore(path)
-        for varname, tab in self.longitudinal.iteritems():
-            #format to liam
-            table = tab
+        for varname, table in self.longitudinal.iteritems():
             table['id'] = table.index
-
             store.append('longitudinal/' + varname, table)
         store.close()
 
