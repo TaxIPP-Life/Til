@@ -78,83 +78,6 @@ class DataTil(object):
     def format_initial(self):
         raise NotImplementedError()
 
-    def check_conjoint(self, couple_hdom=False):
-        '''
-        Vérifications/corrections de :
-            - La réciprocité des déclarations des conjoints
-            - La concordance de la déclaration des états civils en cas de réciprocité
-            - conjoint hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non.
-        '''
-        ind = self.ind
-        print ("Début de la vérification sur les conjoints")
-
-        # TODO: faire une fonction qui s'adapte à ind pour check si les unions/désunions sont bien signifiées
-        # pour les deux personnses concernées
-
-        #1 -Vérifie que les conjoints sont bien reciproques
-        ind = ind.fillna(-1)
-        def _reciprocite_conj(ind):
-            test = ind.loc[(ind['conj'] != -1),['id','conj','civilstate']] #| ind['civilstate'].isin([1,5])
-            test = merge(test,test,left_on='id', right_on='conj', how='outer').fillna(-1)
-            try:
-                assert(sum(test['conj_x'] == test['id_y']) == 0)
-            except :
-                test = test[test['conj_x'] != test['id_y']]
-                print "Nombre d'époux non réciproques : " + str(len(test))
-
-                # (a) - l'un des deux se déclare célibataire -> le second le devient
-                celib_y = test.loc[test['civilstate_x'].isin([1,5]) & ~test['civilstate_y'].isin([1,5,-1]) & (test['id_x']< test['conj_x']),
-                                            ['id_x', 'civilstate_y']]
-                if len(celib_y)>0:
-                    ind.loc[celib_y['id_x'].values, 'civilstate']= celib_y['civilstate_y']
-                    ind.loc[celib_y['id_x'].values, 'conj'] = np.nan
-
-                celib_x = test.loc[test['civilstate_y'].isin([1,5]) & ~test['civilstate_x'].isin([1,5,-1]) & (test['id_x']< test['conj_x']),
-                                            ['id_y','civilstate_x']]
-                if len(celib_x>0):
-                    ind.loc[celib_x['id_y'].values, 'civilstate'] = celib_x['civilstate_x']
-                    ind[celib_x['id_y'].values, 'conj'] = -1
-
-                # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
-                # -> Conjoint réattribué à qui de droit
-                no_conj = test[test['civilstate_x'].isin([1,5]) & test['civilstate_y'].isin([1,5]) & (test['conj_x']==-1)][['id_y', 'id_x']]
-                if len(no_conj)>0:
-                    print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
-                    ind['conj'][no_conj['id_x'].values] = no_conj['id_y'].values
-                    ind = ind.fillna(-1)
-
-
-            return ind
-        ind = _reciprocite_conj(ind)
-        #2 - Vérifications de la concordance des états civils déclarés pour les personnes ayant un conjoint déclaré (i.e. vivant avec lui)
-        test = ind.loc[(ind['conj']!= -1), ['conj','id','civilstate', 'sexe']]
-        test = merge(test, test, left_on='id', right_on='conj')
-
-        # 2.a - Confusion mariage/pacs
-        confusion = test[(test['id_y']> test['id_x'])& (test['civilstate_y']!= test['civilstate_x']) & ~test['civilstate_y'].isin([3,4]) &  ~test['civilstate_x'].isin([3,4])]
-        if len(confusion)>0:
-            print "Nombre de confusions sur l'état civil (corrigées) : ", len(confusion)
-            # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
-            ind['civilstate'][confusion['id_y'].values] = ind['civilstate'][confusion['id_x'].values]
-            ind = ind.fillna(-1)
-
-        # 2.b - Un déclarant marié/pacsé l'autre veuf/divorcé -> marié/pacsé devient célibataire
-        conf = test[(test['civilstate_y']!= test['civilstate_x']) & (test['civilstate_y'].isin([3,4]) |  test['civilstate_x'].isin([3,4]))]
-        confusion = conf[conf['civilstate_y'].isin([3,4]) & conf['civilstate_x'].isin([1,5]) ]
-        if len(confusion)>0:
-            print "Nombre de couples marié/veuf (corrigés) : ", len(confusion)
-            ind['civilstate'][confusion['id_x'].values] = 2
-
-        #3- Nombre de personnes avec conjoint hdom
-        conj_hdom = ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]
-        print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
-        if couple_hdom == False :
-            print "Ces personnes sont considérées célibataires "
-            ind.loc[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1), 'civilstate'] = 2
-            assert len(ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]) == 0
-        self.ind = ind
-        #ind = _reciprocite_conj(ind)
-        print ("Fin de la vérification sur les conjoints")
     def enfants(self):
         '''
         Calcule l'identifiant des parents
@@ -464,6 +387,81 @@ class DataTil(object):
 #                    table[vars_link] += 1
 #                    table[vars_link].replace(0,-1, inplace=True)
 
+    def _check_conjoint(self, couple_hdom=False):
+        '''
+        Vérifications/corrections de :
+            - La réciprocité des déclarations des conjoints
+            - La concordance de la déclaration des états civils en cas de réciprocité
+            - conjoint hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non.
+        '''
+        ind = self.ind
+        print ("Début de la vérification sur les conjoints")
+        ind = ind.fillna(-1)
+        rec = ind.loc[ind['conj'] != -1, ['id','conj','civilstate', 'men']] #| ind['civilstate'].isin([1,5])
+        reciprocity = rec.merge(rec, left_on='id', right_on='conj', suffixes=('','_c'))
+        rec = reciprocity
+        # 1- check reciprocity of conj
+        assert all(rec['conj_c'] == rec['id'])
+        # 2- check reciprocity of civilstate
+        married = rec['civilstate'] == 1
+        pacsed = rec['civilstate'] == 5
+        try:
+            assert all(rec.loc[married, 'civilstate_c'] == 1)
+            assert all(rec.loc[pacsed, 'civilstate_c'] == 5)
+        except :
+            prob = rec.loc[married, 'civilstate_c'] != 1
+            rec[married][prob].head()
+            print ind.loc[ind['men'].isin([35]), :]
+            
+            pdb.set_trace()
+            # (a) - l'un des deux se déclare célibataire -> le second le devient
+            celib_c = rec.loc[rec['civilstate'].isin([1,5]) & ~rec['civilstate_c'].isin([1,5,-1]) & (rec['id']< rec['conj']),
+                                        ['id', 'civilstate_c']]
+            if len(celib_c)>0:
+                ind.loc[celib_c['id'].values, 'civilstate']= celib_c['civilstate_c']
+                ind.loc[celib_c['id'].values, 'conj'] = np.nan
+
+            celib = rec.loc[rec['civilstate_c'].isin([1,5]) & ~rec['civilstate'].isin([1,5,-1]) & (rec['id']< rec['conj']),
+                                        ['id_c','civilstate']]
+            if len(celib>0):
+                ind.loc[celib['id_c'].values, 'civilstate'] = celib['civilstate']
+                ind[celib['id_c'].values, 'conj'] = -1
+
+            # (b) - les deux se déclarent mariés mais conjoint non spécifié dans un des deux cas
+            # -> Conjoint réattribué à qui de droit
+            no_conj = rec[rec['civilstate'].isin([1,5]) & rec['civilstate_c'].isin([1,5]) & (rec['conj']==-1)][['id_c', 'id']]
+            if len(no_conj)>0:
+                print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
+                ind['conj'][no_conj['id'].values] = no_conj['id_c'].values
+                ind = ind.fillna(-1)
+
+        # 2.a - Confusion mariage/pacs
+        confusion = rec[(rec['id_c']> rec['id'])& (rec['civilstate_c']!= rec['civilstate']) & ~rec['civilstate_c'].isin([3,4]) &  ~rec['civilstate'].isin([3,4])]
+        if len(confusion)>0:
+            print "Nombre de confusions sur l'état civil (corrigées) : ", len(confusion)
+            # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
+            ind['civilstate'][confusion['id_c'].values] = ind['civilstate'][confusion['id'].values]
+            ind = ind.fillna(-1)
+
+        # 2.b - Un déclarant marié/pacsé l'autre veuf/divorcé -> marié/pacsé devient célibataire
+        conf = rec[(rec['civilstate_c']!= rec['civilstate']) & (rec['civilstate_c'].isin([3,4]) |  rec['civilstate'].isin([3,4]))]
+        confusion = conf[conf['civilstate_c'].isin([3,4]) & conf['civilstate'].isin([1,5]) ]
+        if len(confusion)>0:
+            print "Nombre de couples marié/veuf (corrigés) : ", len(confusion)
+            ind['civilstate'][confusion['id'].values] = 2
+
+        #3- Nombre de personnes avec conjoint hdom
+        conj_hdom = ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]
+        print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
+        if couple_hdom == False :
+            print "Ces personnes sont considérées célibataires "
+            ind.loc[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1), 'civilstate'] = 2
+            assert len(ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]) == 0
+        self.ind = ind
+        #ind = _reciprocite_conj(ind)
+        print ("Fin de la vérification sur les conjoints")
+
+
     def final_check(self):
         ''' Les checks sont censés vérifiés toutes les conditions
             que doit vérifier une base pour tourner sur Til '''
@@ -506,6 +504,7 @@ class DataTil(object):
             qui1_ent = ind.loc[qui1, ent]
             assert (qui1_ent == conj_ent).all()
 
+
         # Table futur bien construite
         if futur is not None:
             # -> On vérifie que persone ne nait pas dans le futur tout en étant présent dans les données intiales
@@ -536,7 +535,11 @@ class DataTil(object):
             cols_month = [(col % 100 in range(1, 13)) for col in cols]
             assert all(cols_year)
             assert all(cols_month)
-                
+            
+            
+        # check reciprocity:
+        self._check_conjoint(couple_hdom=True)
+
     def _output_name(self, extension='.h5'):
         if self.seuil is None:
             name = self.name + extension
@@ -559,7 +562,10 @@ class DataTil(object):
             entity = eval('self.'+ ent_name)
             if entity is not None:
                 entity = entity.fillna(-1)
-                ent_table = entity.to_records(index=False)
+                try:
+                    ent_table = entity.to_records(index=False)
+                except: 
+                    pdb.set_trace()
                 dtypes = ent_table.dtype
                 final_name = of_name_to_til[ent_name]
                 table = h5file.createTable(ent_node, final_name, dtypes, title="%s table" % final_name)

@@ -330,6 +330,7 @@ class Patrimoine(DataTil):
         # ne gère pas les identifiants des couples non cohabitants, on n'a pas l'info.
         print ("Travail sur les conjoints")
         ind = self.ind
+        
         # pour simplifier on créer une variable ou les personnes qui peuvent être en couple on la même valeur
         # c'est mieux que lienpref (pref signifie "personne de reference)
         ind['lien'] = ind['lienpref'].replace([1,31,32,50], [0,2,3,10])
@@ -361,14 +362,23 @@ class Patrimoine(DataTil):
         ind.loc[to_change['id'].values, 'couple'] = 2
 
         # On ne cherche que les identifiants des couple vivant ensemble.
-
         assert sum(~ind[ind['couple'] == 1].groupby(['men', 'lien']).size() == 2) == 0
-        in_couple = ind.loc[ind['couple'] == 1, ['men', 'lien', 'id']]
+        in_couple = ind.loc[ind['couple'] == 1, ['men', 'lien', 'id', 'civilstate']]
         couple = in_couple.merge(in_couple, on=['men', 'lien'], suffixes=('', '_conj'))
         couple = couple[couple['id'] != couple['id_conj']]
         assert len(couple) == len(in_couple)
         ind['conj'] = -1
         ind.loc[couple['id'].values, 'conj'] = couple['id_conj'].values
+        
+        # On accorde les civilstate
+        # Note: priority to marriages. -> 50 cases on 16 000
+        # TODO: test that hypothesis on final restults
+        # couple.loc[couple['civilstate_conj'] == 2, 'civilstate'].value_counts()
+        couple.loc[couple['civilstate_conj'] == 1, 'civilstate'] = 1
+        couple.loc[(couple['civilstate_conj'] == 5) & \
+                   (couple['civilstate'] != 1), 'civilstate'] = 5
+        ind.loc[couple['id'].values, 'civilstate'] = couple['civilstate'].values
+        
         print ("Fin du travail sur les conjoints")
         self.ind = ind
 
@@ -638,9 +648,9 @@ class Patrimoine(DataTil):
         Calcul aussi la variable ind['nb_enf']
         '''
         ind = self.ind
-        couple_hdom = ind['couple']==2
+        couple_hdom = ind['couple'] == 2
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
-        ind.loc[(couple_hdom) & (ind['civilstate']==5), 'civilstate'] = 1
+        ind.loc[(couple_hdom) & (ind['civilstate'] == 5), 'civilstate'] = 1
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
         # ne gère pas les couples homosexuels
 
@@ -679,7 +689,7 @@ class Patrimoine(DataTil):
 
         ind.drop(['couple','age'], axis=1, inplace=True)
         self.ind = ind
-
+        
 if __name__ == '__main__':
 
     import time
@@ -693,16 +703,16 @@ if __name__ == '__main__':
     data.drop_variable()
 #     data.corrections()
     data.conjoint()
-    data.check_conjoint(couple_hdom = True)
     data.enfants()
-    data.expand_data(seuil=400)
+    data.expand_data(seuil=2000)
     data.creation_child_out_of_house()
     data.matching_par_enf()
     data.match_couple_hdom()
-    data.check_conjoint(couple_hdom = False)
+    data._check_conjoint(couple_hdom = False)
     data.creation_foy()
     data.format_to_liam()
     data.final_check()
+    data._check_conjoint(couple_hdom = False)
     data.store_to_liam()
     print "Temps de calcul : ", (time.time() - start_t), 's'
     print "Nombre d'individus de la table final : ", len(data.ind)

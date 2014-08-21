@@ -484,7 +484,7 @@ if __name__ == '__main__':
     # (b) - Travail sur la base initiale (données à l'année de l'enquête)
     ini_t = time.time()
     data.enf_to_par()
-    data.check_conjoint()
+    data._check_conjoint()
     data.creation_menage()
     data.creation_foy()
 
