@@ -503,7 +503,28 @@ class DataTil(object):
             conj_ent = conj_ent[ent]
             qui1_ent = ind.loc[qui1, ent]
             assert (qui1_ent == conj_ent).all()
-
+            
+        # serie des verifs sur les liens 
+        to_check = ind[['id', 'agem', 'sexe', 'conj', 'pere', 'mere']]
+        # age parent
+        tab = to_check.copy()
+        for lien in ['conj', 'pere', 'mere']:
+            tab = tab.merge(to_check, left_on=lien, right_on='id', suffixes=('', '_' + lien), how='left')
+        test = (tab['agem_pere'] - tab['agem'])/12
+        assert test.min() > 15
+        test = (tab['agem_mere'] - tab['agem'])/12
+        assert test.min() > 13
+        # pas de probleme du conjoint
+        assert sum(tab['id_pere'] == tab['id_conj']) == 0
+        assert sum(tab['id_mere'] == tab['id_conj']) == 0
+        assert sum(tab['id_mere'] == tab['id_pere']) == 0
+        assert sum(tab['sexe_mere'] == tab['sexe_pere']) == 0
+        # on va plus loin sur les conjoints pour éviter les frères et soeurs :
+        tab_conj = tab.loc[tab['conj'] > -1].copy()
+        tab_conj.replace(-1, np.nan, inplace=True)
+        assert all((tab_conj['id'] == tab_conj['conj_conj']))  # Les couples sont réciproques
+        assert sum(tab_conj['mere'] == tab_conj['mere_conj']) == 0  # pas de mariage entre frere et soeur
+        assert sum(tab_conj['pere'] == tab_conj['pere_conj']) == 0
 
         # Table futur bien construite
         if futur is not None:
