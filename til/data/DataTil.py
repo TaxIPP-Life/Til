@@ -397,7 +397,7 @@ class DataTil(object):
         ind = self.ind
         print ("Début de la vérification sur les conjoints")
         ind = ind.fillna(-1)
-        rec = ind.loc[ind['conj'] != -1, ['id','conj','civilstate', 'men']] #| ind['civilstate'].isin([1,5])
+        rec = ind.loc[ind['conj'] != -1, ['id','conj','civilstate']] #| ind['civilstate'].isin([1,5])
         reciprocity = rec.merge(rec, left_on='id', right_on='conj', suffixes=('','_c'))
         rec = reciprocity
         # 1- check reciprocity of conj
@@ -411,7 +411,6 @@ class DataTil(object):
         except :
             prob = rec.loc[married, 'civilstate_c'] != 1
             rec[married][prob].head()
-            print ind.loc[ind['men'].isin([35]), :]
             
             pdb.set_trace()
             # (a) - l'un des deux se déclare célibataire -> le second le devient
