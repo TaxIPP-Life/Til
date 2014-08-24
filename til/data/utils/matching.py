@@ -79,7 +79,7 @@ class Matching(object):
         table2 = table2.fillna(0)
         table1 = table1.fillna(0)
              
-        if len(table1)>len(table2):
+        if len(table1) > len(table2):
             print ("WARNING : La table de gauche doit être la plus petite, "\
                 "traduire le score dans l'autre sens et changer l'ordre." \
                 "pour l'instant table1 est reduite à la taille de table2. ")
@@ -99,19 +99,18 @@ class Matching(object):
             cells_ini = cells_ini.merge(size, left_on=vars, right_index=True, how='left')
             cells_ini['id'] = cells_ini.index
             # conversion en numpy
-            #NOTE: initially dtype were np.int32 but sometime it's not enought
+            #NOTE: initially dtype were np.int64 but sometime it's not enought
             # however, it's not very important.
-            table1 = np.array(table1, dtype=np.int32)
-            cells = np.array(cells_ini, dtype=np.int32) 
+            table1 = np.array(table1, dtype=np.int64)
+            cells = np.array(cells_ini, dtype=np.int64) 
             #definition de la boucle
             nvar = len(vars)-1
             
         else:
             # conversion en numpy
-            table1 = np.array(table1, dtype=np.int32)
-            table2 = np.array(table2, dtype=np.int32)  
-            
-                                  
+            table1 = np.array(table1, dtype=np.int64)
+            table2 = np.array(table2, dtype=np.int64)
+                        
 #         #definition de la boucle
 #         def real_match_cell(k, cells):
 #             temp = table1[k]
@@ -133,27 +132,23 @@ class Matching(object):
 #             match[k] = idx2 
 #             table2 = np.delete(table2, idx, 0)
 
-        match = np.empty(n, dtype=np.int32)
+        match = np.empty(n, dtype=np.int64)
         percent = 0
         start = time.clock()
         #check
-        assert  cells[:,nvar+1].min() > 0
-        if method=='cells':
+        assert  cells[:, nvar + 1].min() > 0
+        if method == 'cells':
             for k in xrange(n):   
 #                 real_match_cells(k,cells)
                 temp = table1[k]
-                try: 
-                    score = eval(score_str)
-                except:
-                    pdb.set_trace()
-                try:
-                    idx = score.argmax()
-                except:
-                    pdb.set_trace()
-                idx2 = cells[idx,nvar+2]
+                score = eval(score_str)
+                idx = score.argmax()
+#                 if score[idx] > 0:
+#                     pdb.set_trace()
+                idx2 = cells[idx, nvar + 2]
                 match[k] = idx2 
-                cells[idx,nvar+1] -= 1
-                if cells[idx,nvar+1]==0:
+                cells[idx, nvar + 1] -= 1
+                if cells[idx, nvar + 1]==0:
                     cells = np.delete(cells, idx, 0)     
                 # update progress bar
                 percent_done = (k * 100) / n
