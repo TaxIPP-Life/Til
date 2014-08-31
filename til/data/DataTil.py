@@ -393,6 +393,8 @@ class DataTil(object):
             - La réciprocité des déclarations des conjoints
             - La concordance de la déclaration des états civils en cas de réciprocité
             - conjoint hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non.
+            
+            Me semble utile et utilisé uniquement par Destinie
         '''
         ind = self.ind
         print ("Début de la vérification sur les conjoints")
@@ -464,7 +466,7 @@ class DataTil(object):
     def _check_links(self, ind):
         if ind is None: 
             ind = self.ind
-        to_check = ind[['id', 'agem', 'sexe', 'men', 'conj', 'pere', 'mere', 'lienpref']]
+        to_check = ind[['id', 'agem', 'sexe', 'men', 'conj', 'pere', 'mere']]
         # age parent
         tab = to_check.copy()
         for lien in ['conj', 'pere', 'mere']:
