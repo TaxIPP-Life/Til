@@ -145,7 +145,8 @@ class Patrimoine(DataTil):
             {'men': ['identmen', 'paje', 'complfam', 'allocpar',
                      'asf'],
              'ind': ['identmen', 'preret']
-             })
+            }
+            )
 
     def corrections(self):
         ind = self.ind
@@ -607,10 +608,12 @@ class Patrimoine(DataTil):
         #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
         var_match = ['jepnais','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
         #TODO: gerer les valeurs nulles, pour l'instant c'est très moche
+            
         #TODO: avoir une bonne distance, on met un gros coeff sur l'age sinon, on a des parents,
         # plus vieux que leurs enfants
-        score = "- 10000 * (other.anais - anais) **2 - 1.0 * (other.situa - situa) **2 - 0.5 * (other.sexe - sexe) **2 - 1.0 * (other.dip6 - dip6) \
-         **2 - 1.0 * (other.nb_enf - nb_enf) **2"
+        score = "- 1000 * (other.anais - anais) **2 - 1.0 * (other.situa - situa) **2 " + \
+        "- 0.5 * (other.sexe - sexe) **2 - 1.0 * (other.dip6 - dip6) **2 " + \
+        " - 1.0 * (other.nb_enf - nb_enf) **2"
 
         # etape1 : deux parents vivants
         cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
