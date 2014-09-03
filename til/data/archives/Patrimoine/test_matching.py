@@ -4,6 +4,9 @@ Created on 25 juil. 2013
 
 @author: a.eidelman
 '''
+from __future__ import print_function
+from future.builtins import str
+from future.builtins import range
 
 import pandas as pd
 import pdb
@@ -73,14 +76,14 @@ def run_time(n):
     k_max = min(len(table2), len(table1))
     
     debut = time.clock()
-    for k in xrange(k_max):   
+    for k in range(k_max):   
         temp = table1.iloc[k] 
         score = eval(score_str)
         score = score[index2]
         idx2 = score.idxmax()
         match.iloc[k] = idx2 # print( k, 0, index2)
         index2[idx2] = False
-    print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
+    print('taille: ',n,' ; temps de calcul: ', time.clock()-debut)
     return time.clock()-debut
 
 
@@ -97,7 +100,7 @@ def run_time_cell(n):
     group_combinations = np.array([[ag, dip] for ag in age_groups for dip in dip_groups])
     groups2 = table2.groupby(['age','diploma'])
 
-    cell_values = pd.DataFrame(groups2.groups.keys())
+    cell_values = pd.DataFrame(list(groups2.groups.keys()))
     temp = pd.DataFrame(groups2.size())
     temp = temp.rename(columns={0:'nb'})
     cell_values = cell_values.merge(temp, left_on=[0,1], right_index=True)
@@ -105,7 +108,7 @@ def run_time_cell(n):
     score_str = "(cell_values[0]-temp['age'])**2 +  5*(cell_values[1]-temp['diploma'])"
        
     debut = time.clock()
-    for k in xrange(len(table1)):   
+    for k in range(len(table1)):   
         temp = table1.iloc[k] 
         score = eval(score_str)
         idx2 = score.idxmax()
@@ -114,7 +117,7 @@ def run_time_cell(n):
         if cell_values.loc[idx2,'nb']==0:
             cell_values = cell_values.drop(idx2, axis=0)
 
-    print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
+    print('taille: ',n,' ; temps de calcul: ', time.clock()-debut)
     return time.clock()-debut
 
 
@@ -129,14 +132,14 @@ def run_time_np(n):
     score_str = "(table2[:,0]-temp[0])**2 +  5*(table2[:,1]-temp[1])"
     k_max = min(len(table2), len(table1))
     debut = time.clock()
-    for k in xrange(k_max):   
+    for k in range(k_max):   
         temp = table1[k]
         score = eval(score_str)
         idx = score.argmax()
         idx2 = table2[idx,2]
         match[k] = idx2 
         table2 = np.delete(table2, idx, 0)
-    print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
+    print('taille: ',n,' ; temps de calcul: ', time.clock()-debut)
     return time.clock()-debut
         
 def run_time_np_cell(n):
@@ -153,11 +156,11 @@ def run_time_np_cell(n):
     group_combinations = np.array([[ag, dip] for ag in age_groups for dip in dip_groups])
     groups2 = table2.groupby(['age','diploma'])
 
-    cell_values = pd.DataFrame(groups2.groups.keys())
+    cell_values = pd.DataFrame(list(groups2.groups.keys()))
     temp = pd.DataFrame(groups2.size())
     temp = temp.rename(columns={0:'nb'})
     cell_values = cell_values.merge(temp, left_on=[0,1], right_index=True)
-    cell_values['idx'] = range(len(cell_values))
+    cell_values['idx'] = list(range(len(cell_values)))
     
     
     table1 = np.array(table1)
@@ -167,7 +170,7 @@ def run_time_np_cell(n):
     score_str = "(cell_values[:,0]-temp[0])**2 +  5*(cell_values[:,1]-temp[1])"
     k_max = len(table1)
     debut = time.clock()
-    for k in xrange(k_max):   
+    for k in range(k_max):   
         temp = table1[k]
         score = eval(score_str)
         idx = score.argmax()
@@ -176,7 +179,7 @@ def run_time_np_cell(n):
         cell_values[idx,2] -= 1
         if cell_values[idx,2]==0:
             cell_values = np.delete(cell_values, idx, 0)
-    print 'taille: ',n,' ; temps de calcul: ', time.clock()-debut
+    print('taille: ',n,' ; temps de calcul: ', time.clock()-debut)
     pdb.set_trace()
     return time.clock()-debut        
 

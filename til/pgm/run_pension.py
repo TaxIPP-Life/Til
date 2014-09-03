@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # -*- coding: utf-8 -*-
 import pandas as pd
 import sys
@@ -11,7 +12,7 @@ import time
 from til_pension.pension_data import PensionData
 from til_pension.pension_legislation import PensionParam, PensionLegislation
 from til_pension.simulation import PensionSimulation
-from utils import output_til_to_liam
+from .utils import output_til_to_liam
 
 
 def run_pension(context, yearleg, time_step='year', to_check=False, output='pension', cProfile=False):

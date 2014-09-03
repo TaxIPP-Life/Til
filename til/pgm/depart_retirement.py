@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 # -*- coding: utf-8 -*-
 import sys
 from numpy import maximum, array, ones
 from pandas import Series
-from utils import output_til_to_liam
+from .utils import output_til_to_liam
 
 
 from til.pgm.run_pension import run_pension

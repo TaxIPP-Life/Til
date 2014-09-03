@@ -4,6 +4,11 @@ Created on 25 Apr 2013
 
 @author: alexis_e
 '''
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future.builtins import str
+from past.utils import old_div
 
 from pandas import HDFStore, merge, DataFrame
 import numpy as np
@@ -12,7 +17,7 @@ import time
 import os
 
 from til import __path__ as path_til
-from utils import of_name_to_til, concatenated_ranges
+from .utils import of_name_to_til, concatenated_ranges
 
 def table_for_of(simulation, period=None, check_validity=False, save_tables=False):
     temps = time.clock()
@@ -23,7 +28,7 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
     table = {}
 
     entities = simulation.entities
-    entities_name =  map( lambda e: e.name, simulation.entities)
+    entities_name =  [e.name for e in simulation.entities]
     def _get_entity(name):
         position = entities_name.index(name)
         return simulation.entities[position]
@@ -33,7 +38,7 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
     table['ind'] = table['ind'].rename(columns={'men': 'idmen', 'foy': 'idfoy', 'id': 'noi', 'statmarit': 'civilstate'})
     
     # création de variable
-    table['ind']['ageq'] = table['ind']['age']/5 - 4 
+    table['ind']['ageq'] = old_div(table['ind']['age'],5) - 4 
     table['ind']['ageq'] = table['ind']['ageq']*(table['ind']['ageq'] > 0) 
     table['ind']['ageq'] = 12 + (table['ind']['ageq']-12)*(table['ind']['ageq'] < 12) 
     #TODO: modifier pour les jeunes veufs 
@@ -94,10 +99,10 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
     table['foy'] = table['foy'][table['foy']['idfoy']>=10]
     table['fam'] = table['fam'][table['fam']['idfam']>=10]
     # get years
-    years = np.unique(table['ind']['period'].values/100)    
+    years = np.unique(old_div(table['ind']['period'].values,100))    
     if period is not None:
         years=[period]
-        print years
+        print(years)
 
     if check_validity:
         for year in years: 
@@ -109,7 +114,7 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
                 try:
                     assert ind.groupby([id,qui]).size().max() == 1
                 except:
-                    print ent
+                    print(ent)
                     pb = ind.groupby([id,qui]).size() > 1
                     print(ind.groupby([id,qui]).size()[pb])
                     pdb.set_trace()
@@ -138,13 +143,13 @@ def table_for_of(simulation, period=None, check_validity=False, save_tables=Fals
             goal = HDFStore(output_tab)             
             goal.remove('survey_'+str(year))
             for ent in ('ind','men','foy','fam'):
-                tab = table[ent].loc[table[ent]['period']/100==year]
+                tab = table[ent].loc[old_div(table[ent]['period'],100)==year]
                 key = 'survey_'+str(year) + '/'+ent     
                 goal.put(key, tab) 
             goal.close()
         else:
             for ent in ('ind','men','foy','fam'):
-                table[ent] = table[ent].loc[table[ent]['period']/100==year] 
+                table[ent] = table[ent].loc[old_div(table[ent]['period'],100)==year] 
             return table       
                 
 if __name__ == "__main__":

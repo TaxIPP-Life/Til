@@ -3,6 +3,12 @@
 Created on 23 juil. 2013
 Alexis Eidelman
 '''
+from __future__ import division
+from __future__ import print_function
+from future.builtins import str
+from future.builtins import range
+from future.builtins import object
+from past.utils import old_div
 import pdb
 import string
 import pandas as pd
@@ -60,7 +66,7 @@ class Matching(object):
                     
         if table2.columns.tolist() != table1.columns.tolist():
             raise Exception("Les variables doivent être les mêmes dans les deux tables")
-        if not isinstance(score, basestring):
+        if not (isinstance(score, str) or isinstance(score, basestring)):
             raise Exception("Le score doit être un caractere, désolé")
         self.score_str = score
 
@@ -91,7 +97,7 @@ class Matching(object):
         
         if method=='cells':
             groups2 = table2.groupby(vars)
-            cells_ini = pd.DataFrame(groups2.groups.keys(),columns =vars)
+            cells_ini = pd.DataFrame(list(groups2.groups.keys()),columns =vars)
             score_str, vars = _rewrite_score(self.score_str, 'temp', 'cells', table1.columns.tolist(), vars)
             size = pd.DataFrame(groups2.size(), columns = ['size'])
             if len(size) != len(cells_ini): 
@@ -138,7 +144,7 @@ class Matching(object):
         #check
         assert  cells[:, nvar + 1].min() > 0
         if method == 'cells':
-            for k in xrange(n):   
+            for k in range(n):   
 #                 real_match_cells(k,cells)
                 temp = table1[k]
                 score = eval(score_str)
@@ -151,7 +157,7 @@ class Matching(object):
                 if cells[idx, nvar + 1]==0:
                     cells = np.delete(cells, idx, 0)     
                 # update progress bar
-                percent_done = (k * 100) / n
+                percent_done = old_div((k * 100), n)
                 to_display = percent_done - percent
                 if to_display:
                     chars_to_write = list("." * to_display)
@@ -164,7 +170,7 @@ class Matching(object):
                 
                    
         else:
-            for k in xrange(n):   
+            for k in range(n):   
 #                 real_match_simple(k,table2)
                 temp = table1[k]
                 score = eval(score_str)
@@ -173,7 +179,7 @@ class Matching(object):
                 match[k] = idx2 
                 table2 = np.delete(table2, idx, 0)
                 # update progress bar
-                percent_done = (k * 100) / n
+                percent_done = old_div((k * 100), n)
                 to_display = percent_done - percent
                 if to_display:
                     chars_to_write = list("." * to_display)
@@ -198,7 +204,7 @@ class Matching(object):
                         match[match_ini==group] = int(value)
                 except:
                     pdb.set_trace()
-        print 'temps dédié au real_matching :', time.clock() - start  
+        print('temps dédié au real_matching :', time.clock() - start)  
         
         assert match.nunique() == len(match)
         return match

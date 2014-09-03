@@ -5,6 +5,8 @@ Created on 25 Apr 2013
 
 @author: alexis_e
 '''
+from __future__ import print_function
+from future.builtins import range
 
 from pandas import HDFStore, DataFrame, Series
 import numpy as np
@@ -90,7 +92,7 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
      mais à voir
      - annee_leg pour donner les paramètres
      '''
-    print "annee base", annee_base
+    print("annee base", annee_base)
 
     ## on recupere la liste des annees en entree
     if annee_base is not None:
@@ -117,7 +119,7 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
     )
 
     entities = liam.entities
-    entities_name =  map( lambda e: e.name, liam.entities)
+    entities_name =  [e.name for e in liam.entities]
     def _get_entity(name):
         position = entities_name.index(name)
         return liam.entities[position]
@@ -127,7 +129,7 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
     #pour chaque entité d'open fisca
     ## load data :
     selected_rows = {}
-    for of_ent_name, of_entity in tax_benefit_system.entity_class_by_key_plural.iteritems():
+    for of_ent_name, of_entity in tax_benefit_system.entity_class_by_key_plural.items():
         input[of_ent_name] = []
         required[of_ent_name] = []
         # on cherche l'entité corrspondante dans liam
@@ -165,7 +167,7 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
         # pour toutes les variables de l'entité of
         for column in of_entity.column_by_name:
             # on regarde si on les a dans til sous un nom ou un autre
-            if column in rename_variables.keys() + til_entity.keys() + new_ident.keys():
+            if column in list(rename_variables.keys()) + list(til_entity.keys()) + list(new_ident.keys()):
                 holder = simulation.get_or_new_holder(column)
                 #on selectionne les valeurs d'entrée
                 if holder.formula is None or column in input_even_if_formula:
@@ -185,7 +187,7 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
 #         print(input[of_ent_name])
 
     ### load of outputs
-    for entity, entity_vars in required.iteritems():
+    for entity, entity_vars in required.items():
         til_ent_name = traduc_entities[entity]
         til_entity = _get_entity(til_ent_name)
         til_column = til_entity.array.columns

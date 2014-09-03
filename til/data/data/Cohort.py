@@ -9,6 +9,9 @@ Ce programme :
 Input : 
 Output :
 '''
+from __future__ import print_function
+from future.builtins import str
+from future.builtins import range
 
 from til.data.DataTil import DataTil, variables_til
 import numpy as np
@@ -28,13 +31,13 @@ class Cohort(DataTil):
 
 
     def load(self):
-        print "création de l'importation des données"
+        print("création de l'importation des données")
         size = self.size
         for name_table in ['men','foy','ind']:
             vars_int, vars_float = variables_til[name_table]
             vars = ['id','period','pond'] + vars_int + vars_float
             
-            table = DataFrame(index=range(size), columns=vars)
+            table = DataFrame(index=list(range(size)), columns=vars)
             for var in vars_int:
                 table[var] = 0
             for var in vars_float:
@@ -42,9 +45,9 @@ class Cohort(DataTil):
                 
             table['pond'] = 1.0
             table['period'] = self.survey_date
-            table['id'] = range(size)
+            table['id'] = list(range(size))
             self.__setattr__(name_table, table)
-        print "fin de la créations des données"
+        print("fin de la créations des données")
 
     def _output_name(self):
         return 'Cohort_' + str(self.size) + '.h5'
@@ -57,7 +60,7 @@ class Cohort(DataTil):
         
     def links(self):
         size = self.size
-        rg = range(size)
+        rg = list(range(size))
         self.ind['men'] = rg
         self.ind['foy'] = rg
         self.ind[['pere','mere','conj']] = -1

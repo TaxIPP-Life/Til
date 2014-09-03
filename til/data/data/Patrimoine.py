@@ -5,6 +5,11 @@ Created on 2 août 2013
 @author: a.eidelman
 
 '''
+from __future__ import division
+from __future__ import print_function
+from future.builtins import str
+from future.builtins import range
+from past.utils import old_div
 
 import os
 import numpy as np
@@ -56,7 +61,7 @@ class Patrimoine(DataTil):
 # l'inverse en étant vigilant sur les noms
 
     def load(self):
-        print "début de l'importation des données"
+        print("début de l'importation des données")
         path_ind = os.path.join(path_data_patr, 'individu.csv')
         ind = read_csv(path_ind)
         path_men = os.path.join(path_data_patr, 'menage.csv')
@@ -73,7 +78,7 @@ class Patrimoine(DataTil):
 
         assert (men['identmen'].isin(ind['identmen'])).all()
         assert (ind['identmen'].isin(men['identmen'])).all()
-        print "fin de l'importation des données"
+        print("fin de l'importation des données")
 
     def champ(self, option='metropole'):
         ''' Limite la base à un champ d'étude défini '''
@@ -101,7 +106,7 @@ class Patrimoine(DataTil):
                        "cyder": "anc", "duree": "xpr"}
         ind.rename(columns=dict_rename, inplace=True)
         # id, men
-        men.index = range(10, len(men) + 10)
+        men.index = list(range(10, len(men) + 10))
         men['id'] = men.index
         ind['id'] = ind.index
         idmen = men[['id', 'identmen']].rename(columns={'id': 'men'})
@@ -110,7 +115,7 @@ class Patrimoine(DataTil):
         ind['period'] = self.survey_date
         men['period'] = self.survey_date
         # agem
-        age = self.survey_date/100 - ind['anais']
+        age = old_div(self.survey_date,100) - ind['anais']
         ind['agem'] = 12*age + 11 - ind['mnais']
 
         ind['sexe'].replace([1,2], [0,1], inplace=True)
@@ -212,7 +217,7 @@ class Patrimoine(DataTil):
             past = read_csv(path_patr_past)
             assert past['identind'].isin(ind['identind']).all()
             # TODO: it's hard-coded
-            past_years = range(1980, 2010)
+            past_years = list(range(1980, 2010))
             dates = [100*year + 1 for year in past_years]
             sali = DataFrame(columns=dates)
             workstate = DataFrame(columns=dates)
@@ -240,7 +245,7 @@ class Patrimoine(DataTil):
             n_ind = len(ind)
             calend = np.zeros((n_ind, survey_year-date_deb), dtype=int)
 
-            nb_even = range(16)
+            nb_even = list(range(16))
             cols_deb = ['cydeb' + str(i+1) for i in nb_even]
             tab_deb = ind[cols_deb].fillna(0).astype(int).values
             cols_act = ['cyact' + str(i+1) for i in nb_even]
@@ -248,7 +253,7 @@ class Patrimoine(DataTil):
             tab_act[:, 0] = -1
             tab_act[:, 1:] = ind[cols_act].fillna(0).astype(int).values
 
-            idx = range(n_ind)
+            idx = list(range(n_ind))
             col_idx = np.zeros(n_ind, dtype=int)
             # c'est la colonne correspondant à l'indice de la prochaine date
             # comme tab_act est décalé de 1, c'est aussi l'indice de la situation en cours
@@ -461,7 +466,7 @@ class Patrimoine(DataTil):
         match_father.drop_duplicates('id_enf', take_last=False, inplace=True)
         ind.loc[match_father['id_enf'].values, 'pere'] = match_father['id_par'].values
         self._check_links(ind)
-        print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18))
+        print('Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18)))
         test = (ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18)
         ind.loc[test, ['lienpref','mer1e','per1e']]
         par_trop_jeune = ind.loc[(ind['agem']<12*17), 'id']
@@ -750,11 +755,11 @@ if __name__ == '__main__':
     data.final_check()
     data._check_conjoint(couple_hdom = False)
     data.store_to_liam()
-    print "Temps de calcul : ", (time.time() - start_t), 's'
-    print "Nombre d'individus de la table final : ", len(data.ind)
+    print("Temps de calcul : ", (time.time() - start_t), 's')
+    print("Nombre d'individus de la table final : ", len(data.ind))
 
     # des petites verifs finales
     ind = data.ind
     ind['en_couple'] = ind['conj']>-1
     test = ind['conj']>-1
-    print ind.groupby(['civilstate','en_couple']).size()
+    print(ind.groupby(['civilstate','en_couple']).size())

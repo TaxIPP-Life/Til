@@ -3,6 +3,12 @@
 Created on 22 juil. 2013
 Alexis Eidelman
 '''
+from __future__ import division
+from __future__ import print_function
+from future.builtins import str
+from future.builtins import range
+from future.builtins import object
+from past.utils import old_div
 
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
@@ -51,9 +57,9 @@ class DataTil(object):
         self.order = []
 
     def load(self):
-        print "début de l'importation des données"
+        print("début de l'importation des données")
         raise NotImplementedError()
-        print "fin de l'importation des données"
+        print("fin de l'importation des données")
 
     #def rename_var(self, [pe1e, me1e]):
         # TODO : fonction qui renomme les variables pour qu'elles soient au format liam
@@ -68,11 +74,11 @@ class DataTil(object):
              - passer par la liste blanche ce que l'on recommande pour l'instant
              - passer par  liste noire.
         '''
-        if 'ind' in dict_to_drop.keys():
+        if 'ind' in list(dict_to_drop.keys()):
             self.ind = self.ind.drop(dict_to_drop['ind'], axis=1)
-        if 'men' in dict_to_drop.keys():
+        if 'men' in list(dict_to_drop.keys()):
             self.men = self.men.drop(dict_to_drop['men'], axis=1)
-        if 'foy' in dict_to_drop.keys():
+        if 'foy' in list(dict_to_drop.keys()):
             self.foy = self.foy.drop(dict_to_drop['foy'], axis=1)
 
     def format_initial(self):
@@ -120,7 +126,7 @@ class DataTil(object):
 
         # 1ere étape : Identification des personnes mariées/pacsées
         spouse = (ind['conj'] != -1) & ind['civilstate'].isin([1,5])
-        print str(sum(spouse)) + " personnes en couples"
+        print(str(sum(spouse)) + " personnes en couples")
 
         # 2eme étape : rôles au sein du foyer fiscal
         # selection du conjoint qui va être le vousrant (= déclarant principal du foyer fiscal) : pas d'incidence en théorie
@@ -131,21 +137,21 @@ class DataTil(object):
         pac_condition = (ind['civilstate'] == 2)  & ( ((ind['agem'] < 12*25) & \
                                                         (ind['workstate'] == 11)) | (ind['agem'] < 12*21) ) &(ind['nb_enf'] == 0)
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
-        print str(sum(pac)) + ' personnes prises en charge'
+        print(str(sum(pac)) + ' personnes prises en charge')
         # Identifiants associés
         ind['quifoy'] = 0
         ind.loc[conj,'quifoy'] = 1
         # Comprend les enfants n'ayant pas de parents spécifiés (à terme rattachés au foyer 0= DASS)
         ind.loc[pac,'quifoy'] = 2
         ind.loc[(ind['men'] == 0) & (ind['quifoy'] == 0), 'quifoy'] = 2
-        print "Nombres de foyers fiscaux", sum(ind['quifoy'] == 0), ", dont couple", sum(ind['quifoy'] == 1)
+        print("Nombres de foyers fiscaux", sum(ind['quifoy'] == 0), ", dont couple", sum(ind['quifoy'] == 1))
 
         # 3eme étape : attribution des identifiants des foyers fiscaux
         ind['foy'] = -1
         nb_foy = sum(ind['quifoy'] == 0)
-        print "Le nombre de foyers créés est : " + str(nb_foy)
+        print("Le nombre de foyers créés est : " + str(nb_foy))
         # Rq: correspond au même décalage que pour les ménages (10premiers : institutions)
-        ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy +10)
+        ind.loc[ind['quifoy'] == 0, 'foy'] = list(range(10, nb_foy +10))
 
         # 4eme étape : Rattachement des autres membres du ménage
         # (a) - Rattachements des conjoints des personnes en couples
@@ -156,7 +162,7 @@ class DataTil(object):
         for parent in  ['pere', 'mere']:
             pac_par = ind.loc[ (ind['quifoy'] == 2) & (ind[parent] != -1) & (ind['foy'] == -1), ['id', parent]].astype(int)
             ind['foy'][pac_par['id'].values] = ind['foy'][pac_par[parent].values]
-            print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
+            print(str(len(pac_par)) + " enfants sur la déclaration de leur " + parent)
 
         # Enfants de la Dass -> foyer fiscal 'collectif'
         ind.loc[ind['men']==0, 'foy'] = 0
@@ -176,7 +182,7 @@ class DataTil(object):
         if (nb_foy_men.max() >1) & (foy_men ['zimpot'].max() >0) :
             assert len(nb_foy_men) ==  len(foy_men)
             for var in impots :
-                foy_men[var] = foy_men[var] / nb_foy_men
+                foy_men[var] = old_div(foy_men[var], nb_foy_men)
             foy = merge(foy, foy_men, on = 'men', how ='left', right_index=True)
         foy['period'] = survey_date
 
@@ -191,7 +197,7 @@ class DataTil(object):
 
         foy.index = foy['id']
         assert sum(ind['foy']==-1) == 0
-        print 'Taille de la table foyers :', len(foy)
+        print('Taille de la table foyers :', len(foy))
         #### fin de declar
         self.ind = ind
         self.foy = foy
@@ -313,14 +319,14 @@ class DataTil(object):
             vous = (ind['quifoy'] == 0)
             conj = (ind['quifoy'] == 1)
             pac = (ind['quifoy'] == 2)
-            ind.loc[vous,'foy']= range(sum(vous))
+            ind.loc[vous,'foy']= list(range(sum(vous)))
             ind.loc[conj,'foy'] = ind.ix[ind['conj'][conj],['foy']]
             pac_pere = pac & notnull(ind['pere'])
             ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]
             pac_mere = pac & ~notnull(ind['foy'])
             ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']]
 
-        for name, table in longit.iteritems():
+        for name, table in longit.items():
             table = table.merge(ind_exp[['id_ini', 'id']], right_on='id', left_index=True, how='right')
             table.set_index('id', inplace=True)
             table.drop('id_ini', axis=1, inplace=True)
@@ -432,14 +438,14 @@ class DataTil(object):
             # -> Conjoint réattribué à qui de droit
             no_conj = rec[rec['civilstate'].isin([1,5]) & rec['civilstate_c'].isin([1,5]) & (rec['conj']==-1)][['id_c', 'id']]
             if len(no_conj)>0:
-                print "Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj)
+                print("Les deux se déclarent  en couples mais conjoint non spécifié dans un des deux cas", len(no_conj))
                 ind['conj'][no_conj['id'].values] = no_conj['id_c'].values
                 ind = ind.fillna(-1)
 
         # 2.a - Confusion mariage/pacs
         confusion = rec[(rec['id_c']> rec['id'])& (rec['civilstate_c']!= rec['civilstate']) & ~rec['civilstate_c'].isin([3,4]) &  ~rec['civilstate'].isin([3,4])]
         if len(confusion)>0:
-            print "Nombre de confusions sur l'état civil (corrigées) : ", len(confusion)
+            print("Nombre de confusions sur l'état civil (corrigées) : ", len(confusion))
             # Hypothese: Celui ayant l'identifiant le plus petit dit vrai
             ind['civilstate'][confusion['id_c'].values] = ind['civilstate'][confusion['id'].values]
             ind = ind.fillna(-1)
@@ -448,14 +454,14 @@ class DataTil(object):
         conf = rec[(rec['civilstate_c']!= rec['civilstate']) & (rec['civilstate_c'].isin([3,4]) |  rec['civilstate'].isin([3,4]))]
         confusion = conf[conf['civilstate_c'].isin([3,4]) & conf['civilstate'].isin([1,5]) ]
         if len(confusion)>0:
-            print "Nombre de couples marié/veuf (corrigés) : ", len(confusion)
+            print("Nombre de couples marié/veuf (corrigés) : ", len(confusion))
             ind['civilstate'][confusion['id'].values] = 2
 
         #3- Nombre de personnes avec conjoint hdom
         conj_hdom = ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]
-        print "Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom)
+        print("Nombre de personnes ayant un conjoint hdom : ", len(conj_hdom))
         if couple_hdom == False :
-            print "Ces personnes sont considérées célibataires "
+            print("Ces personnes sont considérées célibataires ")
             ind.loc[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1), 'civilstate'] = 2
             assert len(ind[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1)]) == 0
         self.ind = ind
@@ -508,14 +514,14 @@ class DataTil(object):
         futur = self.futur
         longit = self.longitudinal
         
-        assert all(ind['workstate'].isin(range(1,12)))
-        assert all(ind['civilstate'].isin(range(1,6)))
+        assert all(ind['workstate'].isin(list(range(1,12))))
+        assert all(ind['civilstate'].isin(list(range(1,6))))
 
         # Foyers et ménages bien attribués
         assert sum((ind['foy'] == -1)) == 0
         assert sum((ind['men'] == -1)) == 0
-        print "Nombre de personnes dans ménages ordinaires : ", sum(ind['men']>9)
-        print "Nombre de personnes vivant au sein de collectivités : ", sum(ind['men']<10)
+        print("Nombre de personnes dans ménages ordinaires : ", sum(ind['men']>9))
+        print("Nombre de personnes vivant au sein de collectivités : ", sum(ind['men']<10))
 
         ## On vérifie qu'on a un et un seul qui = 0 et au plus un qui = 1 pour foy et men
         for ent in ['men', 'foy']:
@@ -552,7 +558,7 @@ class DataTil(object):
             assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
             if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
                 pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
-                print ('Nombre identifants problématiques dans la table futur: ', len(pb_id))
+                print(('Nombre identifants problématiques dans la table futur: ', len(pb_id)))
 
             print ("Nombre de personnes présentes dans la base "
                     + str( len(id_ok)) + " ("+ str( len(id_ini))
@@ -561,11 +567,11 @@ class DataTil(object):
         for table in [ind, men, foy, futur]:
             if table is not None:
                 test_month = table['period'] % 100
-                assert all(test_month.isin(range(1, 13)))
+                assert all(test_month.isin(list(range(1, 13))))
                 test_year = table['period'] // 100
-                assert all(test_year.isin(range(1900, 2100)))
+                assert all(test_year.isin(list(range(1900, 2100))))
                 
-        for name, table in longit.iteritems():
+        for name, table in longit.items():
             cols = table.columns
             cols_year = [(col // 100 in range(1900, 2100))  for col in cols]
             cols_month = [(col % 100 in range(1, 13)) for col in cols]
@@ -628,7 +634,7 @@ class DataTil(object):
         # 3 - table longitudinal
         # Note: on conserve le format pandas ici
         store = HDFStore(path)
-        for varname, table in self.longitudinal.iteritems():
+        for varname, table in self.longitudinal.items():
             table['id'] = table.index
             store.append('longitudinal/' + varname, table)
         store.close()

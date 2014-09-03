@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pdb
 
 from pandas import HDFStore 
@@ -8,7 +9,7 @@ from rpy2.robjects import r
 __version__ = "0.0"
 
 def stat(year):
-    print "Calcul des statistiques individuelles"
+    print("Calcul des statistiques individuelles")
     
     simul = "C:/til/output/simul.h5"
     simul = HDFStore(simul)

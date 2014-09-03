@@ -9,7 +9,7 @@ from numpy.lib.stride_tricks import as_strided
 from pandas import Series, DataFrame
 
 of_name_to_til = {'ind':'person','foy':'declar','men':'menage', 'fam':'famille'}
-til_name_to_of  = dict ( (v,k) for k, v in of_name_to_til.items() )
+til_name_to_of  = dict ( (v,k) for k, v in list(of_name_to_til.items()) )
 
 
 def concatenated_ranges(ranges_list) :
