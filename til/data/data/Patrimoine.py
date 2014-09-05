@@ -152,7 +152,7 @@ class Patrimoine(DataTil):
         pass
 
 
-    def work_on_past(self, method='from_external_match'):
+    def work_on_past(self, method='from_data'):
         assert method in ['from_external_match', 'from_data']
         ind = self.ind
         def _correction_carriere():

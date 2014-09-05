@@ -485,7 +485,7 @@ class DataTil(object):
             assert sum(tab['sexe_mere'] == tab['sexe_pere']) == 0
         except:
             pdb.set_trace()
-            raise Exception()
+            
             test = diff_age_pere < 0
             tab[test]
         # on va plus loin sur les conjoints pour éviter les frères et soeurs :
