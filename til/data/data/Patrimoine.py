@@ -744,11 +744,9 @@ if __name__ == '__main__':
     data.creation_child_out_of_house()
     data.matching_par_enf()
     data.match_couple_hdom()
-    data._check_conjoint(couple_hdom = False)
     data.creation_foy()
     data.format_to_liam()
     data.final_check()
-    data._check_conjoint(couple_hdom = False)
     data.store_to_liam()
     print "Temps de calcul : ", (time.time() - start_t), 's'
     print "Nombre d'individus de la table final : ", len(data.ind)

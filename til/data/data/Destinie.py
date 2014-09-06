@@ -141,8 +141,6 @@ class Destinie(DataTil):
         print "Début de la mise en forme initiale"
         start_time = time.time()
 
-
-
         def _Emp_clean(ind, emp):
             ''' Mise en forme des données sur carrières:
             Actualisation de la variable période
@@ -328,6 +326,30 @@ class Destinie(DataTil):
 
         self.ind = ind.drop(list_enf, axis=1)
 
+    def corrections(self):
+        '''
+        Vérifications/corrections de :
+            - La réciprocité des déclarations des conjoints
+            - La concordance de la déclaration des états civils en cas de réciprocité
+            - conjoint hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non.
+        '''
+        ind = self.ind
+        ind = ind.fillna(-1)
+        rec = ind.loc[ind['conj'] != -1, ['id','conj','civilstate']] #| ind['civilstate'].isin([1,5])
+        reciprocity = rec.merge(rec, left_on='id', right_on='conj', suffixes=('','_c'))
+        rec = reciprocity
+        # 1- check reciprocity of conj
+        assert all(rec['conj_c'] == rec['id'])
+        assert all(rec.loc[rec['civilstate'].isin([1,5]), 'conj'] > -1)
+        # 2- priority to marriage
+        rec.loc[rec['civilstate_c'] == 1, 'civilstate'] = 1
+        ind.loc[ind['conj'] != -1, 'civilstate'] = rec['civilstate'].values
+        # 3- faux conjoint (ou couple hdom)
+        ind.loc[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1),
+                 'civilstate'] = 2
+        self.ind = ind
+        
+
     def creation_menage(self):
         ind = self.ind
         survey_year = self.survey_year
@@ -411,7 +433,7 @@ class Destinie(DataTil):
 
         # 4eme étape : création d'un ménage fictif résiduel :
         # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = 0
-        ind.loc[(ind['men']== -1) & (ind['agem']<12*18), 'men'] = 0
+        ind.loc[(ind['men']== -1) & (ind['agem'] < 12*18), 'men'] = 0
 
         # 5eme étape : mises en formes finales
         # attribution des quimen pour les personnes non référentes
@@ -484,7 +506,7 @@ if __name__ == '__main__':
     # (b) - Travail sur la base initiale (données à l'année de l'enquête)
     ini_t = time.time()
     data.enf_to_par()
-    data._check_conjoint()
+    data.corrections()
     data.creation_menage()
     data.creation_foy()
 
