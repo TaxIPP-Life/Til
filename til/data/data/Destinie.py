@@ -123,8 +123,8 @@ class Destinie(DataTil):
         def _recode_sexe(sexe):
             ''' devrait etre dans format mais plus pratique ici'''
             if sexe.max() == 2:
-                sexe.replace(1,0, inplace=True)
-                sexe.replace(2,1, inplace=True)
+                sexe.replace(1, 0, inplace=True)
+                sexe.replace(2, 1, inplace=True)
             return sexe
 
         self.ind['sexe'] = _recode_sexe(self.ind['sexe'])
@@ -265,6 +265,7 @@ class Destinie(DataTil):
         futur = _work_on_futur(futur, ind)
         for table in ind, past, futur: 
             table['period'] = 100*table['period'] + 1
+
         self.ind = ind
         self.past = past
         self.futur = futur
@@ -323,7 +324,7 @@ class Destinie(DataTil):
             parents = link.loc[(link[par +'_decla'] != link[par +'_ini']) & (link[par +'_ini'] == -1), ['id', par +'_decla']].astype(int)
             ind.loc[parents['id'].values, par] = parents[par + '_decla'].values
             print str(sum((ind[par].notnull() & (ind[par] != -1 )))) + " enfants connaissent leur " + par
-
+            
         self.ind = ind.drop(list_enf, axis=1)
 
     def corrections(self):
@@ -335,7 +336,7 @@ class Destinie(DataTil):
         '''
         ind = self.ind
         ind = ind.fillna(-1)
-        rec = ind.loc[ind['conj'] != -1, ['id','conj','civilstate']] #| ind['civilstate'].isin([1,5])
+        rec = ind.loc[ind['conj'] != -1, ['id','conj','civilstate', 'pere', 'mere']] #| ind['civilstate'].isin([1,5])
         reciprocity = rec.merge(rec, left_on='id', right_on='conj', suffixes=('','_c'))
         rec = reciprocity
         # 1- check reciprocity of conj
@@ -347,6 +348,12 @@ class Destinie(DataTil):
         # 3- faux conjoint (ou couple hdom)
         ind.loc[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1),
                  'civilstate'] = 2
+                 
+        # correction : vient directement de la base Destinie
+        rec.loc[rec['pere_c'] == rec['pere'], 'pere'] = -1
+        rec.loc[rec['mere_c'] == rec['mere'], 'mere'] = -1
+        ind.loc[ind['conj'] != -1, 'pere'] = rec['pere'].values
+        ind.loc[ind['conj'] != -1, 'mere'] = rec['mere'].values
         self.ind = ind
         
 
