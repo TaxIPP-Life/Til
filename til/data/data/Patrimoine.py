@@ -169,7 +169,7 @@ class Patrimoine(DataTil):
             ind['cydeb1'][liste1] = ind.anais[liste1] + 20
             ind['cydeb1'][15206] = 1963
             ind['cydeb1'][27800] = 1999
-            ind['modif'] = Series("", index=ind.index)
+            ind['modif'] = ""
             ind['modif'].iloc[liste1 +[15206,27800]] =  "cydeb1_manq"
 
             ind['cyact3'][10833] = 4
@@ -179,7 +179,7 @@ class Patrimoine(DataTil):
             var = ["cyact", "cydeb", "cycaus", "cytpto"]
             # Note : la solution ne semble pas être parfaite au sens qu'elle ne résout pas tout
             # cond : gens pour qui on a un probleme de date
-            cond0 = ind['cyact2'].notnull() & ind['cyact1'].isnull() & \
+            cond0 = (ind['cyact2'].notnull()) & (ind['cyact1'].isnull()) & \
                 ((ind['cydeb1'] == ind['cydeb2']) | (ind['cydeb1'] > ind['cydeb2']) | (ind['cydeb1'] == (ind['cydeb2'] - 1)))
             cond0.iloc[8297] = True
             ind['modif'][cond0] = "decal act"
@@ -188,7 +188,6 @@ class Patrimoine(DataTil):
                 var_k = [x + str(k) for x in var]
                 var_k1 = [x + str(k+1) for x in var]
                 ind.loc[cond0, var_k] = ind.loc[cond0, var_k1]
-
 
             # si le probleme n'est pas resolu, le souci était sur cycact seulement, on met une valeur
             cond1 = ind['cyact2'].notnull() & ind['cyact1'].isnull() & \
@@ -199,11 +198,12 @@ class Patrimoine(DataTil):
 
             cond2 = ind['cydeb1'].isnull() & (ind['cyact1'].notnull() | ind['cyact2'].notnull())
             ind.loc[cond2, 'modif'] = "jeact ou anfinetu manq"
-            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'findet']].max(axis=1)
+            ind['findet_year'] =  ind['findet'] + ind['anais']
+            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'findet_year']].max(axis=1)
             # quand l'ordre des dates n'est pas le bon on fait l'hypothèse que
             # c'est la première date entre anfinetu et jeactif qu'il faut prendre en non pas l'autre
             cond2 = ind['cydeb1'] > ind['cydeb2']
-            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'findet']].min(axis=1)
+            ind.loc[cond2, 'cydeb1'] = ind.loc[cond2, ['jeactif', 'findet_year']].min(axis=1)
             return ind
 
         # travail sur les carrières
@@ -233,7 +233,7 @@ class Patrimoine(DataTil):
             self.longitudinal['sali'] = sali
 
         if method == 'from_data':
-            _correction_carriere()
+            ind = _correction_carriere()
             # travail sur les carrières
             survey_year = self.survey_year
             date_deb = int(min(ind['cydeb1']))
@@ -740,7 +740,7 @@ if __name__ == '__main__':
 #     data.corrections()
     data.conjoint()
     data.enfants()
-    data.expand_data(seuil=400)
+    data.expand_data(seuil=1500)
     data.creation_child_out_of_house()
     data.matching_par_enf()
     data.match_couple_hdom()
