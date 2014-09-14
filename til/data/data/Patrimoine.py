@@ -138,7 +138,10 @@ class Patrimoine(DataTil):
         # findet
         ind['findet'].replace(0, np.nan, inplace=True)
         ind['findet'] = ind['findet'] - ind['anais']
-
+        
+        # tauxprime
+        ind['tauxprime'] = 0
+        
         self.men = men
         self.ind = ind
         self.drop_variable(
@@ -312,7 +315,7 @@ class Patrimoine(DataTil):
             jeunesse = [x for x in all if x[:7] == 'jegrave']
             black_list = jeunesse_grave + parent_prop  + diplom
             # liste blanche
-            info_pers = ['anais', 'mnais', 'sexe', 'dip14', 'agem', 'findet']
+            info_pers = ['anais', 'mnais', 'sexe', 'dip14', 'agem', 'findet', 'tauxprime']
             famille = ['couple', 'lienpref', 'enf', 'civilstate', 'pacs', 'grandpar', 'per1e', 'mer1e', 'enfant']
             jobmarket = ['statut', 'situa', 'workstate', 'preret', 'classif', 'cs42']
             info_parent = ['jepnais', 'jemnais', 'jemprof']
