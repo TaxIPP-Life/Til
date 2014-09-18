@@ -1,17 +1,30 @@
 # -*- coding:utf-8 -*-
 
-from til.CONFIG import path_liam, path_model
+from til.CONFIG import path_liam
 import sys
 import os
-from til import __path__ as path_til
+import pkg_resources
+
+path_til = os.path.join(
+    pkg_resources.get_distribution('Til').location,
+    "til"
+    )
+path_pension = os.path.join(
+    pkg_resources.get_distribution("Til-Pension").location,
+    "til_pension",
+    )
+path_model = os.path.join(
+    pkg_resources.get_distribution("Til-BaseModel").location,
+    "til_base_model",
+    )
 
 sys.path.append(path_liam)
 from src.simulation import Simulation
 
-fichier = path_model + '/console.yml'
+fichier = os.path.join(path_model, 'console.yml')
 output_dir = os.path.join(path_til[0], 'output')
 
-simulation = Simulation.from_yaml( fichier,
+simulation = Simulation.from_yaml(fichier,
                     input_dir = None,
                     input_file = None,
                     output_dir = output_dir,
