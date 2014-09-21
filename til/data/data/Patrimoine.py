@@ -718,11 +718,17 @@ class Patrimoine(DataTil):
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.loc[match_found.values,'partner'] =  match_found.index
         ind.loc[match_found.index,'partner'] =  match_found.values
-        ind.loc[men_libre & ind['partner'].isnull(),['civilstate','couple']] =  [2,3]
-        ind.loc[women_libre & ind['partner'].isnull(),['civilstate','couple']] =  [2,3]
-
+        
+        # TODO: on pourrait faire un match avec les restants
+        # au lieu de ça, on les considère célibataire
+        ind.loc[men_contrat & (ind['partner'] == -1), ['civilstate','couple']] = [2,3]
+        ind.loc[women_contrat & (ind['partner'] == -1), ['civilstate','couple']] = [2,3]
+        ind.loc[men_libre & ind['partner'] == -1, ['civilstate','couple']] =  [2,3]
+        ind.loc[women_libre & ind['partner'] == -1, ['civilstate','couple']] =  [2,3]
+        
         ind.drop(['couple','age'], axis=1, inplace=True)
         self.ind = ind
+
         
 if __name__ == '__main__':
 
@@ -739,7 +745,7 @@ if __name__ == '__main__':
 #     data.corrections()
     data.partner()
     data.enfants()
-    # data.expand_data(seuil=1300)
+    data.expand_data(seuil=1300)
     data.creation_child_out_of_house()
     data.matching_par_enf()
     data.match_couple_hdom()

@@ -497,6 +497,15 @@ class DataTil(object):
             assert all(cols_month)
             
         # check reciprocity:
+        assert all(ind.loc[ind['civilstate'].isin([1,5]), 'partner'] > -1)
+        rec = ind.loc[ind['partner'] != -1, ['id','partner','civilstate']]
+        rec = rec.merge(rec, left_on='id', right_on='partner', suffixes=('','_c'))
+        # 1- check reciprocity of partner
+        assert all(rec['partner_c'] == rec['id'])
+        assert all(rec.loc[rec['civilstate'].isin([1,5]), 'civilstate'] == 
+                   rec.loc[rec['civilstate'].isin([1,5]), 'civilstate_c'])
+
+                 
         self._check_links(ind)
 
     def _output_name(self, extension='.h5'):
