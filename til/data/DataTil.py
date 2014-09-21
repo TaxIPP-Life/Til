@@ -20,12 +20,12 @@ import pdb
 # il faut que ce soit à jour. Le premier éléments est la liste des
 # entiers, le second celui des floats
 variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy','tuteur',
-                         'pere','mere','conj','civilstate','findet',
+                         'pere','mere','partner','civilstate','findet',
                          'workstate','xpr','anc'],['sali','rsti','choi', 'tauxprime']),
                  'men': (['pref'],[]),
                  'foy': (['vous','men'],[]),
                  'futur':(['agem','sexe','men','quimen','foy','quifoy',
-                         'pere','mere','conj','civilstate','findet',
+                         'pere','mere','partner','civilstate','findet',
                          'workstate','xpr','anc', 'deces'],['sali','rsti','choi']),
                  'past': ([],[])}
 
@@ -57,7 +57,7 @@ class DataTil(object):
 
     #def rename_var(self, [pe1e, me1e]):
         # TODO : fonction qui renomme les variables pour qu'elles soient au format liam
-        # period, id, agem, age, sexe, men, quimen, foy quifoy pere, mere, conj, dur_in_couple, civilstate, workstate, sali, findet
+        # period, id, agem, age, sexe, men, quimen, foy quifoy pere, mere, partner, dur_in_couple, civilstate, workstate, sali, findet
 
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
@@ -91,7 +91,7 @@ class DataTil(object):
         '''
         Créer les déclarations fiscale. Il s'agit principalement de regrouper certains individus entre eux.
         Ce n'est qu'ici qu'on s'occupe de verifier que les individus mariés ou pacsé ont le même statut matrimonial
-        que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
+        que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du partneroint.
         '''
         ind = self.ind
         men = self.men
@@ -119,13 +119,13 @@ class DataTil(object):
         men, ind = _name_var(ind, men)
 
         # 1ere étape : Identification des personnes mariées/pacsées
-        spouse = (ind['conj'] != -1) & ind['civilstate'].isin([1,5])
+        spouse = (ind['partner'] != -1) & ind['civilstate'].isin([1,5])
         print str(sum(spouse)) + " personnes en couples"
 
         # 2eme étape : rôles au sein du foyer fiscal
-        # selection du conjoint qui va être le vousrant (= déclarant principal du foyer fiscal) : pas d'incidence en théorie
-        decl = spouse & ( ind['conj'] > ind['id'])
-        conj = spouse & ( ind['conj'] < ind['id'])
+        # selection du partneroint qui va être le vousrant (= déclarant principal du foyer fiscal) : pas d'incidence en théorie
+        decl = spouse & ( ind['partner'] > ind['id'])
+        partner = spouse & ( ind['partner'] < ind['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
         pac_condition = (ind['civilstate'] == 2)  & ( ((ind['agem'] < 12*25) & \
@@ -134,7 +134,7 @@ class DataTil(object):
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
         ind['quifoy'] = 0
-        ind.loc[conj,'quifoy'] = 1
+        ind.loc[partner,'quifoy'] = 1
         # Comprend les enfants n'ayant pas de parents spécifiés (à terme rattachés au foyer 0= DASS)
         ind.loc[pac,'quifoy'] = 2
         ind.loc[(ind['men'] == 0) & (ind['quifoy'] == 0), 'quifoy'] = 2
@@ -148,9 +148,9 @@ class DataTil(object):
         ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy +10)
 
         # 4eme étape : Rattachement des autres membres du ménage
-        # (a) - Rattachements des conjoints des personnes en couples
-        conj = ind.loc[(ind['conj'] != -1) & (ind['civilstate'].isin([1,5]))& (ind['quifoy'] == 0), ['conj','foy']]
-        ind['foy'][conj['conj'].values] = conj['foy'].values
+        # (a) - Rattachements des partneroints des personnes en couples
+        partner = ind.loc[(ind['partner'] != -1) & (ind['civilstate'].isin([1,5]))& (ind['quifoy'] == 0), ['partner','foy']]
+        ind['foy'][partner['partner'].values] = partner['foy'].values
 
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for parent in  ['pere', 'mere']:
@@ -217,7 +217,7 @@ class DataTil(object):
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
         On séléctionne les individus qui se déclare en couple avec quelqu'un hors du domicile.
         On match mariés,pacsé d'un côté et sans contrat de l'autre. Dit autrement, si on ne trouve pas de partenaire à une personne mariée ou pacsé on change son statut de couple.
-        Comme pour les liens parents-enfants, on néglige ici la possibilité que le conjoint soit hors champ (étrange, prison, casernes, etc).
+        Comme pour les liens parents-enfants, on néglige ici la possibilité que le partneroint soit hors champ (étrange, prison, casernes, etc).
         Calcul aussi la variable ind['nb_enf']
         '''
         raise NotImplementedError()
@@ -290,7 +290,7 @@ class DataTil(object):
         # liens entre individus
         tableB = ind_exp[['id_rep','id_ini']]
         tableB['id_index'] = tableB.index
-#         ind_exp = ind_exp.drop(['pere', 'mere','conj'], axis=1)
+#         ind_exp = ind_exp.drop(['pere', 'mere','partner'], axis=1)
         print("debut travail sur identifiant")
         def _align_link(link_name, table_exp):
             tab = table_exp[[link_name, 'id_rep']].reset_index()
@@ -302,7 +302,7 @@ class DataTil(object):
 
         ind_exp = _align_link('pere', ind_exp)
         ind_exp = _align_link('mere', ind_exp)
-        ind_exp = _align_link('conj', ind_exp)
+        ind_exp = _align_link('partner', ind_exp)
 
         #TODO: add _align_link with 'pere' and 'mere' in child_out_ouf_house in order to swap expand
         # and creation_child_out_ouf_house, in the running order
@@ -311,10 +311,10 @@ class DataTil(object):
             #le plus simple est de repartir des quifoy, cela change du men
             # la vérité c'est que ça ne marche pas avec ind_exp['foy'] = new_link_with_men(ind, foy_exp, 'foy')
             vous = (ind['quifoy'] == 0)
-            conj = (ind['quifoy'] == 1)
+            partner = (ind['quifoy'] == 1)
             pac = (ind['quifoy'] == 2)
             ind.loc[vous,'foy']= range(sum(vous))
-            ind.loc[conj,'foy'] = ind.ix[ind['conj'][conj],['foy']]
+            ind.loc[partner,'foy'] = ind.ix[ind['partner'][partner],['foy']]
             pac_pere = pac & notnull(ind['pere'])
             ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]
             pac_mere = pac & ~notnull(ind['foy'])
@@ -380,7 +380,7 @@ class DataTil(object):
 
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
-#            links = ['id','pere','mere','conj','foy','men','pref','vous']
+#            links = ['id','pere','mere','partner','foy','men','pref','vous']
 #            for table in [ind, men, foy, futur, past]:
 #                if table is not None:
 #                    vars_link = [x for x in table.columns if x in links]
@@ -390,10 +390,10 @@ class DataTil(object):
     def _check_links(self, ind):
         if ind is None: 
             ind = self.ind
-        to_check = ind[['id', 'agem', 'sexe', 'men', 'conj', 'pere', 'mere']]
+        to_check = ind[['id', 'agem', 'sexe', 'men', 'partner', 'pere', 'mere']]
         # age parent
         tab = to_check.copy()
-        for lien in ['conj', 'pere', 'mere']:
+        for lien in ['partner', 'pere', 'mere']:
             tab = tab.merge(to_check, left_on=lien, right_on='id', suffixes=('', '_' + lien), how='left', sort=False)
         tab.index = tab['id']
         diff_age_pere = (tab['agem_pere'] - tab['agem'])        
@@ -402,9 +402,9 @@ class DataTil(object):
         try:
             assert diff_age_pere.min() > 12*14
             assert diff_age_mere.min() > 12*12.4
-            # pas de probleme du conjoint
-            assert sum(tab['id_pere'] == tab['id_conj']) == 0
-            assert sum(tab['id_mere'] == tab['id_conj']) == 0
+            # pas de probleme du partneroint
+            assert sum(tab['id_pere'] == tab['id_partner']) == 0
+            assert sum(tab['id_mere'] == tab['id_partner']) == 0
             assert sum(tab['id_mere'] == tab['id_pere']) == 0
             assert sum(tab['sexe_mere'] == tab['sexe_pere']) == 0
         except:
@@ -412,15 +412,15 @@ class DataTil(object):
             
             test = diff_age_pere < 0
             tab[test]
-        # on va plus loin sur les conjoints pour éviter les frères et soeurs :
-        tab_conj = tab.loc[tab['conj'] > -1].copy()
-        tab_conj.replace(-1, np.nan, inplace=True)
+        # on va plus loin sur les partneroints pour éviter les frères et soeurs :
+        tab_partner = tab.loc[tab['partner'] > -1].copy()
+        tab_partner.replace(-1, np.nan, inplace=True)
         try:
-            assert all((tab_conj['id'] == tab_conj['conj_conj']))  # Les couples sont réciproques
-            assert sum(tab_conj['mere'] == tab_conj['mere_conj']) == 0  # pas de mariage entre frere et soeur
-            assert sum(tab_conj['pere'] == tab_conj['pere_conj']) == 0
+            assert all((tab_partner['id'] == tab_partner['partner_partner']))  # Les couples sont réciproques
+            assert sum(tab_partner['mere'] == tab_partner['mere_partner']) == 0  # pas de mariage entre frere et soeur
+            assert sum(tab_partner['pere'] == tab_partner['pere_partner']) == 0
         except:
-            test = tab_conj['pere'] == tab_conj['pere_conj']
+            test = tab_partner['pere'] == tab_partner['pere_partner']
             pdb.set_trace()
 
     def final_check(self):
@@ -457,13 +457,13 @@ class DataTil(object):
             assert list_id.isin(ind[ent]).all()
             # si on est un 2
 
-            # si on est quimen = 1 alors on a son conjoint avec soi
+            # si on est quimen = 1 alors on a son partneroint avec soi
             qui1 = ind['qui' + ent]==1
-            conj = ind.loc[qui1, 'conj'].values
-            conj_ent = ind.iloc[conj]
-            conj_ent = conj_ent[ent]
+            partner = ind.loc[qui1, 'partner'].values
+            partner_ent = ind.iloc[partner]
+            partner_ent = partner_ent[ent]
             qui1_ent = ind.loc[qui1, ent]
-            assert (qui1_ent == conj_ent).all()
+            assert (qui1_ent == partner_ent).all()
 
         # Table futur bien construite
         if futur is not None:

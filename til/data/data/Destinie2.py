@@ -30,7 +30,7 @@ class Destinie(DataTil):
         self.survey_date = 100*self.survey_year + 1
         # TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         # TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
-        self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_conjoint', 'creation_menage', 'creation_foy',
+        self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_partner', 'creation_menage', 'creation_foy',
                                'var_sup', 'longitudinal', 'add_futur', 'store_to_liam']
        
     def _output_name(self):
@@ -85,7 +85,7 @@ class Destinie(DataTil):
         
         def _lecture_BioFam():
             BioFam = read_table(path_data_destinie + 'BioFam.txt', sep=';',
-                                   header=None, names=['id','pere','mere','civilstate','conj',
+                                   header=None, names=['id','pere','mere','civilstate','partner',
                                                        'enf1','enf2','enf3','enf4','enf5','enf6'])   
             # Index limites pour changement de date
             delimiters = BioFam['id'].str.contains('Fin')
@@ -100,12 +100,12 @@ class Destinie(DataTil):
             BioFam = BioFam[~delimiters]
             BioFam['period'] = period
             list_enf = ['enf1','enf2','enf3','enf4','enf5','enf6']
-            BioFam[list_enf + ['pere','mere', 'conj']] -= 1
+            BioFam[list_enf + ['pere','mere', 'partner']] -= 1
             BioFam.loc[:,'id'] = BioFam.loc[:,'id'].astype(int) - 1
-            for var in ['pere','mere', 'conj'] + list_enf:
+            for var in ['pere','mere', 'partner'] + list_enf:
                 BioFam.loc[BioFam[var] < 0 , var] = -1
             BioFam = BioFam.fillna(-1)
-#             BioFam = drop_consecutive_row(BioFam.sort(['id', 'period']), ['id', 'pere','mere', 'conj', 'civilstate'])
+#             BioFam = drop_consecutive_row(BioFam.sort(['id', 'period']), ['id', 'pere','mere', 'partner', 'civilstate'])
             BioFam.replace(-1, np.nan, inplace=True)
             BioFam = minimal_dtype(BioFam)
             return BioFam 
@@ -201,7 +201,7 @@ class Destinie(DataTil):
             futur.drop(list_enf, axis=1, inplace=True)
             futur.fillna(-1, inplace=True)
 #             futur = drop_consecutive_row(futur.sort(['id', 'period']), 
-#                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
+#                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'partner'])
             futur = futur[futur['period'] > survey_year]
             return ind_survey, past, futur
         
@@ -342,8 +342,8 @@ class Destinie(DataTil):
         print 'nb_sans_menage_b', len(ind.loc[~ind['quimen'].isin([0,1]), :])
 
         # (c) - Correction pour les personnes en couple non à charge [identifiant le plus petit = tête de ménage]
-        ind.loc[( ind['conj'] > ind['id'] ) & ( ind['conj'] != -1)  & (ind['quimen']!=-2), 'quimen'] = 0 
-        ind.loc[(ind['conj'] < ind['id']) & ( ind['conj'] != -1) & (ind['quimen']!=-2), 'quimen'] = 1         
+        ind.loc[( ind['partner'] > ind['id'] ) & ( ind['partner'] != -1)  & (ind['quimen']!=-2), 'quimen'] = 0 
+        ind.loc[(ind['partner'] < ind['id']) & ( ind['partner'] != -1) & (ind['quimen']!=-2), 'quimen'] = 1         
         print str(len (ind[ind['quimen'] == 0])) + " ménages ont été constitués " # 20815
         print "   dont " + str(len (ind[ind['quimen'] == 1])) +  " couples "   # 9410
 
@@ -354,9 +354,9 @@ class Destinie(DataTil):
         ind.loc[ind['quimen'] == 0, 'men'] = range(10, nb_men +10)
 
         # 3eme étape : Rattachement des autres membres du ménage
-        # (a) - Rattachements des conjoints des personnes en couples 
-        conj = ind.loc[(ind['quimen'] == 1), ['id', 'conj']].astype(int)
-        ind['men'][conj['id'].values] = ind['men'][conj['conj'].values]
+        # (a) - Rattachements des partners des personnes en couples 
+        partner = ind.loc[(ind['quimen'] == 1), ['id', 'partner']].astype(int)
+        ind['men'][partner['id'].values] = ind['men'][partner['partner'].values]
 
         # (b) - Rattachements de leurs enfants (d'abord ménage de la mère, puis celui du père)
         for par in ['mere', 'pere']: 
@@ -447,7 +447,7 @@ if __name__ == '__main__':
     # (b) - Travail sur la base initiale (données à l'année de l'enquête)
     ini_t = time.time()
     data.enf_to_par()
-    data.check_conjoint()
+    data.check_partner()
     data.creation_menage()
     data.creation_foy()    
     

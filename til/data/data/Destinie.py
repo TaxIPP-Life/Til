@@ -29,7 +29,7 @@ class Destinie(DataTil):
         self.survey_date = 100*self.survey_year + 1
         # TODO: Faire une fonction qui check où on en est, si les précédent on bien été fait, etc.
         # TODO: Dans la même veine, on devrait définir la suppression des variables en fonction des étapes à venir.
-        self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_conjoint', 'creation_menage', 'creation_foy',
+        self.methods_order = ['load', 'format_initial', 'enf_to_par', 'check_partneroint', 'creation_menage', 'creation_foy',
                                'var_sup', 'add_futur', 'store_to_liam']
 
     def load(self):
@@ -90,7 +90,7 @@ class Destinie(DataTil):
         def _lecture_BioFam():
             path = os.path.join(path_data_destinie, 'BioFam.txt')
             BioFam = read_table(path, sep=';',
-                                   header=None, names=['id', 'pere', 'mere', 'civilstate', 'conj',
+                                   header=None, names=['id', 'pere', 'mere', 'civilstate', 'partner',
                                                        'enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6'])
             # Index limites pour changement de date
             delimiters = BioFam['id'].str.contains('Fin')
@@ -105,12 +105,12 @@ class Destinie(DataTil):
             BioFam = BioFam[~delimiters].copy()
             BioFam['period'] = period
             list_enf = ['enf1', 'enf2', 'enf3', 'enf4', 'enf5', 'enf6']
-            BioFam[list_enf + ['pere', 'mere', 'conj']] -= 1
+            BioFam[list_enf + ['pere', 'mere', 'partner']] -= 1
             BioFam.loc[:,'id'] = BioFam.loc[:,'id'].astype(int) - 1
-            for var in ['pere', 'mere', 'conj'] + list_enf:
+            for var in ['pere', 'mere', 'partner'] + list_enf:
                 BioFam.loc[BioFam[var] < 0, var] = -1
             BioFam = BioFam.fillna(-1)
-#             BioFam = drop_consecutive_row(BioFam.sort(['id', 'period']), ['id', 'pere', 'mere', 'conj', 'civilstate'])
+#             BioFam = drop_consecutive_row(BioFam.sort(['id', 'period']), ['id', 'pere', 'mere', 'partner', 'civilstate'])
             BioFam.replace(-1, np.nan, inplace=True)
             BioFam = minimal_dtype(BioFam)
             BioFam['civilstate'].replace([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], inplace=True)
@@ -211,7 +211,7 @@ class Destinie(DataTil):
             futur.drop(list_enf, axis=1, inplace=True)
             futur.fillna(-1, inplace=True)
 #             futur = drop_consecutive_row(futur.sort(['id', 'period']),
-#                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'conj'])
+#                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'partner'])
             futur = futur[futur['period'] > survey_year]
             return ind_survey, past, futur
 
@@ -330,30 +330,30 @@ class Destinie(DataTil):
     def corrections(self):
         '''
         Vérifications/corrections de :
-            - La réciprocité des déclarations des conjoints
+            - La réciprocité des déclarations des partneroints
             - La concordance de la déclaration des états civils en cas de réciprocité
-            - conjoint hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non.
+            - partneroint hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non.
         '''
         ind = self.ind
         ind = ind.fillna(-1)
-        rec = ind.loc[ind['conj'] != -1, ['id','conj','civilstate', 'pere', 'mere']] #| ind['civilstate'].isin([1,5])
-        reciprocity = rec.merge(rec, left_on='id', right_on='conj', suffixes=('','_c'))
+        rec = ind.loc[ind['partner'] != -1, ['id','partner','civilstate', 'pere', 'mere']] #| ind['civilstate'].isin([1,5])
+        reciprocity = rec.merge(rec, left_on='id', right_on='partner', suffixes=('','_c'))
         rec = reciprocity
-        # 1- check reciprocity of conj
-        assert all(rec['conj_c'] == rec['id'])
-        assert all(rec.loc[rec['civilstate'].isin([1,5]), 'conj'] > -1)
+        # 1- check reciprocity of partner
+        assert all(rec['partner_c'] == rec['id'])
+        assert all(rec.loc[rec['civilstate'].isin([1,5]), 'partner'] > -1)
         # 2- priority to marriage
         rec.loc[rec['civilstate_c'] == 1, 'civilstate'] = 1
-        ind.loc[ind['conj'] != -1, 'civilstate'] = rec['civilstate'].values
-        # 3- faux conjoint (ou couple hdom)
-        ind.loc[ind['civilstate'].isin([1,5]) & (ind['conj'] == -1),
+        ind.loc[ind['partner'] != -1, 'civilstate'] = rec['civilstate'].values
+        # 3- faux partneroint (ou couple hdom)
+        ind.loc[ind['civilstate'].isin([1,5]) & (ind['partner'] == -1),
                  'civilstate'] = 2
                  
         # correction : vient directement de la base Destinie
         rec.loc[rec['pere_c'] == rec['pere'], 'pere'] = -1
         rec.loc[rec['mere_c'] == rec['mere'], 'mere'] = -1
-        ind.loc[ind['conj'] != -1, 'pere'] = rec['pere'].values
-        ind.loc[ind['conj'] != -1, 'mere'] = rec['mere'].values
+        ind.loc[ind['partner'] != -1, 'pere'] = rec['pere'].values
+        ind.loc[ind['partner'] != -1, 'mere'] = rec['mere'].values
         self.ind = ind
         
 
@@ -382,8 +382,8 @@ class Destinie(DataTil):
         print 'nb_sans_menage_b', len(ind.loc[~ind['quimen'].isin([0,1]), :])
 
         # (c) - Correction pour les personnes en couple non à charge [identifiant le plus petit = tête de ménage]
-        ind.loc[( ind['conj'] > ind['id'] ) & ( ind['conj'] != -1)  & (ind['quimen']!=-2), 'quimen'] = 0
-        ind.loc[(ind['conj'] < ind['id']) & ( ind['conj'] != -1) & (ind['quimen']!=-2), 'quimen'] = 1
+        ind.loc[( ind['partner'] > ind['id'] ) & ( ind['partner'] != -1)  & (ind['quimen']!=-2), 'quimen'] = 0
+        ind.loc[(ind['partner'] < ind['id']) & ( ind['partner'] != -1) & (ind['quimen']!=-2), 'quimen'] = 1
         print str(len (ind[ind['quimen'] == 0])) + " ménages ont été constitués " # 20815
         print "   dont " + str(len (ind[ind['quimen'] == 1])) +  " couples "   # 9410
 
@@ -394,9 +394,9 @@ class Destinie(DataTil):
         ind.loc[ind['quimen'] == 0, 'men'] = range(10, nb_men + 10)
 
         # 3eme étape : Rattachement des autres membres du ménage
-        # (a) - Rattachements des conjoints des personnes en couples
-        conj = ind.loc[(ind['quimen'] == 1), ['id', 'conj']].astype(int)
-        ind['men'][conj['id'].values] = ind['men'][conj['conj'].values].copy()
+        # (a) - Rattachements des partneroints des personnes en couples
+        partner = ind.loc[(ind['quimen'] == 1), ['id', 'partner']].astype(int)
+        ind['men'][partner['id'].values] = ind['men'][partner['partner'].values].copy()
 
         # (b) - Rattachements de leurs enfants (d'abord ménage de la mère, puis celui du père)
         for par in ['mere', 'pere']:
@@ -413,7 +413,7 @@ class Destinie(DataTil):
 #         care = {}
 #         for par in ['mere', 'pere']:
 #             care_par = ind.loc[(ind['men_' + par] == 1), ['id',par]].astype(int)
-#             par_care = ind.loc[(ind['agem'] > 12*74) & (ind['id'].isin(care_par[par].values) & (ind['conj'] == -1)), ['id']]
+#             par_care = ind.loc[(ind['agem'] > 12*74) & (ind['id'].isin(care_par[par].values) & (ind['partner'] == -1)), ['id']]
 #             care_par = care_par.merge(par_care, left_on=par, right_on='id', how='inner',
 #                               suffixes = ('_enf', '_'+par))[['id_enf', 'id_'+par]]
 #             #print 'Nouveaux ménages' ,len(ind.loc[(ind['id'].isin(care_par['id_enf'].values)) & ind['quimen']!= 0])
@@ -434,8 +434,8 @@ class Destinie(DataTil):
 #             # Rétablissement de leur quimen
 #             ind['quimen'].replace(-2, 2, inplace=True)
 #         # Rq : il faut également rattacher le deuxième parent :
-#         conj_dep = ind.loc[(ind['men'] == -1) & (ind['conj'] != -1), ['id', 'conj']]
-#         ind['men'][conj_dep['id'].values] = ind['men'][conj_dep['conj'].values]
+#         partner_dep = ind.loc[(ind['men'] == -1) & (ind['partner'] != -1), ['id', 'partner']]
+#         ind['men'][partner_dep['id'].values] = ind['men'][partner_dep['partner'].values]
 #         assert ind.loc[(ind['tuteur'] != -1), 'agem'].min() > 12*70
 
         # 4eme étape : création d'un ménage fictif résiduel :
