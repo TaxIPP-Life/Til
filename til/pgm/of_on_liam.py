@@ -108,12 +108,12 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
     column_by_name = tax_benefit_system.column_by_name
 
     simulation = simulations.Simulation(
-    compact_legislation = None,
-    date = dt.date(2009, 5, 1),
-    debug = None,
-    debug_all = None,
-    tax_benefit_system = tax_benefit_system,
-    trace = None,
+            compact_legislation = None,
+            date = dt.date(2009, 5, 1),
+            debug = None,
+            debug_all = None,
+            tax_benefit_system = tax_benefit_system,
+            trace = None,
     )
 
     entities = liam.entities

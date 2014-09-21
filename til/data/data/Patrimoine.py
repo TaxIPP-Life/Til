@@ -270,6 +270,8 @@ class Patrimoine(DataTil):
         self.drop_variable(dict_to_drop={'ind':carriere + ['identind', 'noi']})
         
 
+        
+        
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
         - Si on dict_to_drop is not None, il doit avoir la forme table: [liste de variables],
@@ -577,14 +579,11 @@ class Patrimoine(DataTil):
         child_out_of_house = self.child_out_of_house
         ## info sur les parents hors du domicile des enfants
         cond_enf_look_par = (ind['per1e'] == 2) | (ind['mer1e'] == 2)
-        enf_look_par = ind[cond_enf_look_par]
+        enf_look_par = ind[cond_enf_look_par].copy()
         # Remarque: avant on mettait à zéro les valeurs quand on ne cherche pas le parent, maintenant
         # on part du principe qu'on fait les choses assez minutieusement
-
-        recode(enf_look_par, 'dip14', 'dip6', [[30,5], [41,4], [43,3], [50,2], [60,1]] , method='geq')
-        recode(enf_look_par, 'classif', 'classif2', [ [[1,2,3],4], [[4,5],2], [[6,7],1], [[8,9], 3], [[10],0]], method='isin')
-        enf_look_par.loc[:,'classif'] = enf_look_par.loc[:,'classif2']
-
+        enf_look_par['dip6'] = recode(enf_look_par['dip14'], [[30,5], [41,4], [43,3], [50,2], [60,1]] , method='geq')
+        enf_look_par['classif'] = recode(enf_look_par['classif'], [ [[1,2,3],4], [[4,5],2], [[6,7],1], [[8,9], 3], [[10],0]], method='isin')
         ## nb d'enfant
         # -- Au sein du domicile
         nb_enf_mere_dom = ind.groupby('mere').size()
@@ -592,7 +591,6 @@ class Patrimoine(DataTil):
         # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
         enf_tot_dom = concat([nb_enf_mere_dom, nb_enf_pere_dom], axis=0)
         enf_tot_dom = enf_tot_dom.drop([-1])
-
         # -- Hors domicile
         nb_enf_mere_hdom = child_out_of_house.groupby('mere').size()
         nb_enf_pere_hdom = child_out_of_house.groupby('pere').size()
@@ -602,12 +600,10 @@ class Patrimoine(DataTil):
         enf_tot = concat([enf_tot_dom, enf_tot_hdom], axis = 1).fillna(0)
         enf_tot = enf_tot[0] + enf_tot[1]
         # Sélection des parents ayant des enfants (enf_tot) à qui on veut associer des parents (enf_look_par)
-        enf_tot = enf_tot.loc[enf_tot.index.isin(enf_look_par.index)].astype(int)
-
+        enf_tot = (enf_tot.loc[enf_tot.index.isin(enf_look_par.index)].astype(int)).copy()
         enf_look_par.index = enf_look_par['id']
         enf_look_par['nb_enf'] = 0
-        enf_look_par['nb_enf'][enf_tot.index.values] = enf_tot
-
+        enf_look_par.loc[enf_tot.index.values, 'nb_enf'] = enf_tot
         #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
         var_match = ['jepnais','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
         #TODO: gerer les valeurs nulles, pour l'instant c'est très moche
@@ -622,13 +618,12 @@ class Patrimoine(DataTil):
         cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
         cond1_par = (child_out_of_house['pere'] != -1) & (child_out_of_house['mere'] != -1)
         # TODO: si on fait les modif de variables plus tôt, on peut mettre directement child_out_of_house1
-
         #à cause du append plus haut, on prend en fait ici les premiers de child_out_of_house
         match1 = Matching(enf_look_par.loc[cond1_enf, var_match],
                           child_out_of_house.loc[cond1_par, var_match], score)
         parent_found1 = match1.evaluate(orderby=['anais'], method='cells')
         ind.loc[parent_found1.index.values, ['pere','mere']] = child_out_of_house.loc[parent_found1.values, ['pere','mere']]
-        
+
         #etape 2 : seulement mère vivante
         enf_look_par.loc[parent_found1.index, ['pere','mere']] = child_out_of_house.loc[parent_found1, ['pere','mere']]
         cond2_enf = ((enf_look_par['mere'] == -1)) & (enf_look_par['mer1e'] == 2)
@@ -637,7 +632,7 @@ class Patrimoine(DataTil):
                           child_out_of_house.loc[cond2_par, var_match], score)
         parent_found2 = match2.evaluate(orderby=None, method='cells')
         ind.loc[parent_found2.index, ['mere']] = child_out_of_house.loc[parent_found2, ['mere']]
-
+        
         #étape 3 : seulement père vivant
         enf_look_par.loc[parent_found2.index, ['pere','mere']] = child_out_of_house.loc[parent_found2, ['pere','mere']]
         cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
@@ -739,12 +734,12 @@ if __name__ == '__main__':
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
     data.work_on_past()
-#     data.create_past_table()
+    data.create_past_table()
     data.drop_variable()
 #     data.corrections()
     data.partner()
     data.enfants()
-    data.expand_data(seuil=400)
+    # data.expand_data(seuil=1300)
     data.creation_child_out_of_house()
     data.matching_par_enf()
     data.match_couple_hdom()

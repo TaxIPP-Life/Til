@@ -17,34 +17,31 @@ of_name_to_til=  {'ind':'person','foy':'declar','men':'menage', 'fam':'famille',
 
 
 
-def recode(table, var_in, var_out, list, method, dtype=None):
+def recode(var_in, list_el, method, dtype=None):
     '''
     code une variable à partir d'une autre
     attention à la liste et à son ordre pour des méthode avec comparaison d'ordre
-    '''
-    if var_in == var_out:
-        raise Exception("Passer par une variable intermédiaire c'est plus safe")
-    
+    '''    
     if dtype is None:
-        dtype1 = table[var_in].dtype
-        # dtype1 = table[var_in].max()
-    
-    table[var_out] = Series(dtype=dtype)
-    for el in list:
+        dtype1 = var_in.dtype
+        # dtype1 = var_in.max()
+    output = Series(index=var_in.index, dtype=dtype)
+    for el in list_el:
         val_in = el[0]
         val_out = el[1]
         if method is 'geq':
-            table[var_out][table[var_in]>=val_in] = val_out
+            output[var_in>=val_in] = val_out
         if method is 'eq':
-            table[var_out][table[var_in]==val_in] = val_out
+            output[var_in==val_in] = val_out
         if method is 'leq':
-            table[var_out][table[var_in]<=val_in] = val_out                    
+            output[var_in<=val_in] = val_out                    
         if method is 'lth':
-            table[var_out][table[var_in]< val_in] = val_out                      
+            output[var_in< val_in] = val_out                      
         if method is 'gth':
-            table[var_out][table[var_in]> val_in] = val_out  
+            output[var_in> val_in] = val_out  
         if method is 'isin':
-            table[var_out][table[var_in].isin(val_in)] = val_out  
+            output[var_in.isin(val_in)] = val_out
+    return output
 
 def index_repeated(nb_rep):
     '''
@@ -77,7 +74,7 @@ def replicate(table):
         return table_exp
 
 def new_idmen(table, var):
-    new = table[[var + '_ini', var]]
+    new = table[[var + '_ini', var]].copy()
     men_ord = (table[var + '_ini'] > 9)
     men_nonord = (table[var + '_ini']<10)
     # les ménages nonordinaires gardent leur identifiant initial même si leur pondération augmente
