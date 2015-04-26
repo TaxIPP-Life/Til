@@ -109,7 +109,7 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
 
     simulation = simulations.Simulation(
             compact_legislation = None,
-            date = dt.date(2009, 5, 1),
+            period = dt.date(2009, 5, 1),
             debug = None,
             debug_all = None,
             tax_benefit_system = tax_benefit_system,

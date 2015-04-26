@@ -6,15 +6,21 @@ Alexis Eidelman
 
 #TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
-from til.data.utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
-from til.CONFIG import path_model
 import numpy as np
 import os
 import tables
 
 from pandas import merge, notnull, DataFrame, concat, HDFStore
+import pkg_resources
 import pdb
 
+from til.data.utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
+
+
+path_model = os.path.join(
+    pkg_resources.get_distribution("Til-BaseModel").location,
+    "til_base_model",
+    )
 
 # Dictionnaire des variables, cohérent avec les imports du modèle.
 # il faut que ce soit à jour. Le premier éléments est la liste des
@@ -388,7 +394,7 @@ class DataTil(object):
 #                    table[vars_link].replace(0,-1, inplace=True)
 
     def _check_links(self, ind):
-        if ind is None: 
+        if ind is None:
             ind = self.ind
         to_check = ind[['id', 'agem', 'sexe', 'men', 'partner', 'pere', 'mere']]
         # age parent
@@ -396,9 +402,9 @@ class DataTil(object):
         for lien in ['partner', 'pere', 'mere']:
             tab = tab.merge(to_check, left_on=lien, right_on='id', suffixes=('', '_' + lien), how='left', sort=False)
         tab.index = tab['id']
-        diff_age_pere = (tab['agem_pere'] - tab['agem'])        
+        diff_age_pere = (tab['agem_pere'] - tab['agem'])
         diff_age_mere = (tab['agem_mere'] - tab['agem'])
-        
+
         try:
             assert diff_age_pere.min() > 12*14
             assert diff_age_mere.min() > 12*12.4
@@ -409,7 +415,7 @@ class DataTil(object):
             assert sum(tab['sexe_mere'] == tab['sexe_pere']) == 0
         except:
             pdb.set_trace()
-            
+
             test = diff_age_pere < 0
             tab[test]
         # on va plus loin sur les partneroints pour éviter les frères et soeurs :
@@ -431,7 +437,7 @@ class DataTil(object):
         foy = self.foy
         futur = self.futur
         longit = self.longitudinal
-        
+
         assert all(ind['workstate'].isin(range(1,12)))
         assert all(ind['civilstate'].isin(range(1,6)))
 
@@ -488,14 +494,14 @@ class DataTil(object):
                 assert all(test_month.isin(range(1, 13)))
                 test_year = table['period'] // 100
                 assert all(test_year.isin(range(1900, 2100)))
-                
+
         for name, table in longit.iteritems():
             cols = table.columns
             cols_year = [(col // 100 in range(1900, 2100))  for col in cols]
             cols_month = [(col % 100 in range(1, 13)) for col in cols]
             assert all(cols_year)
             assert all(cols_month)
-            
+
         # check reciprocity:
         assert all(ind.loc[ind['civilstate'].isin([1,5]), 'partner'] > -1)
         rec = ind.loc[ind['partner'] != -1, ['id','partner','civilstate']]
@@ -511,7 +517,7 @@ class DataTil(object):
     def _output_name(self, extension='.h5'):
         if self.seuil is None:
             name = self.name + extension
-        else: 
+        else:
             name = self.name + '_' + str(self.seuil) + extension
         return os.path.join(path_model, name)
 
@@ -531,7 +537,7 @@ class DataTil(object):
                 entity = entity.fillna(-1)
                 try:
                     ent_table = entity.to_records(index=False)
-                except: 
+                except:
                     pdb.set_trace()
                 dtypes = ent_table.dtype
                 final_name = of_name_to_til[ent_name]

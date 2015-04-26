@@ -3,6 +3,7 @@
 #################
 
 *.pyc
+*.spyderproject
 *.pydevproject
 .project
 .metadata

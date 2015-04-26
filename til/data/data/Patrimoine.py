@@ -106,7 +106,7 @@ class Patrimoine(DataTil):
         ind['id'] = ind.index
         idmen = men[['id', 'identmen']].rename(columns={'id': 'men'})
         ind = merge(ind, idmen, on='identmen')
-        
+
         ind['period'] = self.survey_date
         men['period'] = self.survey_date
         # agem
@@ -138,10 +138,10 @@ class Patrimoine(DataTil):
         # findet
         ind['findet'].replace(0, np.nan, inplace=True)
         ind['findet'] = ind['findet'] - ind['anais']
-        
+
         # tauxprime
         ind['tauxprime'] = 0
-        
+
         self.men = men
         self.ind = ind
         self.drop_variable(
@@ -224,7 +224,7 @@ class Patrimoine(DataTil):
                 sali[100*year + 1] = past[['indep_tot' + str(year), 'cadre_tot' + str(year), 'chom_tot_brut' + str(year)]].sum(axis=1)
 
             # TODO: add id in longitudinal
-            workstate['identind'] = past['identind']           
+            workstate['identind'] = past['identind']
             workstate = ind[['identind']].merge(workstate, on=['identind'], how='left')
             workstate.fillna(-1, inplace=True)
             workstate.drop('identind', axis=1, inplace=True)
@@ -268,10 +268,10 @@ class Patrimoine(DataTil):
         all = self.ind.columns.tolist()
         carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'prodep']
         self.drop_variable(dict_to_drop={'ind':carriere + ['identind', 'noi']})
-        
 
-        
-        
+
+
+
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
         - Si on dict_to_drop is not None, il doit avoir la forme table: [liste de variables],
@@ -349,7 +349,7 @@ class Patrimoine(DataTil):
             many_by_men = prob_by_men.loc[prob_by_men > 1].index.values
             # il faut tester que les gens n'ont pas les mêmes lienpref...
             # là on supprime en dur
-            many_by_men = [value for value in many_by_men  if value != 6622] 
+            many_by_men = [value for value in many_by_men  if value != 6622]
             many_by_men_ident = statu_marit[statu_marit['men'].isin(many_by_men)]
             ind.loc[many_by_men_ident.index, 'couple'] = 1
             # si une personne est seule mariés ou pacsé dans le ménage, on met aussi couple=1
@@ -383,7 +383,7 @@ class Patrimoine(DataTil):
         couple.loc[(couple['civilstate_partner'] == 5) & \
                    (couple['civilstate'] != 1), 'civilstate'] = 5
         ind.loc[couple['id'].values, 'civilstate'] = couple['civilstate'].values
-        
+
         print ("Fin du travail sur les partners")
         self.ind = ind
 
@@ -470,7 +470,7 @@ class Patrimoine(DataTil):
         test = (ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18)
         ind.loc[test, ['lienpref','mer1e','per1e']]
         par_trop_jeune = ind.loc[(ind['agem']<12*17), 'id']
-        
+
         self._check_links(ind)
         assert sum((ind['pere'].isin(par_trop_jeune)) | (ind['mere'].isin(par_trop_jeune))) == 0
         self.ind = ind
@@ -560,13 +560,13 @@ class Patrimoine(DataTil):
         #child_out_of_house = child_out_of_house.drop(['hodcho','hodemp','hodniv','hodpri','to_delete_x','to_delete_y','jepprof'],axis=1)
         assert child_out_of_house['jemnais'].max() < 2010 - 18
         assert child_out_of_house['jepnais'].max() < 2010 - 18
-        
+
         for parent in ['pere', 'mere']:
             check = child_out_of_house.merge(ind[['id', 'anais', 'agem', 'sexe', 'men', 'partner', 'pere', 'mere', 'lienpref']],
                                          left_on=parent, right_on='id', how='left', suffixes=('','_' + parent))
             diff_age = check['anais'] - check['anais_' + parent]
             child_out_of_house = child_out_of_house[(diff_age > 15).values]
-            
+
         self.child_out_of_house = child_out_of_house.fillna(-1)
 
     def matching_par_enf(self):
@@ -607,7 +607,7 @@ class Patrimoine(DataTil):
         #Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
         var_match = ['jepnais','situa','nb_enf','anais','classif','couple','dip6', 'jemnais','jemprof','sexe']
         #TODO: gerer les valeurs nulles, pour l'instant c'est très moche
-            
+
         #TODO: avoir une bonne distance, on met un gros coeff sur l'age sinon, on a des parents,
         # plus vieux que leurs enfants
         score = "- 1000 * (other.anais - anais) **2 - 1.0 * (other.situa - situa) **2 " + \
@@ -632,7 +632,7 @@ class Patrimoine(DataTil):
                           child_out_of_house.loc[cond2_par, var_match], score)
         parent_found2 = match2.evaluate(orderby=None, method='cells')
         ind.loc[parent_found2.index, ['mere']] = child_out_of_house.loc[parent_found2, ['mere']]
-        
+
         #étape 3 : seulement père vivant
         enf_look_par.loc[parent_found2.index, ['pere','mere']] = child_out_of_house.loc[parent_found2, ['pere','mere']]
         cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
@@ -643,26 +643,26 @@ class Patrimoine(DataTil):
                           child_out_of_house.loc[cond3_par, var_match], score)
         parent_found3 = match3.evaluate(orderby=None, method='cells')
         ind.loc[parent_found3.index, ['pere']] = child_out_of_house.loc[parent_found3, ['pere']]
-        
+
         print(" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) + " match enfant-parent hors dom")
-        # on retire les match non valides 
+        # on retire les match non valides
         to_check = ind[['id', 'agem', 'sexe', 'men', 'partner', 'pere', 'mere', 'lienpref']]
         tab = to_check.copy()
         for lien in ['partner', 'pere', 'mere']:
             tab = tab.merge(to_check, left_on=lien, right_on='id', suffixes=('', '_' + lien), how='left', sort=False)
         tab.index = tab['id']
-                      
+
         for parent in ['pere', 'mere']:
-            diff_age_pere = (tab['agem_' + parent] - tab['agem'])        
+            diff_age_pere = (tab['agem_' + parent] - tab['agem'])
             cond = diff_age_pere <= 12*14
-            print( "on retire " + str(sum(cond)) + " lien enfant " + parent + 
+            print( "on retire " + str(sum(cond)) + " lien enfant " + parent +
                    " car l'âge n'était pas le bon")
             ind.loc[cond, parent] = -1
 
             cond = (tab['partner'] > -1) & (tab[parent] > -1) & \
                     (tab[parent] == tab[parent + '_partner']) & \
                     (tab['men'] != tab['men_' + parent])
-            print( "on retire " + str(sum(cond)) + " lien enfant " + parent + 
+            print( "on retire " + str(sum(cond)) + " lien enfant " + parent +
                    " car le partner a le même parent")
             ind.loc[(cond[cond]).index, parent] = -1
 
@@ -718,18 +718,18 @@ class Patrimoine(DataTil):
         match_found = match_libre.evaluate(orderby=None, method='cells')
         ind.loc[match_found.values,'partner'] =  match_found.index
         ind.loc[match_found.index,'partner'] =  match_found.values
-        
+
         # TODO: on pourrait faire un match avec les restants
         # au lieu de ça, on les considère célibataire
-        ind.loc[men_contrat & (ind['partner'] == -1), ['civilstate','couple']] = [2,3]
-        ind.loc[women_contrat & (ind['partner'] == -1), ['civilstate','couple']] = [2,3]
-        ind.loc[men_libre & ind['partner'] == -1, ['civilstate','couple']] =  [2,3]
-        ind.loc[women_libre & ind['partner'] == -1, ['civilstate','couple']] =  [2,3]
-        
-        ind.drop(['couple','age'], axis=1, inplace=True)
+        ind.loc[men_contrat & (ind['partner'] == -1), ['civilstate', 'couple']] = [2, 3]
+        ind.loc[women_contrat & (ind['partner'] == -1), ['civilstate', 'couple']] = [2, 3]
+        ind.loc[men_libre & ind['partner'] == -1, ['civilstate', 'couple']] =  [2, 3]
+        ind.loc[women_libre & ind['partner'] == -1, ['civilstate', 'couple']] =  [2, 3]
+
+        ind.drop(['couple','age'], axis = 1, inplace = True)
         self.ind = ind
 
-        
+
 if __name__ == '__main__':
 
     import time
@@ -740,7 +740,7 @@ if __name__ == '__main__':
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
     data.work_on_past()
-    data.create_past_table()
+#    data.create_past_table()
     data.drop_variable()
 #     data.corrections()
     data.partner()
