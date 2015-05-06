@@ -19,12 +19,13 @@ path_model = os.path.join(
     )
 
 sys.path.append(path_liam)
-from src.simulation import Simulation
 
-fichier = os.path.join(path_model, 'console.yml')
+from liam2.simulation import Simulation
+
+console_file = os.path.join(path_model, 'console.yml')
 output_dir = os.path.join(path_til[0], 'output')
 
-simulation = Simulation.from_yaml(fichier,
+simulation = Simulation.from_yaml(console_file,
                     input_dir = None,
                     input_file = None,
                     output_dir = output_dir,
