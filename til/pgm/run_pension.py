@@ -37,10 +37,10 @@ def get_pension(context, yearleg):
     sali.set_index('id', inplace=True)
     sali.sort_index(inplace=True)
     sali.fillna(0, inplace=True)
-    
+
     data = PensionData.from_arrays(workstate, sali, info_ind)
     param = PensionParam(yearleg, data)
     legislation = PensionLegislation(param)
     simulation = PensionSimulation(data, legislation)
-    simulation.set_config()  
+    simulation.set_config()
     return simulation
