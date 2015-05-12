@@ -24,6 +24,11 @@ local.properties
 *.Rhistory
 *.gzip
 
+# tests
+til/tests/output/demography_*.png
+til/tests/output/*.csv
+til/tests/output/*.h5
+
 til/data/Destinie/Import
 til/data/archives_R/Patrimoine/Archives/
 til/data/Patrimoine/archives_R/*.xls
