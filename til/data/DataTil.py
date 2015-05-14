@@ -25,15 +25,31 @@ path_model = os.path.join(
 # Dictionnaire des variables, cohérent avec les imports du modèle.
 # il faut que ce soit à jour. Le premier éléments est la liste des
 # entiers, le second celui des floats
-variables_til = {'ind': (['agem','sexe','men','quimen','foy','quifoy','tuteur',
-                         'pere','mere','partner','civilstate','findet',
-                         'workstate','xpr','anc'],['sali','rsti','choi', 'tauxprime']),
-                 'men': (['pref'],[]),
-                 'foy': (['vous','men'],[]),
-                 'futur':(['agem','sexe','men','quimen','foy','quifoy',
-                         'pere','mere','partner','civilstate','findet',
-                         'workstate','xpr','anc', 'deces'],['sali','rsti','choi']),
-                 'past': ([],[])}
+variables_til = {
+    'ind': (
+        ['agem', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'tuteur', 'pere', 'mere', 'partner', 'civilstate', 'findet',
+            'workstate', 'xpr', 'anc'],
+        ['sali', 'rsti', 'choi', 'tauxprime']
+        ),
+    'men': (
+        ['pref'],
+        []
+        ),
+    'foy': (
+        ['vous', 'men'],
+        []
+        ),
+    'futur': (
+        ['agem', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'pere', 'mere', 'partner', 'civilstate', 'findet',
+            'workstate', 'xpr', 'anc', 'deces'],
+        ['sali', 'rsti', 'choi']
+        ),
+    'past': (
+        [],
+        []
+        )
+    }
+
 
 class DataTil(object):
     """
@@ -50,9 +66,9 @@ class DataTil(object):
         self.past = None
         self.longitudinal = {}
         self.child_out_of_house = None
-        self.seuil= None
+        self.seuil = None
 
-        #TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
+        # TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
         self.done = []
         self.order = []
 
@@ -62,7 +78,7 @@ class DataTil(object):
         print "fin de l'importation des données"
 
     #def rename_var(self, [pe1e, me1e]):
-        # TODO : fonction qui renomme les variables pour qu'elles soient au format liam
+        # TODO: fonction qui renomme les variables pour qu'elles soient au format liam
         # period, id, agem, age, sexe, men, quimen, foy quifoy pere, mere, partner, dur_in_couple, civilstate, workstate, sali, findet
 
     def drop_variable(self, dict_to_drop=None, option='white'):
@@ -103,92 +119,101 @@ class DataTil(object):
         men = self.men
         survey_date = self.survey_date
         print ("Creation des declarations fiscales")
-        # 0eme étape : création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
+        # 0eme étape: création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
         if 'nb_enf' not in ind.columns:
-            ## nb d'enfant
+            # nb d'enfant
             ind.index = ind['id']
             nb_enf_mere = ind.groupby('mere').size()
             nb_enf_pere = ind.groupby('pere').size()
-            # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
+            # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes (= -1)
             enf_tot = concat([nb_enf_mere, nb_enf_pere], axis=0)
             enf_tot = enf_tot.drop([-1])
             ind['nb_enf'] = 0
             ind['nb_enf'][enf_tot.index] = enf_tot.values
 
         def _name_var(ind, men):
-            if 'lienpref' in ind.columns :
+            if 'lienpref' in ind.columns:
                 ind['quimen'] = ind['lienpref']
-                ind.loc[ind['quimen'] >1 , 'quimen'] = 2
+                ind.loc[ind['quimen'] > 1, 'quimen'] = 2
                 # a changer avec values quand le probleme d'identifiant et résolu .values
-                men['pref'] = ind.loc[ind['lienpref']==0,'id'].values
+                men['pref'] = ind.loc[ind['lienpref'] == 0, 'id'].values
             return men, ind
         men, ind = _name_var(ind, men)
 
-        # 1ere étape : Identification des personnes mariées/pacsées
-        spouse = (ind['partner'] != -1) & ind['civilstate'].isin([1,5])
+        # 1ere étape: Identification des personnes mariées/pacsées
+        spouse = (ind['partner'] != -1) & ind['civilstate'].isin([1, 5])
         print str(sum(spouse)) + " personnes en couples"
 
-        # 2eme étape : rôles au sein du foyer fiscal
-        # selection du partneroint qui va être le vousrant (= déclarant principal du foyer fiscal) : pas d'incidence en théorie
-        decl = spouse & ( ind['partner'] > ind['id'])
-        partner = spouse & ( ind['partner'] < ind['id'])
+        # 2eme étape: rôles au sein du foyer fiscal
+        # selection du partneroint qui va être le vousrant (= déclarant principal du foyer fiscal): pas d'incidence en théorie
+        decl = spouse & (ind['partner'] > ind['id'])
+        partner = spouse & (ind['partner'] < ind['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
-        pac_condition = (ind['civilstate'] == 2)  & ( ((ind['agem'] < 12*25) & \
-                                                        (ind['workstate'] == 11)) | (ind['agem'] < 12*21) ) &(ind['nb_enf'] == 0)
+        pac_condition = (ind['civilstate'] == 2) & (
+            (
+                (ind['agem'] < 12 * 25) & (ind['workstate'] == 11)
+                ) |
+            (ind['agem'] < 12 * 21)
+            ) & \
+            (ind['nb_enf'] == 0)
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
         print str(sum(pac)) + ' personnes prises en charge'
         # Identifiants associés
         ind['quifoy'] = 0
-        ind.loc[partner,'quifoy'] = 1
+        ind.loc[partner, 'quifoy'] = 1
         # Comprend les enfants n'ayant pas de parents spécifiés (à terme rattachés au foyer 0= DASS)
-        ind.loc[pac,'quifoy'] = 2
+        ind.loc[pac, 'quifoy'] = 2
         ind.loc[(ind['men'] == 0) & (ind['quifoy'] == 0), 'quifoy'] = 2
         print "Nombres de foyers fiscaux", sum(ind['quifoy'] == 0), ", dont couple", sum(ind['quifoy'] == 1)
 
-        # 3eme étape : attribution des identifiants des foyers fiscaux
+        # 3eme étape: attribution des identifiants des foyers fiscaux
         ind['foy'] = -1
         nb_foy = sum(ind['quifoy'] == 0)
-        print "Le nombre de foyers créés est : " + str(nb_foy)
-        # Rq: correspond au même décalage que pour les ménages (10premiers : institutions)
-        ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy +10)
+        print "Le nombre de foyers créés est: " + str(nb_foy)
+        # Rq: correspond au même décalage que pour les ménages (10premiers: institutions)
+        ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy + 10)
 
-        # 4eme étape : Rattachement des autres membres du ménage
+        # 4eme étape: Rattachement des autres membres du ménage
         # (a) - Rattachements des partneroints des personnes en couples
-        partner = ind.loc[(ind['partner'] != -1) & (ind['civilstate'].isin([1,5]))& (ind['quifoy'] == 0), ['partner','foy']]
+        partner = ind.loc[
+            (ind['partner'] != -1) & (ind['civilstate'].isin([1, 5])) & (ind['quifoy'] == 0), ['partner', 'foy']
+            ]
         ind['foy'][partner['partner'].values] = partner['foy'].values
 
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
-        for parent in  ['pere', 'mere']:
-            pac_par = ind.loc[ (ind['quifoy'] == 2) & (ind[parent] != -1) & (ind['foy'] == -1), ['id', parent]].astype(int)
+        for parent in ['pere', 'mere']:
+            pac_par = ind.loc[
+                (ind['quifoy'] == 2) & (ind[parent] != -1) & (ind['foy'] == -1), ['id', parent]
+                ].astype(int)
             ind['foy'][pac_par['id'].values] = ind['foy'][pac_par[parent].values]
             print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
 
         # Enfants de la Dass -> foyer fiscal 'collectif'
-        ind.loc[ind['men']==0, 'foy'] = 0
+        ind.loc[ind['men'] == 0, 'foy'] = 0
 
-        # 5eme étape : création de la table foy
+        # 5eme étape: création de la table foy
         vous = (ind['quifoy'] == 0) & (ind['foy'] > 9)
-        foy = ind.loc[vous,['foy', 'id', 'men']]
+        foy = ind.loc[vous, ['foy', 'id', 'men']]
         foy = foy.rename(columns={'foy': 'id', 'id': 'vous'})
         # Etape propre à l'enquete Patrimoine
-        impots = ['zcsgcrds','zfoncier','zimpot', 'zpenaliv','zpenalir','zpsocm','zrevfin']
+        impots = ['zcsgcrds', 'zfoncier', 'zimpot', 'zpenaliv', 'zpenalir', 'zpsocm', 'zrevfin']
         var_to_declar = impots + ['pond', 'id', 'pref']
         foy_men = men.loc[men['pref'].isin(foy['vous']), var_to_declar].fillna(0)
-        foy_men = foy_men.rename(columns = {'id' : 'men'})
+        foy_men = foy_men.rename(columns = {'id': 'men'})
 
-        # hypothèse réparartition des élements à égalité entre les déclarations : discutable
+        # hypothèse réparartition des élements à égalité entre les déclarations: discutable
         nb_foy_men = foy.loc[foy['men'].isin(foy_men['men'].values)].groupby('men').size()
-        if (nb_foy_men.max() >1) & (foy_men ['zimpot'].max() >0) :
-            assert len(nb_foy_men) ==  len(foy_men)
-            for var in impots :
+        if (nb_foy_men.max() >1) & (foy_men ['zimpot'].max() >0):
+            assert len(nb_foy_men) == len(foy_men)
+            for var in impots:
                 foy_men[var] = foy_men[var] / nb_foy_men
             foy = merge(foy, foy_men, on = 'men', how ='left', right_index=True)
         foy['period'] = survey_date
 
         # Ajouts des 'communautés' dans la table foyer
         for k in [0]:
-            if sum(ind['foy'] == k) !=0 :
+            if sum(ind['foy'] == k) != 0:
                 to_add = DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
                 to_add['id'] = k
                 to_add['vous'] = -1
@@ -197,8 +222,8 @@ class DataTil(object):
 
         foy.index = foy['id']
         assert sum(ind['foy']==-1) == 0
-        print 'Taille de la table foyers :', len(foy)
-        #### fin de declar
+        print 'Taille de la table foyers:', len(foy)
+        # fin de declar
         self.ind = ind
         self.foy = foy
 
@@ -229,7 +254,7 @@ class DataTil(object):
         raise NotImplementedError()
 
     def expand_data(self, seuil=150, nb_ligne=None):
-        #TODO: add future and past
+        # TODO: add future and past
         '''
         Note: ne doit pas tourner après lien parent_enfant
         Cependant child_out_of_house doit déjà avoir été créé car on s'en sert pour la réplication
@@ -238,7 +263,7 @@ class DataTil(object):
         if seuil != 0 and nb_ligne is not None:
             raise Exception("On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur" \
             "qui va determiner le nombre de ligne")
-        #TODO: on peut prendre le min des deux quand même...
+        # TODO: on peut prendre le min des deux quand même...
         men = self.men
         ind = self.ind
         foy = self.foy
@@ -246,14 +271,17 @@ class DataTil(object):
         longit = self.longitudinal
 
         if par is None:
-            print("Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables " \
-            "child_out_of_house plutôt que de les faire à partir des tables déjà étendue")
+            print(
+                "Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables " \
+                "child_out_of_house plutôt que de les faire à partir des tables déjà étendue"
+                )
 
         if foy is None:
-            print("C'est en principe plus efficace d'étendre après la création de la table foyer" \
-                  " mais si on veut rattacher les enfants (par exemple de 22 ans) qui ne vivent pas au" \
-                  " domicile des parents sur leur déclaration, il faut faire l'extension et la " \
-                  " fermeture de l'échantillon d'abord. Pareil pour les couples. ")
+            print(
+                "C'est en principe plus efficace d'étendre après la création de la table foyer" \
+                " mais si on veut rattacher les enfants (par exemple de 22 ans) qui ne vivent pas au" \
+                " domicile des parents sur leur déclaration, il faut faire l'extension et la " \
+                " fermeture de l'échantillon d'abord. Pareil pour les couples. ")
         min_pond = min(men['pond'])
         target_pond = float(max(min_pond, seuil))
 
@@ -274,33 +302,36 @@ class DataTil(object):
         men_exp['id'] = new_idmen(men_exp, 'id')
 
         if foy is not None:
-            foy = merge(men[['id','nb_rep']], foy, left_on='id', right_on='men', how='right', suffixes=('_men',''))
+            foy = merge(men[['id', 'nb_rep']], foy, left_on='id', right_on='men', how='right', suffixes=('_men', ''))
             foy_exp= replicate(foy)
             foy_exp['men'] = new_link_with_men(foy, men_exp, 'men')
         else:
             foy_exp = None
 
         if par is not None:
-            par = merge(men[['id','nb_rep']], par, left_on = 'id', right_on='men', how='inner', suffixes=('_men',''))
+            par = merge(men[['id', 'nb_rep']], par, left_on = 'id', right_on='men', how='inner', suffixes=('_men', ''))
             par_exp = replicate(par)
             par_exp['men'] = new_link_with_men(par, men_exp, 'men')
         else:
             par_exp = None
 
-        ind = merge(men[['id','nb_rep']].rename(columns = {'id': 'men'}), ind, on='men', how='right', suffixes = ('_men',''))
+        ind = merge(
+            men[['id', 'nb_rep']].rename(columns = {'id': 'men'}), ind, on='men', how='right',
+            suffixes = ('_men', '')
+            )
         ind_exp = replicate(ind)
         # lien indiv - entités supérieures
         ind_exp['men'] = new_link_with_men(ind, men_exp, 'men')
         ind_exp['men'] += 10
 
         # liens entre individus
-        tableB = ind_exp[['id_rep','id_ini']]
+        tableB = ind_exp[['id_rep', 'id_ini']]
         tableB['id_index'] = tableB.index
-#         ind_exp = ind_exp.drop(['pere', 'mere','partner'], axis=1)
+#         ind_exp = ind_exp.drop(['pere', 'mere', 'partner'], axis=1)
         print("debut travail sur identifiant")
         def _align_link(link_name, table_exp):
             tab = table_exp[[link_name, 'id_rep']].reset_index()
-            tab = tab.merge(tableB,left_on=[link_name,'id_rep'], right_on=['id_ini','id_rep'], how='inner').set_index('index')
+            tab = tab.merge(tableB,left_on=[link_name,'id_rep'], right_on=['id_ini', 'id_rep'], how='inner').set_index('index')
             tab = tab.drop([link_name], axis=1).rename(columns={'id_index': link_name})
             table_exp[link_name][tab.index.values] = tab[link_name].values
 #             table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False)
@@ -310,11 +341,11 @@ class DataTil(object):
         ind_exp = _align_link('mere', ind_exp)
         ind_exp = _align_link('partner', ind_exp)
 
-        #TODO: add _align_link with 'pere' and 'mere' in child_out_ouf_house in order to swap expand
+        # TODO: add _align_link with 'pere' and 'mere' in child_out_ouf_house in order to swap expand
         # and creation_child_out_ouf_house, in the running order
 
         if foy is not None:
-            #le plus simple est de repartir des quifoy, cela change du men
+            # le plus simple est de repartir des quifoy, cela change du men
             # la vérité c'est que ça ne marche pas avec ind_exp['foy'] = new_link_with_men(ind, foy_exp, 'foy')
             vous = (ind['quifoy'] == 0)
             partner = (ind['quifoy'] == 1)
@@ -332,12 +363,12 @@ class DataTil(object):
             table.drop('id_ini', axis=1, inplace=True)
             self.longitudinal[name] = table
 
-        assert sum(ind['id']==-1) == 0
+        assert sum(ind['id'] == -1) == 0
         self.child_out_of_house = par
         self.men = men_exp
         self.ind = ind_exp
         self.foy = foy_exp
-        self.drop_variable({'men':['id_rep','nb_rep'], 'ind':['id_rep']})
+        self.drop_variable({'men': ['id_rep', 'nb_rep'], 'ind': ['id_rep']})
 
     def format_to_liam(self):
         '''
@@ -361,32 +392,32 @@ class DataTil(object):
         ind['nb_foy'] = ind_foy.size().astype(np.int)
         ind = ind.reset_index()
 
-        if 'lienpref' in ind.columns :
-            self.drop_variable({'ind':['lienpref','anais','mnais']})
+        if 'lienpref' in ind.columns:
+            self.drop_variable({'ind': ['lienpref', 'anais', 'mnais']})
 
         for name in ['ind', 'foy', 'men', 'futur', 'past']:
             table = eval(name)
             if table is not None:
                 vars_int, vars_float = variables_til[name]
-                for var in vars_int + ['id','period']:
+                for var in vars_int + ['id', 'period']:
                     if var not in table.columns:
                         table[var] = -1
                     table = table.fillna(-1)
                     table[var] = table[var].astype(np.int32)
                 for var in vars_float + ['pond']:
                     if var not in table.columns:
-                        if var=='pond':
+                        if var == 'pond':
                             table[var] = 1
                         else:
                             table[var] = -1
                     table = table.fillna(-1)
                     table[var] = table[var].astype(np.float64)
-                table = table.sort_index(by=['period','id'])
+                table = table.sort_index(by=['period', 'id'])
                 setattr(self, name, table)
 
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
-#            links = ['id','pere','mere','partner','foy','men','pref','vous']
+#            links = ['id', 'pere', 'mere', 'partner', 'foy', 'men', 'pref', 'vous']
 #            for table in [ind, men, foy, futur, past]:
 #                if table is not None:
 #                    vars_link = [x for x in table.columns if x in links]
@@ -406,8 +437,8 @@ class DataTil(object):
         diff_age_mere = (tab['agem_mere'] - tab['agem'])
 
         try:
-            assert diff_age_pere.min() > 12*14
-            assert diff_age_mere.min() > 12*12.4
+            assert diff_age_pere.min() > 12 * 14
+            assert diff_age_mere.min() > 12 * 12.4
             # pas de probleme du partneroint
             assert sum(tab['id_pere'] == tab['id_partner']) == 0
             assert sum(tab['id_mere'] == tab['id_partner']) == 0
@@ -418,7 +449,7 @@ class DataTil(object):
 
             test = diff_age_pere < 0
             tab[test]
-        # on va plus loin sur les partneroints pour éviter les frères et soeurs :
+        # on va plus loin sur les partneroints pour éviter les frères et soeurs:
         tab_partner = tab.loc[tab['partner'] > -1].copy()
         tab_partner.replace(-1, np.nan, inplace=True)
         try:
@@ -438,16 +469,16 @@ class DataTil(object):
         futur = self.futur
         longit = self.longitudinal
 
-        assert all(ind['workstate'].isin(range(1,12)))
-        assert all(ind['civilstate'].isin(range(1,6)))
+        assert all(ind['workstate'].isin(range(1, 12)))
+        assert all(ind['civilstate'].isin(range(1, 6)))
 
         # Foyers et ménages bien attribués
         assert sum((ind['foy'] == -1)) == 0
         assert sum((ind['men'] == -1)) == 0
-        print "Nombre de personnes dans ménages ordinaires : ", sum(ind['men']>9)
-        print "Nombre de personnes vivant au sein de collectivités : ", sum(ind['men']<10)
+        print "Nombre de personnes dans ménages ordinaires: ", sum(ind['men'] > 9)
+        print "Nombre de personnes vivant au sein de collectivités: ", sum(ind['men'] < 10)
 
-        ## On vérifie qu'on a un et un seul qui = 0 et au plus un qui = 1 pour foy et men
+        # On vérifie qu'on a un et un seul qui = 0 et au plus un qui = 1 pour foy et men
         for ent in ['men', 'foy']:
             ind['qui0'] = (ind['qui' + ent] == 0).astype(int)
             ind['qui1'] = (ind['qui' + ent] == 1).astype(int)
@@ -476,17 +507,18 @@ class DataTil(object):
             # -> On vérifie que persone ne nait pas dans le futur tout en étant présent dans les données intiales
             id_ini = ind[['id']]
             # 'naiss' != -1 <-> naissance
-            id_futur = futur.loc[(futur['naiss']!=-1) , ['id']]
+            id_futur = futur.loc[(futur['naiss'] != -1), ['id']]
             id_ok = concat([id_ini, id_futur], axis = 0)
-            assert count_dup(id_ok,'id') == 0
-            assert len(futur[(futur['naiss']<= self.survey_year) & (futur['naiss']!= -1) ])== 0
+            assert count_dup(id_ok, 'id') == 0
+            assert len(futur[(futur['naiss'] <= self.survey_year) & (futur['naiss'] != -1)]) == 0
             if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
                 pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
                 print ('Nombre identifants problématiques dans la table futur: ', len(pb_id))
 
-            print ("Nombre de personnes présentes dans la base "
-                    + str( len(id_ok)) + " ("+ str( len(id_ini))
-                    + " initialement et " + str( len(id_futur)) + " qui naissent ensuite)")
+            print(
+                "Nombre de personnes présentes dans la base " + str(len(id_ok)) + " (" + str(len(id_ini)) +
+                " initialement et " + str(len(id_futur)) + " qui naissent ensuite)"
+                )
 
         for table in [ind, men, foy, futur]:
             if table is not None:
@@ -497,21 +529,21 @@ class DataTil(object):
 
         for name, table in longit.iteritems():
             cols = table.columns
-            cols_year = [(col // 100 in range(1900, 2100))  for col in cols]
+            cols_year = [(col // 100 in range(1900, 2100)) for col in cols]
             cols_month = [(col % 100 in range(1, 13)) for col in cols]
             assert all(cols_year)
             assert all(cols_month)
 
         # check reciprocity:
-        assert all(ind.loc[ind['civilstate'].isin([1,5]), 'partner'] > -1)
-        rec = ind.loc[ind['partner'] != -1, ['id','partner','civilstate']]
-        rec = rec.merge(rec, left_on='id', right_on='partner', suffixes=('','_c'))
+        assert all(ind.loc[ind['civilstate'].isin([1, 5]), 'partner'] > -1)
+        rec = ind.loc[ind['partner'] != -1, ['id', 'partner', 'civilstate']]
+        rec = rec.merge(rec, left_on='id', right_on='partner', suffixes=('', '_c'))
         # 1- check reciprocity of partner
         assert all(rec['partner_c'] == rec['id'])
-        assert all(rec.loc[rec['civilstate'].isin([1,5]), 'civilstate'] == 
-                   rec.loc[rec['civilstate'].isin([1,5]), 'civilstate_c'])
-
-                 
+        assert all(
+            rec.loc[rec['civilstate'].isin([1, 5]), 'civilstate'] ==
+            rec.loc[rec['civilstate'].isin([1, 5]), 'civilstate_c']
+            )
         self._check_links(ind)
 
     def _output_name(self, extension='.h5'):
@@ -531,8 +563,8 @@ class DataTil(object):
         h5file = tables.openFile(path, mode="w")
 
         ent_node = h5file.createGroup("/", "entities", "Entities")
-        for ent_name in ['ind','foy','men','futur','past']:
-            entity = eval('self.'+ ent_name)
+        for ent_name in ['ind', 'foy', 'men', 'futur', 'past']:
+            entity = eval('self.' + ent_name)
             if entity is not None:
                 entity = entity.fillna(-1)
                 try:
@@ -550,13 +582,14 @@ class DataTil(object):
 
                 if ent_name == 'men':
                     entity = entity.loc[entity['id']>-1]
-                    ent_table2 = entity[['pond','id','period']].to_records(index=False)
+                    ent_table2 = entity[['pond', 'id', 'period']].to_records(index=False)
                     dtypes2 = ent_table2.dtype
                     table = h5file.createTable(ent_node, 'companies', dtypes2, title="'companies table")
                     table.append(ent_table2)
                     table.flush()
                 if ent_name == 'ind':
-                    ent_table2 = entity[['agem','sexe','pere','mere','id','findet','period']].to_records(index=False)
+                    ent_table2 = entity[['agem', 'sexe', 'pere', 'mere', 'id', 'findet', 'period']].to_records(
+                        index = False)
                     dtypes2 = ent_table2.dtype
                     table = h5file.createTable(ent_node, 'register', dtypes2, title="register table")
                     table.append(ent_table2)
@@ -579,4 +612,4 @@ class DataTil(object):
 
     def run_all(self):
         for method in self.methods_order:
-            eval('self.'+ method + '()')
+            eval('self.' + method + '()')
