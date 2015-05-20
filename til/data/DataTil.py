@@ -482,7 +482,7 @@ class DataTil(object):
         for ent in ['men', 'foy']:
             ind['qui0'] = (ind['qui' + ent] == 0).astype(int)
             ind['qui1'] = (ind['qui' + ent] == 1).astype(int)
-            ind0 = ind[ind[ent] > 9].groupby(ent) # on exclut les collectivités
+            ind0 = ind[ind[ent] > 9].groupby(ent)  # on exclut les collectivités
             # on vérifie qu'on a un et un seul qui = 0
             assert ind0['qui0'].sum().max() == 1
             assert ind0['qui0'].sum().min() == 1
@@ -495,7 +495,7 @@ class DataTil(object):
             # si on est un 2
 
             # si on est quimen = 1 alors on a son partneroint avec soi
-            qui1 = ind['qui' + ent]==1
+            qui1 = ind['qui' + ent] == 1
             partner = ind.loc[qui1, 'partner'].values
             partner_ent = ind.iloc[partner]
             partner_ent = partner_ent[ent]
