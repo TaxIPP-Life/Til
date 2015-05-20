@@ -20,8 +20,8 @@ def test_liam2_demo_files():
         'demo02.yml',  # TODO: pb with figures
         ]
     yaml_files = [os.path.join(liam2_demo_directory, _file) for _file in os.listdir(liam2_demo_directory)
-        and _file.endswith('.yml')
         if os.path.isfile(os.path.join(liam2_demo_directory, _file))
+        and _file.endswith('.yml')
         and _file not in excluded_files]
     print yaml_files
     for yaml_file in yaml_files:
