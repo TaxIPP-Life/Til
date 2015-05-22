@@ -95,7 +95,7 @@ class Patrimoine(DataTil):
         men = self.men
         ind = self.ind
 
-        dict_rename = {"zsalaires_i": "sali", "zchomage_i": "choi",
+        dict_rename = {"zsalaires_i": "salaire_imposable", "zchomage_i": "choi",
                        "zpenalir_i": "alr", "zretraites_i": "rsti",
                        "anfinetu": "findet", 'etamatri': 'civilstate',
                        "cyder": "anc", "duree": "xpr"}
@@ -109,9 +109,9 @@ class Patrimoine(DataTil):
 
         ind['period'] = self.survey_date
         men['period'] = self.survey_date
-        # agem
+        # age_en_mois
         age = self.survey_date / 100 - ind['anais']
-        ind['agem'] = 12 * age + 11 - ind['mnais']
+        ind['age_en_mois'] = 12 * age + 11 - ind['mnais']
 
         ind['sexe'].replace([1, 2], [0, 1], inplace=True)
         ind['civilstate'].replace([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], inplace=True)
@@ -218,11 +218,11 @@ class Patrimoine(DataTil):
             # TODO: it's hard-coded
             past_years = range(1980, 2010)
             dates = [100 * year + 1 for year in past_years]
-            sali = DataFrame(columns=dates)
+            salaire_imposable = DataFrame(columns=dates)
             workstate = DataFrame(columns=dates)
             for year in past_years:
                 workstate[100 * year + 1] = past['statut' + str(year)]
-                sali[100 * year + 1] = past[
+                salaire_imposable[100 * year + 1] = past[
                     ['indep_tot' + str(year), 'cadre_tot' + str(year), 'chom_tot_brut' + str(year)]
                     ].sum(axis=1)
 
@@ -232,11 +232,11 @@ class Patrimoine(DataTil):
             workstate.fillna(-1, inplace=True)
             workstate.drop('identind', axis=1, inplace=True)
             self.longitudinal['workstate'] = workstate
-            sali['identind'] = past['identind']
-            sali = ind[['identind']].merge(sali, on=['identind'], how='left')
-            sali.fillna(-1, inplace=True)
-            sali.drop('identind', axis=1, inplace=True)
-            self.longitudinal['sali'] = sali
+            salaire_imposable['identind'] = past['identind']
+            salaire_imposable = ind[['identind']].merge(salaire_imposable, on=['identind'], how='left')
+            salaire_imposable.fillna(-1, inplace=True)
+            salaire_imposable.drop('identind', axis=1, inplace=True)
+            self.longitudinal['salaire_imposable'] = salaire_imposable
 
         if method == 'from_data':
             ind = _correction_carriere()
@@ -265,8 +265,8 @@ class Patrimoine(DataTil):
             colnames = [100 * year + 1 for year in range(date_deb, survey_year)]
 
             self.longitudinal['workstate'] = DataFrame(calend, columns=colnames)
-            # TODO: imputation for sali
-            self.longitudinal['sali'] = 0*self.longitudinal['workstate']
+            # TODO: imputation for salaire_imposable
+            self.longitudinal['salaire_imposable'] = 0*self.longitudinal['workstate']
 
         all = self.ind.columns.tolist()
         carriere =  [x for x in all if x[:2]=='cy' and x not in ['cyder', 'cysubj']] + ['jeactif', 'prodep']
@@ -317,7 +317,7 @@ class Patrimoine(DataTil):
             jeunesse = [x for x in all if x[:7] == 'jegrave']
             black_list = jeunesse_grave + parent_prop  + diplom
             # liste blanche
-            info_pers = ['anais', 'mnais', 'sexe', 'dip14', 'agem', 'findet', 'tauxprime']
+            info_pers = ['anais', 'mnais', 'sexe', 'dip14', 'age_en_mois', 'findet', 'tauxprime']
             famille = ['couple', 'lienpref', 'enf', 'civilstate', 'pacs', 'grandpar', 'per1e', 'mer1e', 'enfant']
             jobmarket = ['statut', 'situa', 'workstate', 'preret', 'classif', 'cs42']
             info_parent = ['jepnais', 'jemnais', 'jemprof']
@@ -425,7 +425,7 @@ class Patrimoine(DataTil):
         petit_enfant = ind.loc[ind['lienpref'] == 21, var_to_keep]
         par_petit_enfant = ind.loc[
             (ind['enf'].isin([1, 2, 3])) & (ind['enfant'] == 2),
-            ['men', 'lienpref', 'id', 'sexe', 'agem', 'enfant']
+            ['men', 'lienpref', 'id', 'sexe', 'age_en_mois', 'enfant']
             ]
         par_petit_enfant.drop_duplicates('men', inplace=True)
         # TODO: en toute rigueur, il faudrait garder un lien si on ne trouve pas les parents pour l'envoyer dans le
@@ -452,29 +452,29 @@ class Patrimoine(DataTil):
         ind.loc[sibblings['id'].values, 'mere'] = sibblings['mere'].values
         self._check_links(ind)
         # Last call, find the parent when we know he or she is there
-        look_mother = ind.loc[(ind['mer1e'] == 1) & (ind['mere'] == -1), ['men', 'lienpref', 'id', 'agem']]
+        look_mother = ind.loc[(ind['mer1e'] == 1) & (ind['mere'] == -1), ['men', 'lienpref', 'id', 'age_en_mois']]
         look_mother = look_mother[look_mother['lienpref'].isin([1,2])]
-        potential_mother = ind.loc[(ind['sexe'] == 1) & (~ind['lienpref'].isin([0, 2, 3])), ['id', 'men', 'sexe', 'agem', 'lienpref']]
+        potential_mother = ind.loc[(ind['sexe'] == 1) & (~ind['lienpref'].isin([0, 2, 3])), ['id', 'men', 'sexe', 'age_en_mois', 'lienpref']]
         potential_mother = potential_mother[~potential_mother['id'].isin(look_mother['id'])]
         match_mother = look_mother.merge(potential_mother, on=['men'], suffixes=('_enf', '_par'))
-        match_mother.sort(columns=['men', 'lienpref_par', 'agem_par'], ascending=[True, False, False], inplace=True)
+        match_mother.sort(columns=['men', 'lienpref_par', 'age_en_mois_par'], ascending=[True, False, False], inplace=True)
         match_mother.drop_duplicates('id_enf', take_last=False, inplace=True)
         ind.loc[match_mother['id_enf'].values, 'mere'] = match_mother['id_par'].values
         self._check_links(ind)
         # TODO: Find a better afectation rule
-        look_father = ind.loc[(ind['per1e'] == 1) & (ind['pere'] == -1), ['men', 'lienpref', 'id', 'agem']]
+        look_father = ind.loc[(ind['per1e'] == 1) & (ind['pere'] == -1), ['men', 'lienpref', 'id', 'age_en_mois']]
         look_father = look_father[look_father['lienpref'].isin([1,2])]
-        potential_father = ind.loc[(ind['sexe'] == 0) & (~ind['lienpref'].isin([0, 2, 3])), ['id', 'men', 'sexe', 'agem', 'lienpref']]
+        potential_father = ind.loc[(ind['sexe'] == 0) & (~ind['lienpref'].isin([0, 2, 3])), ['id', 'men', 'sexe', 'age_en_mois', 'lienpref']]
         potential_father = potential_father[~potential_father['id'].isin(look_father['id'])]
         match_father = look_father.merge(potential_father, on=['men'], suffixes=('_enf', '_par'))
-        match_father.sort(columns=['men', 'lienpref_par', 'agem_par'], ascending=[True,False,False], inplace=True)
+        match_father.sort(columns=['men', 'lienpref_par', 'age_en_mois_par'], ascending=[True,False,False], inplace=True)
         match_father.drop_duplicates('id_enf', take_last=False, inplace=True)
         ind.loc[match_father['id_enf'].values, 'pere'] = match_father['id_par'].values
         self._check_links(ind)
-        print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18))
-        test = (ind['pere'] == -1) & (ind['mere']==-1) & (ind['agem']< 12*18)
+        print 'Nombre de mineurs sans parents : ', sum((ind['pere'] == -1) & (ind['mere']==-1) & (ind['age_en_mois']< 12*18))
+        test = (ind['pere'] == -1) & (ind['mere']==-1) & (ind['age_en_mois']< 12*18)
         ind.loc[test, ['lienpref', 'mer1e', 'per1e']]
-        par_trop_jeune = ind.loc[(ind['agem'] < 12 * 17), 'id']
+        par_trop_jeune = ind.loc[(ind['age_en_mois'] < 12 * 17), 'id']
 
         self._check_links(ind)
         assert sum((ind['pere'].isin(par_trop_jeune)) | (ind['mere'].isin(par_trop_jeune))) == 0
@@ -568,7 +568,7 @@ class Patrimoine(DataTil):
 
         for parent in ['pere', 'mere']:
             check = child_out_of_house.merge(
-                ind[['id', 'anais', 'agem', 'sexe', 'men', 'partner', 'pere', 'mere', 'lienpref']],
+                ind[['id', 'anais', 'age_en_mois', 'sexe', 'men', 'partner', 'pere', 'mere', 'lienpref']],
                 left_on=parent, right_on='id', how='left', suffixes=('', '_' + parent)
                 )
             diff_age = check['anais'] - check['anais_' + parent]
@@ -653,14 +653,14 @@ class Patrimoine(DataTil):
 
         print(" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) + " match enfant-parent hors dom")
         # on retire les match non valides
-        to_check = ind[['id', 'agem', 'sexe', 'men', 'partner', 'pere', 'mere', 'lienpref']]
+        to_check = ind[['id', 'age_en_mois', 'sexe', 'men', 'partner', 'pere', 'mere', 'lienpref']]
         tab = to_check.copy()
         for lien in ['partner', 'pere', 'mere']:
             tab = tab.merge(to_check, left_on=lien, right_on='id', suffixes=('', '_' + lien), how='left', sort=False)
         tab.index = tab['id']
 
         for parent in ['pere', 'mere']:
-            diff_age_pere = (tab['agem_' + parent] - tab['agem'])
+            diff_age_pere = (tab['age_en_mois_' + parent] - tab['age_en_mois'])
             cond = diff_age_pere <= 12*14
             print( "on retire " + str(sum(cond)) + " lien enfant " + parent +
                    " car l'âge n'était pas le bon")
@@ -711,7 +711,7 @@ class Patrimoine(DataTil):
         men_libre = couple_hdom & (~ind['civilstate'].isin([1, 5])) & (ind['sexe'] == 0)
         women_libre = couple_hdom & (~ind['civilstate'].isin([1, 5])) & (ind['sexe'] == 1)
 
-        ind['age'] = ind['agem']//12
+        ind['age'] = ind['age_en_mois']//12
         var_match = ['age', 'findet', 'nb_enf'] #,'classif', 'dip6'
         score = "- 0.4893 * other.age + 0.0131 * other.age **2 - 0.0001 * other.age **3 "\
                  " + 0.0467 * (other.age - age)  - 0.0189 * (other.age - age) **2 + 0.0003 * (other.age - age) **3 " \

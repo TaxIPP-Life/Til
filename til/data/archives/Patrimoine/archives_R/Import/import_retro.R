@@ -5,7 +5,7 @@ deb = min(cydeb1[!is.na(cydeb1)])
 nb_col = as.numeric(2010-deb+1)
 
 carriere <- matrix("",nrow(ind),nb_col +1 )
-names = paste0("T",deb+seq(0,2010-deb)) 
+names = paste0("T",deb+seq(0,2010-deb))
 names[nb_col +1] = "id"
 colnames(carriere) <- names
 
@@ -15,9 +15,9 @@ carriere[,nb_col +1] <- ind$id
 list.actif <- which(!is.na(cydeb1))
 for (i in 1:length(list.actif)) {
   indiv <- list.actif[i]
-  for (cas in c(1:15))  { 
+  for (cas in c(1:15))  {
     if (is.na(get(paste0("cydeb",cas))[indiv])) {break}
-    else {  
+    else {
       if (is.na(get(paste0("cydeb",cas+1))[indiv])) {
         carriere[i, (get(paste0("cydeb",cas))[indiv]-deb+1):(nb_col)] <- get(paste0("cyact",cas))[indiv]
       }
@@ -38,8 +38,8 @@ for (k in 0:8){
   prem = deb+10*k
   dern = min(deb+10*k+10,2010)
   carriere_per_t = reshape(carriere[(prem-deb+1):(dern-deb+1)],
-                                        idvar= "id", v.names="workstate", 
-                                  varying = list(paste0("T",prem:dern)), 
+                                        idvar= "id", v.names="workstate",
+                                  varying = list(paste0("T",prem:dern)),
                           times= prem:dern, timevar = "period", direction = "long")
   carriere_per_t = subset(carriere_per_t, subset= workstate!="" )
   carriere_per = rbind(carriere_per,carriere_per_t)
@@ -47,7 +47,7 @@ for (k in 0:8){
 }
 
 
-### traduction des activite en format liam = TaxIpp-Life = GeneBios de PensIPP 
+### traduction des activite en format liam = TaxIpp-Life = GeneBios de PensIPP
 # code destinie reproduit ici comme dans import
 # inactif   <-  1
 # chomeur   <-  2
@@ -63,7 +63,7 @@ work_trad = 1*(work==14 | work==15 | work==12) +
             2*(work==9  | work==10) +
             3*(work==1 | work==4 | work==5 | work==6 | work==11) +
             5*(work==2 | work==3 | work==13) +
-            7*(work==7 | work==8) 
+            7*(work==7 | work==8)
 #TODO:
 #utiliser cycaus pour AVPF
 #utiliser les infos invalidite
@@ -89,7 +89,7 @@ retrom = as.data.frame(lapply(retrom,as.integer))
 retro[which(retro$lienpref != 0),"res"] = 0
 retro = merge(retro,retrom, by="res", sort= FALSE, all=TRUE)
 retro = retro[order(retro$id),]
-retro = subset(retro, select = -c(res,lienpref))     
+retro = subset(retro, select = -c(res,lienpref))
 
 retro = merge(retro,person, by="id")
 
@@ -110,7 +110,7 @@ retro = merge(retro,person, by="id")
 # TODO : ajouter les infos sur les carrieres et conjoints décédés.
 
 
-# peut-être supprimer MNAIS, si on le garde, il faut tout faire en mois, pourqu'il n'y 
+# peut-être supprimer MNAIS, si on le garde, il faut tout faire en mois, pourqu'il n'y
 #ait pas plus de distance entre décembre et janvier (à cause du changement d'année) qu'entre mars et avril par exemple.
 
 anc = merge(carriere_per,sal_period, all = TRUE)

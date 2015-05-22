@@ -77,7 +77,7 @@ class Destinie(DataTil):
             emp = np.zeros((len(sal), 4))
             emp[:,0:3] = statut
             emp[:,3] = sal
-            emp = DataFrame(emp, columns=['id','period','workstate','sali'])
+            emp = DataFrame(emp, columns=['id','period','workstate','salaire_imposable'])
             # Mise au format minimal
             emp = emp.fillna(np.nan).replace(-1, np.nan)
             emp = minimal_dtype(emp)
@@ -144,7 +144,7 @@ class Destinie(DataTil):
             emp = merge(emp, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
             emp['period'] = emp['period'] + emp['naiss']
             #deces = emp.groupby('id')['period'].max()
-            emp =  emp[['id','period','workstate','sali']]
+            emp =  emp[['id','period','workstate','salaire_imposable']]
             
             # Séries de nouveaux états (non pris en compte pour l'instant)
             # contractuel + stagiaire -> RG non-cadre 
@@ -190,7 +190,7 @@ class Destinie(DataTil):
             list_to_drop = list_intraseques + list_enf
             past.drop(list_to_drop, axis=1, inplace=True)
             self.longitudinal = past
-#             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'sali'])
+#             past = drop_consecutive_row(past.sort(['id', 'period']), ['id', 'workstate', 'salaire_imposable'])
             print ("Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + \
                     str(past['period'].min()) +" à " + str(past['period'].max()) + ")")
             
@@ -201,7 +201,7 @@ class Destinie(DataTil):
             futur.drop(list_enf, axis=1, inplace=True)
             futur.fillna(-1, inplace=True)
 #             futur = drop_consecutive_row(futur.sort(['id', 'period']), 
-#                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'partner'])
+#                              ['id', 'workstate', 'salaire_imposable', 'pere', 'mere', 'civilstate', 'partner'])
             futur = futur[futur['period'] > survey_year]
             return ind_survey, past, futur
         

@@ -81,7 +81,7 @@ class Destinie(DataTil):
             emp = np.zeros((len(sal), 4))
             emp[:, 0:3] = statut
             emp[:, 3] = sal
-            emp = DataFrame(emp, columns=['id', 'period', 'workstate', 'sali'])
+            emp = DataFrame(emp, columns=['id', 'period', 'workstate', 'salaire_imposable'])
             # Mise au format minimal
             emp = emp.fillna(np.nan).replace(-1, np.nan)
             emp = minimal_dtype(emp)
@@ -148,7 +148,7 @@ class Destinie(DataTil):
             emp = merge(emp, ind[['naiss']], left_on = 'id', right_on = ind[['naiss']].index)
             emp['period'] = emp['period'] + emp['naiss']
             #deces = emp.groupby('id')['period'].max()
-            emp =  emp[['id', 'period', 'workstate', 'sali']]
+            emp =  emp[['id', 'period', 'workstate', 'salaire_imposable']]
 
             ## Deux étapes pour recoder une nouvelle base Destinie avec le code d'une
             ## ancienne base : nouveaux états non pris en compte pour l'instant
@@ -198,7 +198,7 @@ class Destinie(DataTil):
             # It's a bit strange because that data where in the right shape
             # at first but it more general like that '''
             past['period'] = 100*past['period'] + 1
-            for varname in ['sali', 'workstate']:
+            for varname in ['salaire_imposable', 'workstate']:
                 self.longitudinal[varname] = \
                     past.pivot(index='id', columns='period', values=varname)
             print ("Nombre de lignes sur le passé : " + str(len(past)) + " (informations de " + \
@@ -211,7 +211,7 @@ class Destinie(DataTil):
             futur.drop(list_enf, axis=1, inplace=True)
             futur.fillna(-1, inplace=True)
 #             futur = drop_consecutive_row(futur.sort(['id', 'period']),
-#                              ['id', 'workstate', 'sali', 'pere', 'mere', 'civilstate', 'partner'])
+#                              ['id', 'workstate', 'salaire_imposable', 'pere', 'mere', 'civilstate', 'partner'])
             futur = futur[futur['period'] > survey_year]
             return ind_survey, past, futur
 
@@ -363,21 +363,21 @@ class Destinie(DataTil):
         ind['quimen'] = -1
         ind['men'] = -1
         # TODO: add a random integer for month
-        ind['agem'] = 12*(survey_year - ind['naiss'])
+        ind['age_en_mois'] = 12*(survey_year - ind['naiss'])
         ind.fillna(-1, inplace=True)
 
         # 1ere étape : Détermination des têtes de ménages
         # (a) - Plus de 25 ans ou plus de 17ans ne déclarant ni pères, ni mères
-        maj = (ind.loc[:,'agem']>=12*25) | ((ind.loc[:,'men_pere'] == 0) & (ind.loc[:,'men_mere'] == 0) & (ind.loc[:,'agem']>12*16)).copy()
+        maj = (ind.loc[:,'age_en_mois']>=12*25) | ((ind.loc[:,'men_pere'] == 0) & (ind.loc[:,'men_mere'] == 0) & (ind.loc[:,'age_en_mois']>12*16)).copy()
         ind.loc[maj,'quimen'] = 0
         print 'nb_sans_menage_a', len(ind.loc[~ind['quimen'].isin([0,1]), :])
 
         # (b) - Personnes prenant en charge d'autres individus
         # Mères avec enfants à charge : (ne rajoute aucun ménage)
-        enf_mere = ind.loc[(ind['men_pere'] == 0) & (ind['men_mere'] == 1) & (ind['agem']<=12*25), 'mere'].astype(int)
+        enf_mere = ind.loc[(ind['men_pere'] == 0) & (ind['men_mere'] == 1) & (ind['age_en_mois']<=12*25), 'mere'].astype(int)
         ind.loc[enf_mere.values,'quimen'] = 0
         # Pères avec enfants à charge :(ne rajoute aucun ménage)
-        enf_pere = ind.loc[(ind['men_mere'] == 0) & (ind['men_pere'] == 1) & (ind['agem']<=12*25), 'pere'].astype(int)
+        enf_pere = ind.loc[(ind['men_mere'] == 0) & (ind['men_pere'] == 1) & (ind['age_en_mois']<=12*25), 'pere'].astype(int)
         ind.loc[enf_pere.values,'quimen'] = 0
         print 'nb_sans_menage_b', len(ind.loc[~ind['quimen'].isin([0,1]), :])
 
@@ -413,7 +413,7 @@ class Destinie(DataTil):
 #         care = {}
 #         for par in ['mere', 'pere']:
 #             care_par = ind.loc[(ind['men_' + par] == 1), ['id',par]].astype(int)
-#             par_care = ind.loc[(ind['agem'] > 12*74) & (ind['id'].isin(care_par[par].values) & (ind['partner'] == -1)), ['id']]
+#             par_care = ind.loc[(ind['age_en_mois'] > 12*74) & (ind['id'].isin(care_par[par].values) & (ind['partner'] == -1)), ['id']]
 #             care_par = care_par.merge(par_care, left_on=par, right_on='id', how='inner',
 #                               suffixes = ('_enf', '_'+par))[['id_enf', 'id_'+par]]
 #             #print 'Nouveaux ménages' ,len(ind.loc[(ind['id'].isin(care_par['id_enf'].values)) & ind['quimen']!= 0])
@@ -436,11 +436,11 @@ class Destinie(DataTil):
 #         # Rq : il faut également rattacher le deuxième parent :
 #         partner_dep = ind.loc[(ind['men'] == -1) & (ind['partner'] != -1), ['id', 'partner']]
 #         ind['men'][partner_dep['id'].values] = ind['men'][partner_dep['partner'].values]
-#         assert ind.loc[(ind['tuteur'] != -1), 'agem'].min() > 12*70
+#         assert ind.loc[(ind['tuteur'] != -1), 'age_en_mois'].min() > 12*70
 
         # 4eme étape : création d'un ménage fictif résiduel :
         # Enfants sans parents :  dans un foyer fictif équivalent à la DASS = 0
-        ind.loc[(ind['men']== -1) & (ind['agem'] < 12*18), 'men'] = 0
+        ind.loc[(ind['men']== -1) & (ind['age_en_mois'] < 12*18), 'men'] = 0
 
         # 5eme étape : mises en formes finales
         # attribution des quimen pour les personnes non référentes

@@ -318,14 +318,14 @@ ind$quires = as.integer(quires)
 
 
 ind$age =  as.integer(2009 - ind$anais)
-ind$agem =  as.integer(12*ind$age + 11 -ind$mnais)
+ind$age_en_mois =  as.integer(12*ind$age + 11 -ind$mnais)
 ind$period = as.integer(rep.int(200901,taille))
 men$period = as.integer(rep.int(200901,taille.m))
 men$pref = ind$id[which(ind$lienpref=="00")]
 
 
 # cleaning
-list_rename = c("dip14"="diplome", "zsalaires_i"="sali", "zchomage_i"="choi",
+list_rename = c("dip14"="diplome", "zsalaires_i"="salaire_imposable", "zchomage_i"="choi",
                 "zpenalir_i"="alr", "zretraites_i"="rsti", "agfinetu"="findet",
                 "cyder"="anc", "duree"="xpr")
 

@@ -24,7 +24,7 @@ sal = subset(sal,select= -c(identind))
 
 
 #reshape
-sal_period = reshape(sal, idvar= "id", v.names = "sali", varying = list(paste0("sal_net",1976:2001)), 
+sal_period = reshape(sal, idvar= "id", v.names = "salaire_imposable", varying = list(paste0("sal_net",1976:2001)), 
                 times= 1976:2001, timevar = "period", direction = "long")
 
 # carriere= as.data.frame(carriere)

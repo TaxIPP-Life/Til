@@ -33,9 +33,9 @@ if (option_run == "oui") {
   print("lien_parenf")
   source("lien_parent_enfant/lien_parenf.R") # cree look_child et look_parent
   ### selection des variables
-  person = subset(ind, select=c(id,period,res,quires,age,agem,sexe,conj,mere,pere,findet,diplome,
+  person = subset(ind, select=c(id,period,res,quires,age,age_en_mois,sexe,conj,mere,pere,findet,diplome,
                                 anc,xpr,workstate,
-                                sali,choi,alr,rsti,zrentes_i,
+                                salaire_imposable,choi,alr,rsti,zrentes_i,
                                 zrag_i, zric_i, zrnc_i,
                                 foy,quifoy))
   sapply(person,class)

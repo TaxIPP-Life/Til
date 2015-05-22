@@ -57,12 +57,12 @@ res_size = len(ids)
 #
 #sum_values = np.zeros((res_size,4), dtype=float)
 #for ind in ids: 
-#    x = table[ent][table[ent]['noi']==ind][['sali','rsti','choi']].sum().values
+#    x = table[ent][table[ent]['noi']==ind][['salaire_imposable','rsti','choi']].sum().values
 #    sum_values[ind,1:] = x
 #    sum_values[ind,0] = ind
 list2drop = ['wprm_init','age','idmen','idfoy','quifoy', 'pere','mere','conj','dur_in_couple','dur_out_couple',
              'education_level','productivity','xpr','anc']
-list2keep = ['sexe','noi','findet','civilstate','workstate','sali','rsti','choi']
+list2keep = ['sexe','noi','findet','civilstate','workstate','salaire_imposable','rsti','choi']
 #tab = table[ent].drop(list2drop, axis=1)
 tab = table['ind'][list2keep]
 indiv = tab.groupby(['noi'],sort=False)

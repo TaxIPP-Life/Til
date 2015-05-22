@@ -62,7 +62,7 @@ rename_variables = {'statmarit':'civilstate', 'quifam':'quimen'}
 # on prend ce sens pour que famille puisse chercher dans menage comme menages
 traduc_entities = {'foyers_fiscaux':'declar', 'menages':'menage',
                     'individus':'person', 'familles':'menage'}
-input_even_if_formula = ['age', 'agem']
+input_even_if_formula = ['age', 'age_en_mois']
 
 new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'idfam':'men'}
 id_to_row = {}

@@ -19,7 +19,7 @@ from scipy.stats import mstats
 # d'abord on récupéère les stat de chaque table, 
 # ensuite on fait la différence. 
 
-list_var_num = ['agem','sali','rsti','choi']
+list_var_num = ['age_en_mois','salaire_imposable','rsti','choi']
 list_var_qual = ['civilstate','workstate','civilstate','findet','quimen','quifoy','sexe']
 
 pat = read_hdf(path_model + 'Patrimoine_400.h5', 'entities//person')

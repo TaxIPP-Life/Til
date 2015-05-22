@@ -58,7 +58,7 @@ print time_qui
 
 ent = 'ind'
 # création de variable
-table[ent]['agem'] = 12 * table[ent]['age'] 
+table[ent]['age_en_mois'] = 12 * table[ent]['age'] 
 
 table[ent]['ageq'] =  table[ent]['age']/5 - 4 
 f = lambda x: min( max(x, 0), 12)

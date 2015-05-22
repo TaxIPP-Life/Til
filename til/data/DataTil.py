@@ -27,9 +27,9 @@ path_model = os.path.join(
 # entiers, le second celui des floats
 variables_til = {
     'ind': (
-        ['agem', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'tuteur', 'pere', 'mere', 'partner', 'civilstate', 'findet',
+        ['age_en_mois', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'tuteur', 'pere', 'mere', 'partner', 'civilstate', 'findet',
             'workstate', 'xpr', 'anc'],
-        ['sali', 'rsti', 'choi', 'tauxprime']
+        ['salaire_imposable', 'rsti', 'choi', 'tauxprime']
         ),
     'men': (
         ['pref'],
@@ -40,9 +40,9 @@ variables_til = {
         []
         ),
     'futur': (
-        ['agem', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'pere', 'mere', 'partner', 'civilstate', 'findet',
+        ['age_en_mois', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'pere', 'mere', 'partner', 'civilstate', 'findet',
             'workstate', 'xpr', 'anc', 'deces'],
-        ['sali', 'rsti', 'choi']
+        ['salaire_imposable', 'rsti', 'choi']
         ),
     'past': (
         [],
@@ -79,7 +79,7 @@ class DataTil(object):
 
     #def rename_var(self, [pe1e, me1e]):
         # TODO: fonction qui renomme les variables pour qu'elles soient au format liam
-        # period, id, agem, age, sexe, men, quimen, foy quifoy pere, mere, partner, dur_in_couple, civilstate, workstate, sali, findet
+        # period, id, age_en_mois, age, sexe, men, quimen, foy quifoy pere, mere, partner, dur_in_couple, civilstate, workstate, salaire_imposable, findet
 
     def drop_variable(self, dict_to_drop=None, option='white'):
         '''
@@ -152,9 +152,9 @@ class DataTil(object):
         # attention, on ne peut être à charge que si on n'est pas soi-même parent
         pac_condition = (ind['civilstate'] == 2) & (
             (
-                (ind['agem'] < 12 * 25) & (ind['workstate'] == 11)
+                (ind['age_en_mois'] < 12 * 25) & (ind['workstate'] == 11)
                 ) |
-            (ind['agem'] < 12 * 21)
+            (ind['age_en_mois'] < 12 * 21)
             ) & \
             (ind['nb_enf'] == 0)
         pac = ((ind['pere'] != -1) | (ind['mere'] != -1)) & pac_condition
@@ -427,14 +427,14 @@ class DataTil(object):
     def _check_links(self, ind):
         if ind is None:
             ind = self.ind
-        to_check = ind[['id', 'agem', 'sexe', 'men', 'partner', 'pere', 'mere']]
+        to_check = ind[['id', 'age_en_mois', 'sexe', 'men', 'partner', 'pere', 'mere']]
         # age parent
         tab = to_check.copy()
         for lien in ['partner', 'pere', 'mere']:
             tab = tab.merge(to_check, left_on=lien, right_on='id', suffixes=('', '_' + lien), how='left', sort=False)
         tab.index = tab['id']
-        diff_age_pere = (tab['agem_pere'] - tab['agem'])
-        diff_age_mere = (tab['agem_mere'] - tab['agem'])
+        diff_age_pere = (tab['age_en_mois_pere'] - tab['age_en_mois'])
+        diff_age_mere = (tab['age_en_mois_mere'] - tab['age_en_mois'])
 
         try:
             assert diff_age_pere.min() > 12 * 14
@@ -588,7 +588,7 @@ class DataTil(object):
                     table.append(ent_table2)
                     table.flush()
                 if ent_name == 'ind':
-                    ent_table2 = entity[['agem', 'sexe', 'pere', 'mere', 'id', 'findet', 'period']].to_records(
+                    ent_table2 = entity[['age_en_mois', 'sexe', 'pere', 'mere', 'id', 'findet', 'period']].to_records(
                         index = False)
                     dtypes2 = ent_table2.dtype
                     table = h5file.createTable(ent_node, 'register', dtypes2, title="register table")
