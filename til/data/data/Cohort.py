@@ -30,7 +30,7 @@ class Cohort(DataTil):
     def load(self):
         print "création de l'importation des données"
         size = self.size
-        for name_table in ['men','foy','ind']:
+        for name_table in ['men','idfoy','ind']:
             vars_int, vars_float = variables_til[name_table]
             vars = ['id','period','pond'] + vars_int + vars_float
             
@@ -59,7 +59,7 @@ class Cohort(DataTil):
         size = self.size
         rg = range(size)
         self.ind['men'] = rg
-        self.ind['foy'] = rg
+        self.ind['idfoy'] = rg
         self.ind[['pere','mere','conj']] = -1
         
         self.foy['vous'] = rg
@@ -67,7 +67,7 @@ class Cohort(DataTil):
         
         # special household
         self.ind['men'] += 10
-        self.ind['foy'] += 10 
+        self.ind['idfoy'] += 10 
         self.foy['id'] += 10
         self.men['id'] += 10
         

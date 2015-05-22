@@ -39,7 +39,7 @@ base = 'entities/'+nom
 
 ent = til_name_to_of[nom]
 table[ent] = simul[str(base)]
-table[ent] = table[ent].rename(columns={'men': 'idmen', 'foy': 'idfoy', 'id': 'noi'})
+table[ent] = table[ent].rename(columns={'men': 'idmen', 'idfoy': 'idfoy', 'id': 'noi'})
 
 # liste des donnees temporaire que l on peut supprimer
 # anc, expr, education_level, nb_children_ind, dur_separated, dur_in_couple, agegroup_civilstate, agegroup_work

@@ -64,7 +64,7 @@ traduc_entities = {'foyers_fiscaux':'declar', 'menages':'menage',
                     'individus':'person', 'familles':'menage'}
 input_even_if_formula = ['age', 'age_en_mois']
 
-new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'foy', 'idfam':'men'}
+new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'idfoy', 'idfam':'men'}
 id_to_row = {}
 
 def deal_with_qui(qui, ident):
@@ -140,13 +140,13 @@ def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
             til_entity['quimen'][selected] = deal_with_qui(til_entity['quimen'][selected],
                                                             til_entity['men'][selected])
             til_entity['quifoy'][selected] = deal_with_qui(til_entity['quifoy'][selected],
-                                                            til_entity['foy'][selected])
-#             select_var = ('quifoy', 'quimen', 'id', 'men', 'foy')
+                                                            til_entity['idfoy'][selected])
+#             select_var = ('quifoy', 'quimen', 'id', 'men', 'idfoy')
 #             test = dict()
 #             for var in select_var:
 #                 test[var] = til_entity[var]
 #             test['idmen'] = til_entity['men']
-#             test['idfoy'] = til_entity['foy']
+#             test['foy'] = til_entity['idfoy']
 #             test = DataFrame(test)
 #             test = test.loc[selected,:]
 #             check_structure(test)

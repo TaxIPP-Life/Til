@@ -27,7 +27,7 @@ path_model = os.path.join(
 # entiers, le second celui des floats
 variables_til = {
     'ind': (
-        ['age_en_mois', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'tuteur', 'pere', 'mere', 'partner', 'civilstate', 'findet',
+        ['age_en_mois', 'sexe', 'men', 'quimen', 'idfoy', 'quifoy', 'tuteur', 'pere', 'mere', 'partner', 'civilstate', 'findet',
             'workstate', 'xpr', 'anc'],
         ['salaire_imposable', 'rsti', 'choi', 'tauxprime']
         ),
@@ -35,12 +35,12 @@ variables_til = {
         ['pref'],
         []
         ),
-    'foy': (
+    'idfoy': (
         ['vous', 'men'],
         []
         ),
     'futur': (
-        ['age_en_mois', 'sexe', 'men', 'quimen', 'foy', 'quifoy', 'pere', 'mere', 'partner', 'civilstate', 'findet',
+        ['age_en_mois', 'sexe', 'men', 'quimen', 'idfoy', 'quifoy', 'pere', 'mere', 'partner', 'civilstate', 'findet',
             'workstate', 'xpr', 'anc', 'deces'],
         ['salaire_imposable', 'rsti', 'choi']
         ),
@@ -94,8 +94,8 @@ class DataTil(object):
             self.ind = self.ind.drop(dict_to_drop['ind'], axis=1)
         if 'men' in dict_to_drop.keys():
             self.men = self.men.drop(dict_to_drop['men'], axis=1)
-        if 'foy' in dict_to_drop.keys():
-            self.foy = self.foy.drop(dict_to_drop['foy'], axis=1)
+        if 'idfoy' in dict_to_drop.keys():
+            self.foy = self.foy.drop(dict_to_drop['idfoy'], axis=1)
 
     def format_initial(self):
         raise NotImplementedError()
@@ -168,34 +168,34 @@ class DataTil(object):
         print "Nombres de foyers fiscaux", sum(ind['quifoy'] == 0), ", dont couple", sum(ind['quifoy'] == 1)
 
         # 3eme étape: attribution des identifiants des foyers fiscaux
-        ind['foy'] = -1
+        ind['idfoy'] = -1
         nb_foy = sum(ind['quifoy'] == 0)
         print "Le nombre de foyers créés est: " + str(nb_foy)
         # Rq: correspond au même décalage que pour les ménages (10premiers: institutions)
-        ind.loc[ind['quifoy'] == 0, 'foy'] = range(10, nb_foy + 10)
+        ind.loc[ind['quifoy'] == 0, 'idfoy'] = range(10, nb_foy + 10)
 
         # 4eme étape: Rattachement des autres membres du ménage
         # (a) - Rattachements des partneroints des personnes en couples
         partner = ind.loc[
-            (ind['partner'] != -1) & (ind['civilstate'].isin([1, 5])) & (ind['quifoy'] == 0), ['partner', 'foy']
+            (ind['partner'] != -1) & (ind['civilstate'].isin([1, 5])) & (ind['quifoy'] == 0), ['partner', 'idfoy']
             ]
-        ind['foy'][partner['partner'].values] = partner['foy'].values
+        ind['idfoy'][partner['partner'].values] = partner['idfoy'].values
 
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for parent in ['pere', 'mere']:
             pac_par = ind.loc[
-                (ind['quifoy'] == 2) & (ind[parent] != -1) & (ind['foy'] == -1), ['id', parent]
+                (ind['quifoy'] == 2) & (ind[parent] != -1) & (ind['idfoy'] == -1), ['id', parent]
                 ].astype(int)
-            ind['foy'][pac_par['id'].values] = ind['foy'][pac_par[parent].values]
+            ind['idfoy'][pac_par['id'].values] = ind['idfoy'][pac_par[parent].values]
             print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
 
         # Enfants de la Dass -> foyer fiscal 'collectif'
-        ind.loc[ind['men'] == 0, 'foy'] = 0
+        ind.loc[ind['men'] == 0, 'idfoy'] = 0
 
         # 5eme étape: création de la table foy
-        vous = (ind['quifoy'] == 0) & (ind['foy'] > 9)
-        foy = ind.loc[vous, ['foy', 'id', 'men']]
-        foy = foy.rename(columns={'foy': 'id', 'id': 'vous'})
+        vous = (ind['quifoy'] == 0) & (ind['idfoy'] > 9)
+        foy = ind.loc[vous, ['idfoy', 'id', 'men']]
+        foy = foy.rename(columns={'idfoy': 'id', 'id': 'vous'})
         # Etape propre à l'enquete Patrimoine
         impots = ['zcsgcrds', 'zfoncier', 'zimpot', 'zpenaliv', 'zpenalir', 'zpsocm', 'zrevfin']
         var_to_declar = impots + ['pond', 'id', 'pref']
@@ -213,7 +213,7 @@ class DataTil(object):
 
         # Ajouts des 'communautés' dans la table foyer
         for k in [0]:
-            if sum(ind['foy'] == k) != 0:
+            if sum(ind['idfoy'] == k) != 0:
                 to_add = DataFrame([np.zeros(len(foy.columns))], columns = foy.columns)
                 to_add['id'] = k
                 to_add['vous'] = -1
@@ -221,7 +221,7 @@ class DataTil(object):
                 foy = concat([foy, to_add], axis = 0, ignore_index=True)
 
         foy.index = foy['id']
-        assert sum(ind['foy']==-1) == 0
+        assert sum(ind['idfoy']==-1) == 0
         print 'Taille de la table foyers:', len(foy)
         # fin de declar
         self.ind = ind
@@ -346,16 +346,16 @@ class DataTil(object):
 
         if foy is not None:
             # le plus simple est de repartir des quifoy, cela change du men
-            # la vérité c'est que ça ne marche pas avec ind_exp['foy'] = new_link_with_men(ind, foy_exp, 'foy')
+            # la vérité c'est que ça ne marche pas avec ind_exp['idfoy'] = new_link_with_men(ind, foy_exp, 'idfoy')
             vous = (ind['quifoy'] == 0)
             partner = (ind['quifoy'] == 1)
             pac = (ind['quifoy'] == 2)
-            ind.loc[vous,'foy']= range(sum(vous))
-            ind.loc[partner,'foy'] = ind.ix[ind['partner'][partner],['foy']]
+            ind.loc[vous,'idfoy']= range(sum(vous))
+            ind.loc[partner,'idfoy'] = ind.ix[ind['partner'][partner],['idfoy']]
             pac_pere = pac & notnull(ind['pere'])
-            ind.loc[pac_pere,'foy'] = ind.loc[ind.loc[pac_pere,'pere'],['foy']]
-            pac_mere = pac & ~notnull(ind['foy'])
-            ind.loc[pac_mere,'foy'] = ind.loc[ind.loc[pac_mere,'mere'],['foy']]
+            ind.loc[pac_pere,'idfoy'] = ind.loc[ind.loc[pac_pere,'pere'],['idfoy']]
+            pac_mere = pac & ~notnull(ind['idfoy'])
+            ind.loc[pac_mere,'idfoy'] = ind.loc[ind.loc[pac_mere,'mere'],['idfoy']]
 
         for name, table in longit.iteritems():
             table = table.merge(ind_exp[['id_ini', 'id']], right_on='id', left_index=True, how='right')
@@ -387,15 +387,15 @@ class DataTil(object):
         ind['nb_men'] = ind_men.size().astype(np.int)
         ind = ind.reset_index()
 
-        ind_foy = ind.groupby('foy')
-        ind = ind.set_index('foy')
+        ind_foy = ind.groupby('idfoy')
+        ind = ind.set_index('idfoy')
         ind['nb_foy'] = ind_foy.size().astype(np.int)
         ind = ind.reset_index()
 
         if 'lienpref' in ind.columns:
             self.drop_variable({'ind': ['lienpref', 'anais', 'mnais']})
 
-        for name in ['ind', 'foy', 'men', 'futur', 'past']:
+        for name in ['ind', 'idfoy', 'men', 'futur', 'past']:
             table = eval(name)
             if table is not None:
                 vars_int, vars_float = variables_til[name]
@@ -417,7 +417,7 @@ class DataTil(object):
 
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if ind['id'].min() == 0:
-#            links = ['id', 'pere', 'mere', 'partner', 'foy', 'men', 'pref', 'vous']
+#            links = ['id', 'pere', 'mere', 'partner', 'idfoy', 'men', 'pref', 'vous']
 #            for table in [ind, men, foy, futur, past]:
 #                if table is not None:
 #                    vars_link = [x for x in table.columns if x in links]
@@ -473,13 +473,13 @@ class DataTil(object):
         assert all(ind['civilstate'].isin(range(1, 6)))
 
         # Foyers et ménages bien attribués
-        assert sum((ind['foy'] == -1)) == 0
+        assert sum((ind['idfoy'] == -1)) == 0
         assert sum((ind['men'] == -1)) == 0
         print "Nombre de personnes dans ménages ordinaires: ", sum(ind['men'] > 9)
         print "Nombre de personnes vivant au sein de collectivités: ", sum(ind['men'] < 10)
 
         # On vérifie qu'on a un et un seul qui = 0 et au plus un qui = 1 pour foy et men
-        for ent in ['men', 'foy']:
+        for ent in ['men', 'idfoy']:
             ind['qui0'] = (ind['qui' + ent] == 0).astype(int)
             ind['qui1'] = (ind['qui' + ent] == 1).astype(int)
             ind0 = ind[ind[ent] > 9].groupby(ent)  # on exclut les collectivités
@@ -563,7 +563,7 @@ class DataTil(object):
         h5file = tables.openFile(path, mode="w")
 
         ent_node = h5file.createGroup("/", "entities", "Entities")
-        for ent_name in ['ind', 'foy', 'men', 'futur', 'past']:
+        for ent_name in ['ind', 'idfoy', 'men', 'futur', 'past']:
             entity = eval('self.' + ent_name)
             if entity is not None:
                 entity = entity.fillna(-1)

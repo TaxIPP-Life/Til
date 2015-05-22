@@ -8,7 +8,7 @@ from numpy import array, arange, ones
 from numpy.lib.stride_tricks import as_strided
 from pandas import Series, DataFrame
 
-of_name_to_til = {'ind':'person','foy':'declar','men':'menage', 'fam':'famille'}
+of_name_to_til = {'ind':'person', 'foy':'declar', 'men':'menage', 'fam':'famille'}
 til_name_to_of  = dict ( (v,k) for k, v in of_name_to_til.items() )
 
 

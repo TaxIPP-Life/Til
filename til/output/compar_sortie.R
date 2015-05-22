@@ -73,7 +73,7 @@ list.ind = list_diff[which(list_diff.ent=='ind')]
 # en1[,list.ind] - ind[,list.ind]
 
 ## variables foy
-list.foy = list_diff[which(list_diff.ent=='foy')]
+list.foy = list_diff[which(list_diff.ent=='idfoy')]
 keep = which(en1[,"quifoy"]==0)
 nb_save = length(keep)
 voir1 = en1[keep,list.foy]
