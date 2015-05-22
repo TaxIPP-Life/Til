@@ -752,7 +752,7 @@ if __name__ == '__main__':
 #     data.corrections()
     data.partner()
     data.enfants()
-    data.expand_data(seuil=1400)
+    data.expand_data(seuil=1300)
     data.creation_child_out_of_house()
     data.matching_par_enf()
     data.match_couple_hdom()
