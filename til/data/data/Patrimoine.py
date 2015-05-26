@@ -70,7 +70,9 @@ class Patrimoine(DataTil):
                str(len(individus['identind'].drop_duplicates())))
         self.entity_by_name['menages'] = menages
         self.entity_by_name['individus'] = individus
-
+        print(individus.columns)
+        print(menages.columns)
+        boum
         assert (menages['identmen'].isin(individus['identmen'])).all()
         assert (individus['identmen'].isin(menages['identmen'])).all()
         print "fin de l'importation des données"
@@ -800,6 +802,7 @@ if __name__ == '__main__':
     start_t = time.time()
     data = Patrimoine()
     data.load()
+    boum
     # drop_variable() doit tourner avant table_initial() car on fait comme si diplome par exemple n'existait pas
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
