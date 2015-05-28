@@ -26,7 +26,7 @@ def check_structure(dataframe):
 # duplicates = dataframe.noindiv.duplicated().sum()
 # assert duplicates == 0, "There are {} duplicated individuals".format(duplicates)
 # df.drop_duplicates("noindiv", inplace = True)
-    for entity in ["men", "foy"]:
+    for entity in ["menages", "foyers_fiscaux"]:
         role = 'qui' + entity
         entity_id = 'id' + entity
         assert not dataframe[role].isnull().any(), "there are NaN in qui{}".format(entity)
@@ -45,7 +45,7 @@ def check_structure(dataframe):
                     import pdb
                     pdb.set_trace()
 
-    for entity in ['foy', 'men']:
+    for entity in ['foyers_fiscaux', 'menages']:
         assert len(dataframe['id' + entity].unique()) == (dataframe['qui' + entity] == 0).sum(),\
             "Wronger number of entity/head for {}".format(entity)
 
@@ -58,14 +58,27 @@ def check_structure(dataframe):
 #                      "api","apje","asi","aspa","rmi","rsa","rsa_socle"],
 #             'foy': ["decote", "irpp", "isf_tot", "avantage_qf"]}
 
-rename_variables = {'statmarit':'civilstate', 'quifam':'quimen'}
+rename_variables = {
+    'statmarit': 'civilstate',
+    'quifam': 'quimen'
+    }
 # on prend ce sens pour que famille puisse chercher dans menage comme menages
-traduc_entities = {'foyers_fiscaux':'declar', 'menages':'menage',
-                    'individus':'person', 'familles':'menage'}
+traduc_entities = {
+    'foyers_fiscaux': 'foyers_fiscaux',
+    'menages': 'menages',
+    'individus': 'individus',
+    'familles': 'menages'
+    }
 input_even_if_formula = ['age', 'age_en_mois']
 
-new_ident = {'noi':'id', 'idmen':'men', 'idfoy':'idfoy', 'idfam':'men'}
+new_ident = {
+    'noi': 'id',
+    'idmen': 'idmen',
+    'idfoy': 'idfoy',
+    'idfam': 'idmen'
+    }
 id_to_row = {}
+
 
 def deal_with_qui(qui, ident):
     ''' change qui to have a unique qui by ident
@@ -83,6 +96,7 @@ def deal_with_qui(qui, ident):
         cond = (diff_ident == 0) & (diff_qui == 0)
     qui[order] = squi
     return qui
+
 
 def main(liam, annee_leg=None,annee_base=None, mode_output='array'):
     ''' Send data from the simulation to openfisca

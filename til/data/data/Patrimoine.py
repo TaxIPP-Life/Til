@@ -70,9 +70,7 @@ class Patrimoine(DataTil):
                str(len(individus['identind'].drop_duplicates())))
         self.entity_by_name['menages'] = menages
         self.entity_by_name['individus'] = individus
-        print(individus.columns)
-        print(menages.columns)
-        boum
+
         assert (menages['identmen'].isin(individus['identmen'])).all()
         assert (individus['identmen'].isin(menages['identmen'])).all()
         print "fin de l'importation des données"
@@ -684,11 +682,13 @@ class Patrimoine(DataTil):
             orderby=['anais'],
             method='cells'
             )
-        individus.loc[parent_found1.index.values, ['pere', 'mere']] = child_out_of_house.loc[parent_found1.values, ['pere', 'mere']]
+        individus.loc[parent_found1.index.values, ['pere', 'mere']] = \
+            child_out_of_house.loc[parent_found1.values, ['pere', 'mere']]
 
         #etape 2 : seulement mère vivante
-        enf_look_par.loc[parent_found1.index, ['pere', 'mere']] = child_out_of_house.loc[parent_found1, ['pere', 'mere']]
-        cond2_enf = ((enf_look_par['mere'] == -1)) & (enf_look_par['mer1e'] == 2)
+        enf_look_par.loc[parent_found1.index, ['pere', 'mere']] = \
+            child_out_of_house.loc[parent_found1, ['pere', 'mere']]
+        cond2_enf = (enf_look_par['mere'] == -1) & (enf_look_par['mer1e'] == 2)
         cond2_par = ~child_out_of_house.index.isin(parent_found1) & (child_out_of_house['mere'] != -1)
         match2 = Matching(
             enf_look_par.loc[cond2_enf, var_match],
@@ -725,13 +725,13 @@ class Patrimoine(DataTil):
 
             cond = (tab['partner'] > -1) & (tab[parent] > -1) & \
                 (tab[parent] == tab[parent + '_partner']) & \
-                (tab['idmen'] != tab['men_' + parent])
+                (tab['idmen'] != tab['idmen_' + parent])
             print("on retire " + str(sum(cond)) + " lien enfant " + parent + " car le partner a le même parent")
             individus.loc[(cond[cond]).index, parent] = -1
 
         self._check_links(individus)
         self.entity_by_name['individus'] = minimal_dtype(individus)
-        all = self.menages.columns.tolist()
+        all = self.entity_by_name['menages'].columns.tolist()
         enfants_hdom = [x for x in all if x[:3] == 'hod']
         self.drop_variable({
             'individus': ['enf', 'per1e', 'mer1e', 'grandpar'] + ['jepnais', 'jemnais', 'jemprof'],
@@ -802,7 +802,6 @@ if __name__ == '__main__':
     start_t = time.time()
     data = Patrimoine()
     data.load()
-    boum
     # drop_variable() doit tourner avant table_initial() car on fait comme si diplome par exemple n'existait pas
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
@@ -813,6 +812,7 @@ if __name__ == '__main__':
     data.partner()
     data.enfants()
     data.expand_data(seuil=1300)
+
     data.creation_child_out_of_house()
     data.matching_par_enf()
     data.match_couple_hdom()
@@ -820,11 +820,11 @@ if __name__ == '__main__':
     data.format_to_liam()
     data.final_check()
     data.store_to_liam()
-    print "Temps de calcul : ", (time.time() - start_t), 's'
-    print "Nombre d'individus de la table final : ", len(data.ind)
-
-    # des petites verifs finales
     individus = data.entity_by_name['individus']
+
+    print "Temps de calcul : ", (time.time() - start_t), 's'
+    print "Nombre d'individus de la table final : ", len(individus)
+    # des petites verifs finales
     individus['en_couple'] = individus['partner'] > -1
     test = individus['partner'] > -1
     print individus.groupby(['civilstate', 'en_couple']).size()

@@ -14,10 +14,10 @@ import pdb
 
 
 of_name_to_til= {
-    'ind': 'person',
-    'foy': 'declar',
-    'men': 'menage',
-    'fam': 'famille',
+    'individus': 'individus',
+    'foyers_fiscaux': 'foyers_fiscaux',
+    'menages': 'menages',
+    'familles': 'familles',
     'futur': 'futur',
     'past': 'past'
     }
@@ -62,15 +62,12 @@ def index_repeated(nb_rep):
 
 
 def replicate(table):
-    print('Replicate {}'.format(table))
     columns_ini = table.columns
     dtypes_ini = table.dtypes
     nb_rep_table = np.asarray(table['nb_rep'], dtype=np.int64)
     table_exp = np.asarray(table).repeat(nb_rep_table, axis=0)
-    print(dtypes_ini)
 
     table_exp = DataFrame(table_exp, columns = columns_ini, dtype = float)
-    print(table_exp.dtypes)
 
     # change pour avoir les dtype initiaux malgré le passage par numpy
     for dtype in [np.int64, np.int32, np.int16, np.int8, np.float32, np.float16, np.float64]:

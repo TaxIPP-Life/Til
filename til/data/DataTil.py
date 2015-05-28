@@ -36,7 +36,7 @@ variables_til = {
         []
         ),
     'foyers_fiscaux': (
-        ['vous', 'men'],
+        ['vous', 'idmen'],
         []
         ),
     'futur': (
@@ -90,7 +90,7 @@ class DataTil(object):
         assert variables_by_entity_name is not None
         for entity_name, variables in variables_by_entity_name.iteritems():
             data_frame = self.entity_by_name[entity_name]
-            data_frame = data_frame.drop(variables, axis=1)
+            data_frame.drop(variables, axis = 1, inplace = True)
 
     def format_initial(self):
         raise NotImplementedError()
@@ -201,12 +201,12 @@ class DataTil(object):
         foy_men = foy_men.rename(columns = {'id': 'idmen'})
 
         # hypothèse réparartition des élements à égalité entre les déclarations: discutable
-        nb_foy_men = foyers_fiscaux.loc[foyers_fiscaux['menages'].isin(foy_men['idmen'].values)].groupby('idmen').size()
+        nb_foy_men = foyers_fiscaux.loc[foyers_fiscaux['idmen'].isin(foy_men['idmen'].values)].groupby('idmen').size()
         if (nb_foy_men.max() > 1) & (foy_men['zimpot'].max() > 0):
             assert len(nb_foy_men) == len(foy_men)
             for var in impots:
                 foy_men[var] = foy_men[var] / nb_foy_men
-            foyers_fiscaux = merge(foyers_fiscaux, foy_men, on = 'men', how = 'left', right_index = True)
+            foyers_fiscaux = merge(foyers_fiscaux, foy_men, on = 'idmen', how = 'left', right_index = True)
         foyers_fiscaux['period'] = survey_date
 
         # Ajouts des 'communautés' dans la table foyer
@@ -372,7 +372,7 @@ class DataTil(object):
         self.entity_by_name['menages'] = men_exp
         self.entity_by_name['individus'] = ind_exp
         self.entity_by_name['foyers_fiscaux'] = foy_exp
-        self.drop_variable({'men': ['id_rep', 'nb_rep'], 'ind': ['id_rep']})
+        self.drop_variable({'menages': ['id_rep', 'nb_rep'], 'individus': ['id_rep']})
 
     def format_to_liam(self):
         '''
@@ -382,44 +382,56 @@ class DataTil(object):
         foyers_fiscaux = self.entity_by_name['foyers_fiscaux']
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
-        futur = self.time_data_frame_by_name['futur']
-        past = self.time_data_frame_by_name['past']
+        futur = self.time_data_frame_by_name.get('futur')
+        past = self.time_data_frame_by_name.get('past')
 
         ind_men = individus.groupby('idmen')
-        individus = individus.set_index('idmen')
+        individus.set_index('idmen', inplace = True)
         individus['nb_men'] = ind_men.size().astype(np.int)
-        individus = individus.reset_index()
+        individus.reset_index(inplace = True)
 
         ind_foy = individus.groupby('idfoy')
-        individus = individus.set_index('idfoy')
+        individus.set_index('idfoy', inplace = True)
         individus['nb_foy'] = ind_foy.size().astype(np.int)
-        individus = individus.reset_index()
+        individus.reset_index(inplace = True)
 
+        self.entity_by_name['individus'] = individus
         if 'lienpref' in individus.columns:
             self.drop_variable({'individus': ['lienpref', 'anais', 'mnais']})
 
         for data_frame_dictonnary in [self.entity_by_name, self.time_data_frame_by_name]:
             for name, table in data_frame_dictonnary.iteritems():
                 if table is not None:
+                    print(name)
+                    print(table.columns)
                     vars_int, vars_float = variables_til[name]
                     for var in vars_int + ['id', 'period']:
                         if var not in table.columns:
                             table[var] = -1
-                        table = table.fillna(-1)
+                        table.fillna(-1, inplace = True)
                         table[var] = table[var].astype(np.int32)
                     for var in vars_float + ['pond']:
                         if var not in table.columns:
+                            print('Missing variable {}'.format(var))
                             if var == 'pond':
                                 table[var] = 1
                             else:
                                 table[var] = -1
-                        table = table.fillna(-1)
+                        table.fillna(-1, inplace = True)
                         table[var] = table[var].astype(np.float64)
-                    table = table.sort_index(by=['period', 'id'])
+                    table.sort_index(by=['period', 'id'], inplace = True)
+
+        self.entity_by_name['foyers_fiscaux'] = foyers_fiscaux
+        self.entity_by_name['individus'] = individus
+        self.entity_by_name['menages'] = menages
+        if self.time_data_frame_by_name.get('futur'):
+            self.time_data_frame_by_name['futur'] = futur
+        if self.time_data_frame_by_name.get('past'):
+            self.time_data_frame_by_name['past'] = past
 
 #        # In case we need to Add one to each link because liam need no 0 in index
 #        if individus['id'].min() == 0:
-#            links = ['id', 'pere', 'mere', 'partner', 'idfoy', 'men', 'pref', 'vous']
+#            links = ['id', 'pere', 'mere', 'partner', 'idfoy', 'idmen', 'pref', 'vous']
 #            for table in [ind, men, foy, futur, past]:
 #                if table is not None:
 #                    vars_link = [x for x in table.columns if x in links]
@@ -468,8 +480,8 @@ class DataTil(object):
         individus = self.entity_by_name['individus']
         foyers_fiscaux = self.entity_by_name['foyers_fiscaux']
         menages = self.entity_by_name['menages']
-        futur = self.time_data_frame_by_name['futur']
-        past = self.time_data_frame_by_name['past']
+        futur = self.time_data_frame_by_name.get('futur')
+        past = self.time_data_frame_by_name.get('past')
 
         assert all(individus['workstate'].isin(range(1, 12)))
         assert all(individus['civilstate'].isin(range(1, 6)))
@@ -570,9 +582,9 @@ class DataTil(object):
 
         entity_node = h5file.createGroup("/", "entities", "Entities")
         for entity_name in ['individus', 'foyers_fiscaux', 'menages', 'futur', 'past']:
-            entity = self.entity_name.get(entity_name) \
-                if self.entity_name.get(entity_name) is not None \
-                else self.time_data_frame_by_name[entity_name]
+            entity = self.time_data_frame_by_name.get(entity_name) \
+                if self.time_data_frame_by_name.get(entity_name) is not None \
+                else self.entity_by_name.get(entity_name)
             if entity is not None:
                 entity = entity.fillna(-1)
                 try:
