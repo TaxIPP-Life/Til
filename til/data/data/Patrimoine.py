@@ -7,16 +7,22 @@ Created on 2 août 2013
 '''
 
 import os
+
+
+import logging
 import numpy as np
-from pandas import merge, DataFrame, Series, concat, read_csv
-import pdb
+from pandas import concat, DataFrame, merge, read_csv, Series
+
 
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des
 # données de l'enquête Patrimoine
+from til.CONFIG import path_data_patr
 from til.data.DataTil import DataTil
 from til.data.utils.matching import Matching
 from til.data.utils.utils import recode, minimal_dtype
-from til.CONFIG import path_data_patr
+
+
+log = logging.getLogger(__name__)
 
 
 # Patrimoine est définie comme une classe fille de DataTil
@@ -32,12 +38,23 @@ class Patrimoine(DataTil):
         # bien été fait, etc.
         # TODO: Dans la même veine, on devrait définir la suppression des
         # variables en fonction des étapes à venir.
-        self.methods_order = ['load', 'drop_variable', 'to_DataTil_format',
-                              'champ', 'correction', 'partner', 'enfants',
-                              'expand_data', 'creation_child_out_of_house',
-                              'matching_par_enf', 'matching_couple_hdom',
-                              'creation_foy', 'mise_au_format', 'var_sup',
-                              'store_to_liam']
+        self.methods_order = [
+            'load',
+            'drop_variable',
+            'to_DataTil_format',
+            'champ',
+            'correction',
+            'partner',
+            'enfants',
+            'expand_data',
+            'creation_child_out_of_house',
+            'matching_par_enf',
+            'matching_couple_hdom',
+            'creation_foy',
+            'mise_au_format',
+            'var_sup',
+            'store_to_liam'
+            ]
 
 # drop_variable() doit tourner avant table_initial() car on aurait un problème
 # avec les variables qui sont renommées.
@@ -56,7 +73,7 @@ class Patrimoine(DataTil):
 # l'inverse en étant vigilant sur les noms
 
     def load(self):
-        print "début de l'importation des données"
+        log.info("Début de l'importation des données")
         path_ind = os.path.join(path_data_patr, 'individu.csv')
         individus = read_csv(path_ind)
         path_men = os.path.join(path_data_patr, 'menage.csv')
@@ -64,16 +81,16 @@ class Patrimoine(DataTil):
 
         individus['identmen'] = individus['identmen'].apply(int)
         menages['identmen'] = menages['identmen'].apply(int)
-        print ("Nombre de ménages dans l'enquête initiale : " +
+        log.info("Nombre de ménages dans l'enquête initiale : " +
                str(len(menages['identmen'].drop_duplicates())))
-        print ("Nombre d'individus dans l'enquête initiale : " +
+        log.info("Nombre d'individus dans l'enquête initiale : " +
                str(len(individus['identind'].drop_duplicates())))
         self.entity_by_name['menages'] = menages
         self.entity_by_name['individus'] = individus
 
         assert (menages['identmen'].isin(individus['identmen'])).all()
         assert (individus['identmen'].isin(menages['identmen'])).all()
-        print "fin de l'importation des données"
+        log.info("fin de l'importation des données")
 
     def champ(self, option='metropole'):
         ''' Limite la base à un champ d'étude défini '''
@@ -95,11 +112,17 @@ class Patrimoine(DataTil):
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
 
-        dict_rename = {"zsalaires_i": "salaire_imposable", "zchomage_i": "choi",
-                       "zpenalir_i": "alr", "zretraites_i": "rsti",
-                       "anfinetu": "findet", 'etamatri': 'civilstate',
-                       "cyder": "anc", "duree": "xpr"}
-        individus.rename(columns=dict_rename, inplace=True)
+        til_name_by_patrimoine = {
+            'zsalaires_i': 'salaire_imposable',
+            'zchomage_i': 'choi',
+            'zpenalir_i': 'alr',
+            'zretraites_i': 'rsti',
+            'anfinetu': 'findet',
+            'etamatri': 'civilstate',
+            'cyder': 'anc',
+            'duree': 'xpr',
+            }
+        individus.rename(columns=til_name_by_patrimoine, inplace=True)
         # id, men
         menages.index = range(10, len(menages) + 10)
         menages['id'] = menages.index
@@ -119,7 +142,9 @@ class Patrimoine(DataTil):
         # workstate
         # Code DataTil : {inactif: 1, chomeur: 2, non_cadre: 3, cadre: 4,
         # fonct_a: 5, fonct_s: 6, indep: 7, avpf: 8, preret: 9}
-        individus['workstate'] = individus['statut'].replace([1, 2, 3, 4, 5, 6, 7], [6, 6, 3, 3, 1, 7, 7])
+        individus['workstate'] = individus['statut'].replace(
+            [1, 2, 3, 4, 5, 6, 7], [6, 6, 3, 3, 1, 7, 7]
+            )
         # AVPF
         # TODO: l'avpf est de la législation, ne devrait pas être un statut de workstate
         cond_avpf = (menages['paje'] == 1) | (menages['complfam'] == 1) | \
@@ -338,7 +363,7 @@ class Patrimoine(DataTil):
     def partner(self):
         ''' Calcul de l'identifiant du partner et corrige les statuts '''
         # ne gère pas les identifiants des couples non cohabitants, on n'a pas l'info.
-        print ("Travail sur les partners")
+        log.info("Travail sur les partners")
         individus = self.entity_by_name['individus']
         # pour simplifier on créer une variable ou les personnes qui peuvent être en couple on la même valeur
         # c'est mieux que lienpref (pref signifie "personne de reference)
@@ -387,7 +412,7 @@ class Patrimoine(DataTil):
         couple.loc[(couple['civilstate_partner'] == 5) & (couple['civilstate'] != 1), 'civilstate'] = 5
         individus.loc[couple['id'].values, 'civilstate'] = couple['civilstate'].values
 
-        print ("Fin du travail sur les partners")
+        log.info("Fin du travail sur les partners")
         self.entity_by_name['individus'] = individus
 
     def enfants(self):
@@ -489,14 +514,15 @@ class Patrimoine(DataTil):
         match_father.drop_duplicates('id_enf', take_last=False, inplace=True)
         individus.loc[match_father['id_enf'].values, 'pere'] = match_father['id_par'].values
         self._check_links(individus)
-        print 'Nombre de mineurs sans parents : ', \
+        log.info('Nombre de mineurs sans parents : {}'.format(
             sum((individus['pere'] == -1) & (individus['mere'] == -1) & (individus['age_en_mois'] < 12 * 18))
+            ))
         test = (individus['pere'] == -1) & (individus['mere'] == -1) & (individus['age_en_mois'] < 12 * 18)
         individus.loc[test, ['lienpref', 'mer1e', 'per1e']]
-        par_trop_jeune = individus.loc[(individus['age_en_mois'] < 12 * 17), 'id']
+        parent_trop_jeune = individus.loc[(individus['age_en_mois'] < 12 * 17), 'id']
 
         self._check_links(individus)
-        assert sum((individus['pere'].isin(par_trop_jeune)) | (individus['mere'].isin(par_trop_jeune))) == 0
+        assert sum((individus['pere'].isin(parent_trop_jeune)) | (individus['mere'].isin(parent_trop_jeune))) == 0
         self.entity_by_name['individus'] = individus
 
     def creation_child_out_of_house(self):
@@ -709,7 +735,7 @@ class Patrimoine(DataTil):
         parent_found3 = match3.evaluate(orderby=None, method='cells')
         individus.loc[parent_found3.index, ['pere']] = child_out_of_house.loc[parent_found3, ['pere']]
 
-        print(" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) + " match enfant-parent hors dom")
+        log.info(" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) + " match enfant-parent hors dom")
         # on retire les match non valides
         to_check = individus[['id', 'age_en_mois', 'sexe', 'idmen', 'partner', 'pere', 'mere', 'lienpref']]
         tab = to_check.copy()
@@ -726,7 +752,7 @@ class Patrimoine(DataTil):
             cond = (tab['partner'] > -1) & (tab[parent] > -1) & \
                 (tab[parent] == tab[parent + '_partner']) & \
                 (tab['idmen'] != tab['idmen_' + parent])
-            print("on retire " + str(sum(cond)) + " lien enfant " + parent + " car le partner a le même parent")
+            log.info("on retire " + str(sum(cond)) + " lien enfant " + parent + " car le partner a le même parent")
             individus.loc[(cond[cond]).index, parent] = -1
 
         self._check_links(individus)
@@ -811,7 +837,7 @@ if __name__ == '__main__':
     # data.corrections()
     data.partner()
     data.enfants()
-    data.expand_data(seuil=1300)
+    data.expand_data(threshold=200)
 
     data.creation_child_out_of_house()
     data.matching_par_enf()
@@ -822,9 +848,9 @@ if __name__ == '__main__':
     data.store_to_liam()
     individus = data.entity_by_name['individus']
 
-    print "Temps de calcul : ", (time.time() - start_t), 's'
-    print "Nombre d'individus de la table final : ", len(individus)
+    log.info("Temps de calcul : ", (time.time() - start_t), 's')
+    log.info("Nombre d'individus de la table final : ", len(individus))
     # des petites verifs finales
     individus['en_couple'] = individus['partner'] > -1
     test = individus['partner'] > -1
-    print individus.groupby(['civilstate', 'en_couple']).size()
+    log.info(individus.groupby(['civilstate', 'en_couple']).size())

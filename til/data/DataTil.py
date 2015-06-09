@@ -63,7 +63,7 @@ class DataTil(object):
         self.time_data_frame_by_name = {}  # past, futur
         self.longitudinal = {}
         self.child_out_of_house = None
-        self.seuil = None
+        self.threshold = None
 
         # TODO: Faire une fonction qui chexk où on en est, si les précédent on bien été fait, etc.
         self.done = []
@@ -252,14 +252,14 @@ class DataTil(object):
         '''
         raise NotImplementedError()
 
-    def expand_data(self, seuil=150, nb_ligne=None):
+    def expand_data(self, threshold=150, nb_ligne=None):
         # TODO: add future and past
         '''
         Note: ne doit pas tourner après lien parent_enfant
         Cependant child_out_of_house doit déjà avoir été créé car on s'en sert pour la réplication
         '''
-        self.seuil = seuil
-        if seuil != 0 and nb_ligne is not None:
+        self.threshold = threshold
+        if threshold != 0 and nb_ligne is not None:
             raise Exception(
             "On ne peut pas à la fois avoir un nombre de ligne désiré et une valeur qui va determiner le nombre de ligne"
             )
@@ -283,7 +283,7 @@ class DataTil(object):
                 " domicile des parents sur leur déclaration, il faut faire l'extension et la " \
                 " fermeture de l'échantillon d'abord. Pareil pour les couples. ")
         min_pond = min(menages['pond'])
-        target_pond = float(max(min_pond, seuil))
+        target_pond = float(max(min_pond, threshold))
 
         # 1 - Réhaussement des pondérations inférieures à la pondération cible
         menages['pond'][menages.pond < target_pond] = target_pond
@@ -565,10 +565,10 @@ class DataTil(object):
         self._check_links(individus)
 
     def _output_name(self, extension='.h5'):
-        if self.seuil is None:
+        if self.threshold is None:
             name = self.name + extension
         else:
-            name = self.name + '_next_' + str(self.seuil) + extension
+            name = self.name + '_next_' + str(self.threshold) + extension
         return os.path.join(path_model, name)
 
     def store_to_liam(self):
