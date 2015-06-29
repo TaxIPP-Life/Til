@@ -6,6 +6,7 @@ Created on 2 août 2013
 @author: a.eidelman
 '''
 
+import logging
 import numpy as np
 from pandas import Series, DataFrame
 from numpy.lib.stride_tricks import as_strided
@@ -13,7 +14,10 @@ import pandas as pd
 import pdb
 
 
-of_name_to_til= {
+log = logging.getLogger(__name__)
+
+
+of_name_to_til = {
     'individus': 'individus',
     'foyers_fiscaux': 'foyers_fiscaux',
     'menages': 'menages',
@@ -107,7 +111,7 @@ def new_link_with_men(table, table_exp, link_name):
     group_old_id = group_old_id.repeat(nb_by_table)
     new_id = []
     for el in group_old_id:
-        print(el)
+        # log.info(el)
         new_id += el
     return new_id
 
@@ -145,7 +149,7 @@ def minimal_dtype(table):
             col = col.fillna(value=-1)
             modif['probleme'].append(colname)
         if col.dtype == 'O':
-            # print(colname," is an object, with a good dictionnary, we could transform it into integer")
+            # log.info(colname," is an object, with a good dictionnary, we could transform it into integer")
             modif['object'].append(colname)
         if col.dtype != 'O':
             if len(col.value_counts()) == 2:
@@ -179,19 +183,20 @@ def minimal_dtype(table):
                 except:
                     pdb.set_trace()
     if modif['object']:
-        print('Object type columns have not been modified : \n ', modif['object'])
+        log.info('Object type columns have not been modified : \n {}'.format(modif['object']))
     if modif['float']:
-        print('Float type columns have not been modified : \n ', modif['float'])
+        log.info('Float type columns have not been modified : \n  {}'.format(modif['float']))
     if modif['other_int']:
-        print('Integer type columns with positive AND negative values have not been modified : \n ', modif['other_int'])
+        log.info('Integer type columns with positive AND negative values have not been modified : \n {}'.format(
+            modif['other_int']))
     if modif['probleme']:
-        print('There is no much distinct values for following variables : \n ', modif['probleme'])
+        log.info('There is no much distinct values for following variables : \n {}'.format(modif['probleme']))
     if modif['boolean']:
-        print('Note that these columns are transformed into boolean : \n ', modif['boolean'])
-        print('Note also that in these cases, missing value are set to False')
+        log.info('Note that these columns are transformed into boolean : \n {}'.format(modif['boolean']))
+        log.info('Note also that in these cases, missing value are set to False')
     if modif['int_one_sign']:
-        print('Dtype have been also optimized for : \n', modif['int_one_sign'] )
-    print('Missing values were set to -1 (or +1 when only negative values)')
+        log.info('Dtype have been also optimized for : \n {}'.format(modif['int_one_sign']))
+    log.info('Missing values were set to -1 (or +1 when only negative values)')
 
     return table
 

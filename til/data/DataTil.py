@@ -4,15 +4,19 @@ Created on 22 juil. 2013
 Alexis Eidelman
 '''
 
-#TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
+# TODO: duppliquer la table avant le matching parent enfant pour ne pas se trimbaler les valeur de hod dans la duplication.
 
-import numpy as np
+
 import os
+import pdb
+import pkg_resources
+
+
+import logging
+import numpy as np
+from pandas import merge, notnull, DataFrame, concat, HDFStore
 import tables
 
-from pandas import merge, notnull, DataFrame, concat, HDFStore
-import pkg_resources
-import pdb
 
 from til.data.utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
 
@@ -21,6 +25,10 @@ path_model = os.path.join(
     pkg_resources.get_distribution("Til-BaseModel").location,
     "til_base_model",
     )
+
+
+log = logging.getLogger(__name__)
+
 
 # Dictionnaire des variables, cohérent avec les imports du modèle.
 # il faut que ce soit à jour. Le premier éléments est la liste des
@@ -70,9 +78,9 @@ class DataTil(object):
         self.order = []
 
     def load(self):
-        print "début de l'importation des données"
+        log.info(u"début de l'importation des données")
         raise NotImplementedError()
-        print "fin de l'importation des données"
+        log.info(u"fin de l'importation des données")
 
     #def rename_var(self, [pe1e, me1e]):
         # TODO: fonction qui renomme les variables pour qu'elles soient au format liam
@@ -114,7 +122,7 @@ class DataTil(object):
         menages = self.entity_by_name['menages']
 
         survey_date = self.survey_date
-        print ("Creation des declarations fiscales")
+        log.info(u"Création des déclarations fiscales")
         # 0eme étape: création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
         if 'nb_enf' not in individus.columns:
             # nb d'enfant
@@ -139,7 +147,7 @@ class DataTil(object):
 
         # 1ere étape: Identification des personnes mariées/pacsées
         spouse = (individus['partner'] != -1) & individus['civilstate'].isin([1, 5])
-        print str(sum(spouse)) + " personnes en couples"
+        log.info("Il y a {} personnes en couples".format(sum(spouse)))
 
         # 2eme étape: rôles au sein du foyer fiscal
         # selection du partneroint qui va être le vousrant (= déclarant principal du foyer fiscal): pas d'incidence en théorie
@@ -155,19 +163,22 @@ class DataTil(object):
             ) & \
             (individus['nb_enf'] == 0)
         pac = ((individus['pere'] != -1) | (individus['mere'] != -1)) & pac_condition
-        print str(sum(pac)) + ' personnes prises en charge'
+        log.info('Il y a {} personnes prises en charge'.format(sum(pac)))
         # Identifiants associés
         individus['quifoy'] = 0
         individus.loc[partner, 'quifoy'] = 1
         # Comprend les enfants n'ayant pas de parents spécifiés (à terme rattachés au foyer 0= DASS)
         individus.loc[pac, 'quifoy'] = 2
         individus.loc[(individus['idmen'] == 0) & (individus['quifoy'] == 0), 'quifoy'] = 2
-        print "Nombres de foyers fiscaux", sum(individus['quifoy'] == 0), ", dont couple", sum(individus['quifoy'] == 1)
-
+        log.info(
+            "Nombres de foyers fiscaux: {} dont {} couples".format(
+                sum(individus['quifoy'] == 0),
+                sum(individus['quifoy'] == 1)
+                ))
         # 3eme étape: attribution des identifiants des foyers fiscaux
         individus['idfoy'] = -1
         nb_foy = sum(individus['quifoy'] == 0)
-        print "Le nombre de foyers créés est: " + str(nb_foy)
+        log.info("Le nombre de foyers créés est: ".format(nb_foy))
         # Rq: correspond au même décalage que pour les ménages (10premiers: institutions)
         individus.loc[individus['quifoy'] == 0, 'idfoy'] = range(10, nb_foy + 10)
 
@@ -185,8 +196,11 @@ class DataTil(object):
                 (individus['quifoy'] == 2) & (individus[parent] != -1) & (individus['idfoy'] == -1), ['id', parent]
                 ].astype(int)
             individus['idfoy'][pac_par['id'].values] = individus['idfoy'][pac_par[parent].values]
-            print str(len(pac_par)) + " enfants sur la déclaration de leur " + parent
-
+            log.info(
+                "{} enfants sur la déclaration de leur {}".format(
+                    str(len(pac_par)),
+                    parent
+                    ))
         # Enfants de la Dass -> foyer fiscal 'collectif'
         individus.loc[individus['idmen'] == 0, 'idfoy'] = 0
 
@@ -220,13 +234,13 @@ class DataTil(object):
 
         foyers_fiscaux.index = foyers_fiscaux['id']
         assert sum(individus['idfoy'] == -1) == 0
-        print 'Taille de la table foyers:', len(foyers_fiscaux)
+        log.info('Taille de la table foyers: {}'.format(len(foyers_fiscaux)))
         # fin de declar
         self.entity_by_name['foyers_fiscaux'] = foyers_fiscaux
         self.entity_by_name['individus'] = individus
         self.entity_by_name['menages'] = menages
 
-        print("fin de la creation des declarations")
+        log.info(u"fin de la création des déclarations")
 
     def creation_child_out_of_house(self):
         '''
@@ -271,16 +285,16 @@ class DataTil(object):
         longit = self.longitudinal
 
         if par is None:
-            print(
-                "Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables " \
+            log.info(
+                "Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables "
                 "child_out_of_house plutôt que de les faire à partir des tables déjà étendue"
                 )
 
         if foyers_fiscaux is None:
-            print(
-                "C'est en principe plus efficace d'étendre après la création de la table foyer" \
-                " mais si on veut rattacher les enfants (par exemple de 22 ans) qui ne vivent pas au" \
-                " domicile des parents sur leur déclaration, il faut faire l'extension et la " \
+            log.info(
+                "C'est en principe plus efficace d'étendre après la création de la table foyer"
+                " mais si on veut rattacher les enfants (par exemple de 22 ans) qui ne vivent pas au"
+                " domicile des parents sur leur déclaration, il faut faire l'extension et la "
                 " fermeture de l'échantillon d'abord. Pareil pour les couples. ")
         min_pond = min(menages['pond'])
         target_pond = float(max(min_pond, threshold))
@@ -331,11 +345,16 @@ class DataTil(object):
         tableB = ind_exp[['id_rep', 'id_ini']]
         tableB['id_index'] = tableB.index
 #         ind_exp = ind_exp.drop(['pere', 'mere', 'partner'], axis=1)
-        print("debut travail sur identifiant")
+        log.info("debut travail sur identifiant")
 
         def _align_link(link_name, table_exp):
             tab = table_exp[[link_name, 'id_rep']].reset_index()
-            tab = tab.merge(tableB, left_on=[link_name,'id_rep'], right_on=['id_ini', 'id_rep'], how='inner').set_index('index')
+            tab = tab.merge(
+                tableB,
+                left_on = [link_name, 'id_rep'],
+                right_on = ['id_ini', 'id_rep'],
+                how='inner'
+                ).set_index('index')
             tab = tab.drop([link_name], axis=1).rename(columns={'id_index': link_name})
             table_exp[link_name][tab.index.values] = tab[link_name].values
 #             table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False)
@@ -402,8 +421,6 @@ class DataTil(object):
         for data_frame_dictonnary in [self.entity_by_name, self.time_data_frame_by_name]:
             for name, table in data_frame_dictonnary.iteritems():
                 if table is not None:
-                    print(name)
-                    print(table.columns)
                     vars_int, vars_float = variables_til[name]
                     for var in vars_int + ['id', 'period']:
                         if var not in table.columns:
@@ -412,7 +429,7 @@ class DataTil(object):
                         table[var] = table[var].astype(np.int32)
                     for var in vars_float + ['pond']:
                         if var not in table.columns:
-                            print('Missing variable {}'.format(var))
+                            log.info('Missing variable {}'.format(var))
                             if var == 'pond':
                                 table[var] = 1
                             else:
@@ -482,15 +499,14 @@ class DataTil(object):
         menages = self.entity_by_name['menages']
         futur = self.time_data_frame_by_name.get('futur')
         past = self.time_data_frame_by_name.get('past')
-
         assert all(individus['workstate'].isin(range(1, 12)))
         assert all(individus['civilstate'].isin(range(1, 6)))
 
         # Foyers et ménages bien attribués
         assert sum((individus['idfoy'] == -1)) == 0
         assert sum((individus['idmen'] == -1)) == 0
-        print "Nombre de personnes dans ménages ordinaires: ", sum(individus['idmen'] > 9)
-        print "Nombre de personnes vivant au sein de collectivités: ", sum(individus['idmen'] < 10)
+        log.info(u"Nombre de personnes dans ménages ordinaires: {}".format((individus['idmen'] > 9).sum()))
+        log.info(u"Nombre de personnes vivant au sein de collectivités: {}".format((individus['idmen'] < 10).sum()))
 
         # On vérifie qu'on a un et un seul qui = 0 et au plus un qui = 1 pour foy et men
         for entity_id, entity_role in [('idmen', 'quimen'), ('idfoy', 'quifoy')]:
@@ -531,11 +547,12 @@ class DataTil(object):
             assert len(futur[(futur['naiss'] <= self.survey_year) & (futur['naiss'] != -1)]) == 0
             if len(futur.loc[~futur['id'].isin(id_ok['id']), 'id']) != 0:
                 pb_id = futur.loc[~(futur['id'].isin(id_ok['id'])), :].drop_duplicates('id')
-                print ('Nombre identifants problématiques dans la table futur: ', len(pb_id))
+                log.info(u"Nombre identifants problématiques dans la table futur: {}".format(len(pb_id)))
 
-            print(
-                "Nombre de personnes présentes dans la base " + str(len(id_ok)) + " (" + str(len(id_ini)) +
-                " initialement et " + str(len(id_futur)) + " qui naissent ensuite)"
+            log.info(
+                u"Nombre de personnes présentes dans la base: {} ({} initialement et {} qui naissent ensuite)".format(
+                    len(id_ok), len(id_ini), len(id_futur)
+                    )
                 )
 
         for table in [individus, menages, foyers_fiscaux, futur]:
@@ -568,7 +585,7 @@ class DataTil(object):
         if self.threshold is None:
             name = self.name + extension
         else:
-            name = self.name + '_next_' + str(self.threshold) + extension
+            name = self.name + '_next_metro_' + str(self.threshold) + extension
         return os.path.join(path_model, name)
 
     def store_to_liam(self):
@@ -608,13 +625,34 @@ class DataTil(object):
                     table.append(ent_table2)
                     table.flush()
                 if entity_name == 'individus':
+                    # Create register
                     ent_table2 = entity[['age_en_mois', 'sexe', 'pere', 'mere', 'id', 'findet', 'period']].to_records(
                         index = False)
                     dtypes2 = ent_table2.dtype
                     table = h5file.createTable(entity_node, 'register', dtypes2, title="register table")
                     table.append(ent_table2)
                     table.flush()
+
+                    # Create generation
+                    data_frame = entity[['age_en_mois', 'period']].copy()
+                    data_frame['age'] = (data_frame.age_en_mois // 12)
+                    age_max = data_frame['age'].max()
+                    log.info("La personne la plus agée a {} ans".format(age_max))
+                    del data_frame
+                    assert age_max < 120, "Maximal age is larger than 120"
+                    data_frame = DataFrame(dict(
+                        id = np.arange(0, 121)
+                        ))
+                    data_frame['age'] = data_frame['id'].copy()
+                    data_frame['period'] = self.survey_date
+                    ent_table3 = data_frame.to_records(index = False)
+                    dtypes3 = ent_table3.dtype
+                    table = h5file.createTable(entity_node, 'generation', dtypes3, title="generation table")
+                    table.append(ent_table3)
+                    table.flush()
+
         h5file.close()
+        log.info("Saved in file {}".format(path))
 
         # 3 - table longitudinal
         # Note: on conserve le format pandas ici

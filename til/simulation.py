@@ -30,7 +30,7 @@ type_to_idx.update({
     })
 
 
-# TilSimulation specific import
+# TilSimulation specific import
 from liam2 import config, console
 from liam2.context import EvaluationContext
 from liam2.data import H5Data, Void
@@ -58,6 +58,8 @@ class TilSimulation(Simulation):
     weight_column_name_by_entity_name = {
         'menages': 'wprm',
         }  # TODO should be elsewhere
+
+    uniform_weight = None
 
     yaml_layout = {
         'import': None,
@@ -143,7 +145,7 @@ class TilSimulation(Simulation):
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, data_source, default_entity=None,
                  legislation = None, final_stat = False,
-                 time_scale = 'year0', retro = False):
+                 time_scale = 'year0', retro = False, uniform_weight = None):
         # time_scale year0: default liam2
         # time_scale year: Alexis
         # FIXME: what if period has been declared explicitly?
@@ -176,10 +178,11 @@ class TilSimulation(Simulation):
         self.retro = retro
         self.stepbystep = False
 
+        if uniform_weight is not None:
+            self.uniform_weight = uniform_weight
+
     @classmethod
-    def from_yaml(cls, fpath,
-                  input_dir=None, input_file=None,
-                  output_dir=None, output_file=None, **kwars):
+    def from_yaml(cls, fpath, input_dir = None, input_file = None, output_dir = None, output_file = None):
         simulation_path = os.path.abspath(fpath)
         simulation_dir = os.path.dirname(simulation_path)
         with open(fpath) as f:
@@ -368,7 +371,7 @@ class TilSimulation(Simulation):
             else:
                 pass
                 # proc = ExtProcess('of_on_liam', ['simulation', proc_defs[0], 'period'])
-                # processes.append((proc, 'year', 12))
+                # processes.append((proc, 'year', 12))
 
         entities_list = sorted(entities.values(), key=lambda e: e.name)
         declared_entities = set(e.name for e in entities_list)
@@ -741,8 +744,6 @@ class TilSimulation(Simulation):
             self.output_store.close()
 
     def get_output_store(self):
-        print('get_output_store')
-        print(self.output_store)
         if self.output_store is None:
             return HDFStore(self.data_source.output_path)
         elif not self.output_store.is_open:
@@ -751,7 +752,8 @@ class TilSimulation(Simulation):
         return self.output_store
 
     def get_variable(self, variables_name, fillna_value = None, function = None):
-        threshold = 1300
+        assert self.uniform_weight is not None
+        threshold = self.uniform_weight  # TODO
         assert isinstance(variables_name, list)
         output_store = self.get_output_store()
         entities = self.entities_map.keys()

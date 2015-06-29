@@ -7,6 +7,7 @@ Created on 2 août 2013
 '''
 
 import os
+import sys
 
 
 import logging
@@ -81,10 +82,14 @@ class Patrimoine(DataTil):
 
         individus['identmen'] = individus['identmen'].apply(int)
         menages['identmen'] = menages['identmen'].apply(int)
-        log.info("Nombre de ménages dans l'enquête initiale : " +
-               str(len(menages['identmen'].drop_duplicates())))
-        log.info("Nombre d'individus dans l'enquête initiale : " +
-               str(len(individus['identind'].drop_duplicates())))
+        log.info(
+            "Nombre de ménages dans l'enquête initiale : " +
+            str(len(menages['identmen'].drop_duplicates()))
+            )
+        log.info(
+            "Nombre d'individus dans l'enquête initiale : " +
+            str(len(individus['identind'].drop_duplicates()))
+            )
         self.entity_by_name['menages'] = menages
         self.entity_by_name['individus'] = individus
 
@@ -102,9 +107,9 @@ class Patrimoine(DataTil):
             #  Se place sur le champ France métropolitaine en supprimant les
             # antilles parce qu'elles n'ont pas les même variables et que
             # l'appariemment EIR n'est pas possible
-            antilles = menages.loc[menages['zeat'] == 0, 'identmen']
-            menages = menages[~menages['identmen'].isin(antilles)]
-            individus = individus[~individus['identmen'].isin(antilles)]
+            antilles = menages.loc[menages['zeat'] == 0, 'id']
+            menages = menages[~menages['id'].isin(antilles)]
+            individus = individus[~individus['idmen'].isin(antilles)]
         self.entity_by_name['individus'] = individus
         self.entity_by_name['menages'] = menages
 
@@ -181,7 +186,7 @@ class Patrimoine(DataTil):
         assert method in ['from_external_match', 'from_data']
         individus = self.entity_by_name['individus']
 
-        def _correction_carriere():
+        def _correction_carriere(metro = True):
             '''
             Fait des corrections sur le déroulé des carrières
             ( à partir de vérif écrit en R)
@@ -190,6 +195,7 @@ class Patrimoine(DataTil):
             # TODO: faire une verif avec des asserts
             individus['cydeb1'] = individus['prodep']
             liste1 = [6723, 7137, 10641, 21847, 30072, 31545, 33382]
+            liste1 = list(set(liste1).intersection(set(individus.index)))
             liste1 = [x - 1 for x in liste1]
             individus['cydeb1'][liste1] = individus.anais[liste1] + 20
             individus['cydeb1'][15206] = 1963
@@ -535,7 +541,7 @@ class Patrimoine(DataTil):
         '''
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
-        #création brute de enfants hors du domicile
+        # création brute de enfants hors du domicile
         child_out_of_house = DataFrame()
         for k in range(1, 13):
             k = str(k)
@@ -746,7 +752,7 @@ class Patrimoine(DataTil):
         for parent in ['pere', 'mere']:
             diff_age_pere = (tab['age_en_mois_' + parent] - tab['age_en_mois'])
             cond = diff_age_pere <= 12 * 14
-            print("on retire " + str(sum(cond)) + " lien enfant " + parent + " car l'âge n'était pas le bon")
+            log.info("on retire " + str(sum(cond)) + " lien enfant " + parent + " car l'âge n'était pas le bon")
             individus.loc[cond, parent] = -1
 
             cond = (tab['partner'] > -1) & (tab[parent] > -1) & \
@@ -824,6 +830,7 @@ class Patrimoine(DataTil):
 
 if __name__ == '__main__':
 
+    logging.basicConfig(level = logging.INFO, stream = sys.stdout)
     import time
     start_t = time.time()
     data = Patrimoine()
@@ -831,7 +838,8 @@ if __name__ == '__main__':
     # drop_variable() doit tourner avant table_initial() car on fait comme si diplome par exemple n'existait pas
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
-    data.work_on_past()
+    data.champ()
+    # data.work_on_past() TODO: à réactiver !
     # data.create_past_table()
     data.drop_variable()
     # data.corrections()
@@ -848,7 +856,7 @@ if __name__ == '__main__':
     data.store_to_liam()
     individus = data.entity_by_name['individus']
 
-    log.info("Temps de calcul : ", (time.time() - start_t), 's')
+    log.info("Temps de calcul : {} s".format(time.time() - start_t))
     log.info("Nombre d'individus de la table final : ", len(individus))
     # des petites verifs finales
     individus['en_couple'] = individus['partner'] > -1
