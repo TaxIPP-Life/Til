@@ -652,8 +652,8 @@ class DataTil(object):
                     table.flush()
 
         h5file.close()
-        log.info("Saved in file {}".format(path))
 
+        log.info("Saved entities in file {}".format(path))
         # 3 - table longitudinal
         # Note: on conserve le format pandas ici
         store = HDFStore(path)
@@ -661,6 +661,10 @@ class DataTil(object):
             table['id'] = table.index
             store.append('longitudinal/' + varname, table)
         store.close()
+        from mortality_rates import add_mortality_rates
+        add_mortality_rates(path)
+        log.info("Added mortality rates in node globals of file {}".format(path))
+
 
     def store(self):
         path = self._output_name()

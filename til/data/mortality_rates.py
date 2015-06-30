@@ -35,87 +35,61 @@ import tables
 from liam2.importer import array_to_disk_array
 
 
-simulation_file_name = "Destinie.h5"
-
-path_model = os.path.join(
-    pkg_resources.get_distribution('Til-BaseModel').location,
-    'til_base_model',
-    )
-
-year = 2010
-
-# Data from INSEE projections
-data_path = os.path.join(path_model, 'param', 'demo')
-
-
-sheetname_by_gender = dict(zip(
-    ['male', 'female'],
-    ['hyp_mortaliteH', 'hyp_mortaliteF']
-    ))
-mortality_by_gender = dict(
-    (
-        gender,
-        pandas.read_excel(
-            os.path.join(data_path, 'projpop0760_FECcentESPcentMIGcent.xls'),
-            sheetname = sheetname, skiprows = 2, header = 2
-            )[:121].set_index(
-                u"Âge atteint dans l'année", drop = True
-                ).reset_index()
+def add_mortality_rates(simulation_file_name = None):
+    assert simulation_file_name is not None
+    path_model = os.path.join(
+        pkg_resources.get_distribution('Til-BaseModel').location,
+        'til_base_model',
         )
-    for gender, sheetname in sheetname_by_gender.iteritems()
-    )
 
-for df in mortality_by_gender.values():
-    del df[u"Âge atteint dans l'année"]
+    # Data from INSEE projections
+    data_path = os.path.join(path_model, 'param', 'demo')
 
-mortality_by_gender['male'].columns = ["period_{}".format(column) for column in mortality_by_gender['male'].columns]
-mortality_by_gender['female'].columns = ["period_{}".format(column) for column in mortality_by_gender['female'].columns]
+    sheetname_by_gender = dict(zip(
+        ['male', 'female'],
+        ['hyp_mortaliteH', 'hyp_mortaliteF']
+        ))
+    mortality_by_gender = dict(
+        (
+            gender,
+            pandas.read_excel(
+                os.path.join(data_path, 'projpop0760_FECcentESPcentMIGcent.xls'),
+                sheetname = sheetname, skiprows = 2, header = 2
+                )[:121].set_index(
+                    u"Âge atteint dans l'année", drop = True
+                    ).reset_index()
+            )
+        for gender, sheetname in sheetname_by_gender.iteritems()
+        )
 
-male_array = mortality_by_gender['male'].values / 1e4
-female_array = mortality_by_gender['female'].values / 1e4
+    for df in mortality_by_gender.values():
+        del df[u"Âge atteint dans l'année"]
 
-male_1997 = pandas.read_csv(os.path.join(data_path, 'mortality_rate_male_1997.csv'))
-female_1997 = pandas.read_csv(os.path.join(data_path, 'mortality_rate_female_1997.csv'))
+    mortality_by_gender['male'].columns = [
+        "period_{}".format(column) for column in mortality_by_gender['male'].columns
+        ]
+    mortality_by_gender['female'].columns = [
+        "period_{}".format(column) for column in mortality_by_gender['female'].columns
+        ]
 
-male_1997_array = male_1997['mortality_rate_male_1997'].values
-female_1997_array = female_1997['mortality_rate_female_1997'].values
+    male_array = mortality_by_gender['male'].values / 1e4
+    female_array = mortality_by_gender['female'].values / 1e4
 
-h5file = tables.open_file(os.path.join(path_model, simulation_file_name), mode="a")
-try:
-    h5file.create_group("/", 'globals')
-except:
-    h5file.remove_node("/globals", recursive= True)
-    h5file.create_group("/" , 'globals')
+    male_1997 = pandas.read_csv(os.path.join(data_path, 'mortality_rate_male_1997.csv'))
+    female_1997 = pandas.read_csv(os.path.join(data_path, 'mortality_rate_female_1997.csv'))
 
-array_to_disk_array(
-    h5file,
-    '/globals',
-    'mortality_rate_male',
-    male_array,
-    )
-array_to_disk_array(
-    h5file,
-    '/globals',
-    'mortality_rate_female',
-    female_array,
-    )
-array_to_disk_array(
-    h5file,
-    '/globals',
-    'mortality_rate_male_1997',
-    male_array,
-    )
-array_to_disk_array(
-    h5file,
-    '/globals',
-    'mortality_rate_female_1997',
-    female_array,
-    )
-h5file.close()
+    male_1997_array = male_1997['mortality_rate_male_1997'].values
+    female_1997_array = female_1997['mortality_rate_female_1997'].values
 
+    h5file = tables.open_file(os.path.join(path_model, simulation_file_name), mode="a")
+    try:
+        h5file.create_group("/", 'globals')
+    except:
+        h5file.remove_node("/globals", recursive= True)
+        h5file.create_group("/", 'globals')
 
-
-# mortality_by_gender['male'].to_hdf(os.path.join(path_model, simulation_file_name), key = 'mortality_rate_male', mode = 'a', format = 'table')
-# mortality_by_gender['female'].to_hdf(os.path.join(path_model, simulation_file_name), key = 'mortality_rate_female', mode = 'a', format = 'table')
-
-
+    array_to_disk_array(h5file, '/globals', 'mortality_rate_male', male_array)
+    array_to_disk_array(h5file, '/globals', 'mortality_rate_female', female_array)
+    array_to_disk_array(h5file, '/globals', 'mortality_rate_male_1997', male_1997_array)
+    array_to_disk_array(h5file, '/globals', 'mortality_rate_female_1997', female_1997_array)
+    h5file.close()
