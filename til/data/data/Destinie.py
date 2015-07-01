@@ -352,7 +352,7 @@ class Destinie(DataTil):
     def corrections(self):
         '''
         Vérifications/corrections de :
-            - La réciprocité des déclarations des partneroints
+            - La réciprocité des déclarations des conjoints
             - La concordance de la déclaration des états civils en cas de réciprocité
             - partner hdom : si couple_hdom=True, les couples ne vivant pas dans le même domicile sont envisageable, sinon non.
         '''
@@ -367,7 +367,7 @@ class Destinie(DataTil):
         # 2- priority to marriage
         rec.loc[rec['civilstate_c'] == 1, 'civilstate'] = 1
         ind.loc[ind['partner'] != -1, 'civilstate'] = rec['civilstate'].values
-        # 3- faux partneroint (ou couple hdom)
+        # 3- faux conjoint(ou couple hdom)
         ind.loc[ind['civilstate'].isin([1, 5]) & (ind['partner'] == -1), 'civilstate'] = 2
 
         # correction : vient directement de la base Destinie

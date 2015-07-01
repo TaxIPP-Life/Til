@@ -116,7 +116,7 @@ class DataTil(object):
         '''
         Créer les déclarations fiscale. Il s'agit principalement de regrouper certains individus entre eux.
         Ce n'est qu'ici qu'on s'occupe de verifier que les individus mariés ou pacsé ont le même statut matrimonial
-        que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du partneroint.
+        que leur partenaire légal. On ne peut pas le faire dès le début parce qu'on a besoin du numéro du conjoint.
         '''
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
@@ -150,7 +150,7 @@ class DataTil(object):
         log.info("Il y a {} personnes en couples".format(sum(spouse)))
 
         # 2eme étape: rôles au sein du foyer fiscal
-        # selection du partneroint qui va être le vousrant (= déclarant principal du foyer fiscal): pas d'incidence en théorie
+        # selection du conjointqui va être le vousrant (= déclarant principal du foyer fiscal): pas d'incidence en théorie
         foyers_fiscaux = spouse & (individus['partner'] > individus['id'])
         partner = spouse & (individus['partner'] < individus['id'])
         # Identification des personnes à charge (moins de 21 ans sauf si étudiant, moins de 25 ans )
@@ -183,7 +183,7 @@ class DataTil(object):
         individus.loc[individus['quifoy'] == 0, 'idfoy'] = range(10, nb_foy + 10)
 
         # 4eme étape: Rattachement des autres membres du ménage
-        # (a) - Rattachements des partneroints des personnes en couples
+        # (a) - Rattachements des conjoints des personnes en couples
         partner = individus.loc[
             (individus['partner'] != -1) & (individus['civilstate'].isin([1, 5])) & (individus['quifoy'] == 0),
             ['partner', 'idfoy']
@@ -261,10 +261,11 @@ class DataTil(object):
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
         On séléctionne les individus qui se déclare en couple avec quelqu'un hors du domicile.
         On match mariés,pacsé d'un côté et sans contrat de l'autre. Dit autrement, si on ne trouve pas de partenaire à une personne mariée ou pacsé on change son statut de couple.
-        Comme pour les liens parents-enfants, on néglige ici la possibilité que le partneroint soit hors champ (étrange, prison, casernes, etc).
+        Comme pour les liens parents-enfants, on néglige ici la possibilité que le conjointsoit hors champ (étrange, prison, casernes, etc).
         Calcul aussi la variable individus['nb_enf']
         '''
         raise NotImplementedError()
+
 
     def expand_data(self, threshold=150, nb_ligne=None):
         # TODO: add future and past
@@ -470,7 +471,7 @@ class DataTil(object):
         try:
             assert diff_age_pere.min() > 12 * 14
             assert diff_age_mere.min() > 12 * 12.4
-            # pas de probleme du partneroint
+            # pas de probleme du conjoint
             assert sum(tab['id_pere'] == tab['id_partner']) == 0
             assert sum(tab['id_mere'] == tab['id_partner']) == 0
             assert sum(tab['id_mere'] == tab['id_pere']) == 0
@@ -480,7 +481,7 @@ class DataTil(object):
 
             test = diff_age_pere < 0
             tab[test]
-        # on va plus loin sur les partneroints pour éviter les frères et soeurs:
+        # on va plus loin sur les conjoints pour éviter les frères et soeurs:
         tab_partner = tab.loc[tab['partner'] > -1].copy()
         tab_partner.replace(-1, np.nan, inplace=True)
         try:
@@ -528,7 +529,7 @@ class DataTil(object):
             assert list_id.isin(individus[entity_id]).all()
             # si on est un 2
 
-            # si on est quimen = 1 alors on a son partneroint avec soi
+            # si on est quimen = 1 alors on a son conjointavec soi
             qui1 = individus[entity_role] == 1
             partner = individus.loc[qui1, 'partner'].values
             partner_ent = individus.iloc[partner]
