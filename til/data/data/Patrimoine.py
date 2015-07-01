@@ -717,7 +717,7 @@ class Patrimoine(DataTil):
         individus.loc[parent_found1.index.values, ['pere', 'mere']] = \
             child_out_of_house.loc[parent_found1.values, ['pere', 'mere']]
 
-        #etape 2 : seulement mère vivante
+        # etape 2 : seulement mère vivante
         enf_look_par.loc[parent_found1.index, ['pere', 'mere']] = \
             child_out_of_house.loc[parent_found1, ['pere', 'mere']]
         cond2_enf = (enf_look_par['mere'] == -1) & (enf_look_par['mer1e'] == 2)
@@ -730,7 +730,7 @@ class Patrimoine(DataTil):
         parent_found2 = match2.evaluate(orderby=None, method='cells')
         individus.loc[parent_found2.index, ['mere']] = child_out_of_house.loc[parent_found2, ['mere']]
 
-        #étape 3 : seulement père vivant
+        # étape 3 : seulement père vivant
         enf_look_par.loc[parent_found2.index, ['pere', 'mere']] = child_out_of_house.loc[parent_found2, ['pere', 'mere']]
         cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
         cond3_par = ~child_out_of_house.index.isin(parent_found1) & (child_out_of_house['pere'] != -1)
@@ -783,8 +783,8 @@ class Patrimoine(DataTil):
         couple_hdom = individus['couple'] == 2
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
         individus.loc[(couple_hdom) & (individus['civilstate'] == 5), 'civilstate'] = 1
-        # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là dedans qui fait qu'on
-        # ne gère pas les couples homosexuels
+        # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là
+        # dedans qui fait qu'on ne gère pas les couples homosexuels
 
         ## nb d'enfant
         individus.index = individus['id']
@@ -828,6 +828,58 @@ class Patrimoine(DataTil):
         self.entity_by_name['individus'] = individus
 
 
+    def calmar_demography(self):
+        from openfisca_core.calmar import calmar, check_calmar
+        individus = self.entity_by_name['individus']
+        menages = self.entity_by_name['menages']
+
+        individus_extraction = individus[['age', 'idmen', 'sexe']].copy()
+        menages_extraction = menages[['id', 'pond']].copy()
+        decades_by_sexe = dict()
+
+        for sexe in [0, 1]:
+            individus_extraction['decade'] = individus_extraction.age.loc[individus_extraction.sexe == sexe] // 10
+            decades = individus_extraction.age.loc[individus_extraction.sexe == sexe].unique()
+            # assert ages == range(max(ages) + 1)
+            for decade in list(decades):
+                individus_extraction['dummy_decade'] = (individus_extraction.decade == decade) * 1
+                dummy = individus_extraction[['dummy_decade', 'idmen']].groupby(by = 'idmen').sum().reset_index()
+                dummy.rename(columns = {'dummy_decade': '{}_{}'.format(decade, sexe), 'idmen': 'id'}, inplace = True)
+                menages_extraction = menages_extraction.merge(dummy, on = 'id')
+            decades_by_sexe[sexe] = ['{}_{}'.format(decade, sexe) for decade in decades]
+
+        data_in = dict()
+
+        for col in decades_by_sexe[0] + decades_by_sexe[1] + ['id', 'pond']:
+            data_in[col] = menages_extraction[col].values
+
+        from til_base_model.tests.base import get_data_frame_insee
+        margins_by_decade = dict()
+        for sexe in ['male', 'female']:
+            insee = get_data_frame_insee(sexe)[2010]
+            sexe_number = 0 if sexe == 'male' else 1
+            insee.index = ['{}_{}'.format(decade, sexe_number) for decade in insee.index]
+            margins_by_decade.update(insee.to_dict())
+
+        print margins_by_decade
+
+        parameters = dict(
+            method = 'logit',
+            lo = 1.0 / 3.0,
+            up = 3.0
+            )
+        pondfin_out, lambdasol, margins_new_dict = calmar(
+            data_in, margins_by_decade, parameters = parameters, pondini = 'pond')
+
+        check_calmar(data_in, margins_by_decade, pondini = 'pond', pondfin_out = pondfin_out, lambdasol = lambdasol,
+            margins_new_dict = margins_new_dict)
+
+        menages['pondini'] = menages.pond.copy()
+        menages.pond = pondfin_out
+        self.entity_by_name['menages'] = menages
+
+
+
 if __name__ == '__main__':
 
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
@@ -839,6 +891,7 @@ if __name__ == '__main__':
     # plus généralement, on aurait un problème avec les variables qui sont renommées.
     data.to_DataTil_format()
     data.champ()
+    data.calmar_demography()
     # data.work_on_past() TODO: à réactiver !
     # data.create_past_table()
     data.drop_variable()
