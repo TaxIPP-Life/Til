@@ -1,4 +1,6 @@
 ﻿# -*- coding:utf-8 -*-
+
+
 '''
 Created on 2 août 2013
 
@@ -74,7 +76,7 @@ class Patrimoine(DataTil):
 # l'inverse en étant vigilant sur les noms
 
     def load(self):
-        log.info("Début de l'importation des données")
+        log.info(u"Début de l'importation des données")
         path_ind = os.path.join(path_data_patr, 'individu.csv')
         individus = read_csv(path_ind)
         path_men = os.path.join(path_data_patr, 'menage.csv')
@@ -83,11 +85,11 @@ class Patrimoine(DataTil):
         individus['identmen'] = individus['identmen'].apply(int)
         menages['identmen'] = menages['identmen'].apply(int)
         log.info(
-            "Nombre de ménages dans l'enquête initiale : " +
+            u"Nombre de ménages dans l'enquête initiale : " +
             str(len(menages['identmen'].drop_duplicates()))
             )
         log.info(
-            "Nombre d'individus dans l'enquête initiale : " +
+            u"Nombre d'individus dans l'enquête initiale : " +
             str(len(individus['identind'].drop_duplicates()))
             )
         self.entity_by_name['menages'] = menages
@@ -95,10 +97,10 @@ class Patrimoine(DataTil):
 
         assert (menages['identmen'].isin(individus['identmen'])).all()
         assert (individus['identmen'].isin(menages['identmen'])).all()
-        log.info("fin de l'importation des données")
+        log.info(u"fin de l'importation des données")
 
     def champ(self, option='metropole'):
-        ''' Limite la base à un champ d'étude défini '''
+        u''' Limite la base à un champ d'étude défini '''
         assert option in ['metropole']
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
@@ -369,7 +371,7 @@ class Patrimoine(DataTil):
     def partner(self):
         ''' Calcul de l'identifiant du partner et corrige les statuts '''
         # ne gère pas les identifiants des couples non cohabitants, on n'a pas l'info.
-        log.info("Travail sur les partners")
+        log.info(u"Travail sur les partners")
         individus = self.entity_by_name['individus']
         # pour simplifier on créer une variable ou les personnes qui peuvent être en couple on la même valeur
         # c'est mieux que lienpref (pref signifie "personne de reference)
@@ -418,7 +420,7 @@ class Patrimoine(DataTil):
         couple.loc[(couple['civilstate_partner'] == 5) & (couple['civilstate'] != 1), 'civilstate'] = 5
         individus.loc[couple['id'].values, 'civilstate'] = couple['civilstate'].values
 
-        log.info("Fin du travail sur les partners")
+        log.info(u"Fin du travail sur les partners")
         self.entity_by_name['individus'] = individus
 
     def enfants(self):
@@ -478,6 +480,8 @@ class Patrimoine(DataTil):
 
         individus['pere'].fillna(-1, inplace=True)
         individus['mere'].fillna(-1, inplace=True)
+        assert -1 in individus['pere'].values
+        assert -1 in individus['mere'].values
         self._check_links(individus)
 
         # frere soeur
@@ -532,12 +536,13 @@ class Patrimoine(DataTil):
         self.entity_by_name['individus'] = individus
 
     def creation_child_out_of_house(self):
-        '''
-        Renvoie une table qui doit se lire comme étant les enfants hors foyer déclarer par le ménage.
+        u'''
+        Renvoie une table qui doit se lire comme étant les enfants hors foyer déclarés par le ménage.
         On marque les infos que l'on connait sur ces enfants.
-        On ajouter les infos sur leurs parents (qui sont donc des membres du ménages)
+        On ajouter les infos sur leurs parents (qui sont donc des membres du ménage)
 
-        On fera ensuite un matching avec les enfants qui ne vivent pas avec leur parent alors que ceux-ci sont vivants.
+        On fera ensuite un matching de ces enfants avec les enfants qui ne vivent pas avec leur parent alors
+        que ceux-ci sont vivants.
         '''
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
@@ -616,9 +621,11 @@ class Patrimoine(DataTil):
 
         # A qui est l'enfant ?
         # aux deux
+
         cond1 = child_out_of_house['hodln'] == 1
         child_out_of_house1 = merge(child_out_of_house[cond1], info_pere, on='idmen', how='left')
         child_out_of_house1 = merge(child_out_of_house1, info_mere, on='idmen', how = 'left')
+
         # à la pref
         cond2 = child_out_of_house['hodln'] == 2
         child_out_of_house2 = merge(child_out_of_house[cond2], info_pr_pere, on='idmen', how='left')
@@ -628,12 +635,16 @@ class Patrimoine(DataTil):
         child_out_of_house3 = merge(child_out_of_house[cond3], info_cj_pere, on='idmen', how='left')
         child_out_of_house3 = merge(child_out_of_house3, info_cj_mere, on='idmen', how = 'left')
 
-        temp = child_out_of_house1.append(child_out_of_house2, ignore_index = True)
-        temp = temp.append(child_out_of_house3, ignore_index = True)
         # len(temp) = len(child_out_of_house) - 4 #deux personnes du même sexe qu'on a écrasé a priori.
-        child_out_of_house = temp
-        # TODO: il y a des ménages avec hodln = 1 et qui pourtant n'ont pas deux membres (à moins qu'ils aient le même sexe.
+        child_out_of_house = concat([child_out_of_house1, child_out_of_house2, child_out_of_house3], axis = 0, ignore_index = True)
+
+        assert child_out_of_house.pere.isnull().any(), u"Les pères manquants ne sont pas repérés par des NaN"
+        assert child_out_of_house.mere.isnull().any(), u"Les mères manquantes ne sont pas repérés par des NaN"
+
+        # TODO: il y a des ménages avec hodln = 1 et qui pourtant n'ont pas deux membres
+        # (à moins qu'ils aient le même sexe).
         # child_out_of_house = child_out_of_house.drop(['hodcho', 'hodemp', 'hodniv', 'hodpri', 'to_delete_x', 'to_delete_y', 'jepprof'],axis=1)
+
         assert child_out_of_house['jemnais'].max() < 2010 - 18
         assert child_out_of_house['jepnais'].max() < 2010 - 18
 
@@ -643,14 +654,19 @@ class Patrimoine(DataTil):
                 left_on=parent, right_on='id', how='left', suffixes=('', '_' + parent)
                 )
             diff_age = check['anais'] - check['anais_' + parent]
-            child_out_of_house = child_out_of_house[(diff_age > 15).values]
+            child_out_of_house = child_out_of_house[((diff_age > 15) | (diff_age.isnull())).values]
+
+        assert child_out_of_house.pere.isnull().any(), u"Les pères manquants ne sont pas repérés par des NaN"
+        assert child_out_of_house.mere.isnull().any(), u"Les mères manquantes ne sont pas repérés par des NaN"
 
         self.child_out_of_house = child_out_of_house.fillna(-1)
 
+
     def matching_par_enf(self):
-        '''
+        u'''
         Matching des parents et des enfants hors du domicile
         '''
+        log.info(u"Début du matching des parents et des enfants hors du domicile")
         individus = self.entity_by_name['individus']
         individus = individus.fillna(-1)
         individus.index = individus['id']
@@ -676,11 +692,12 @@ class Patrimoine(DataTil):
         nb_enf_pere_dom = individus.groupby('pere').size()
         # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
         enf_tot_dom = concat([nb_enf_mere_dom, nb_enf_pere_dom], axis=0)
-        enf_tot_dom = enf_tot_dom.drop([-1])
+        enf_tot_dom = enf_tot_dom.drop([-1])   # -1 is in the index (pere or mere = -1)
         # -- Hors domicile
         nb_enf_mere_hdom = child_out_of_house.groupby('mere').size()
         nb_enf_pere_hdom = child_out_of_house.groupby('pere').size()
-        enf_tot_hdom = concat([nb_enf_mere_hdom, nb_enf_pere_hdom], axis=0)
+
+        enf_tot_hdom = concat([nb_enf_mere_hdom, nb_enf_pere_hdom], axis = 0)
         enf_tot_hdom = enf_tot_hdom.drop([-1])
 
         enf_tot = concat([enf_tot_dom, enf_tot_hdom], axis = 1).fillna(0)
@@ -721,13 +738,17 @@ class Patrimoine(DataTil):
         enf_look_par.loc[parent_found1.index, ['pere', 'mere']] = \
             child_out_of_house.loc[parent_found1, ['pere', 'mere']]
         cond2_enf = (enf_look_par['mere'] == -1) & (enf_look_par['mer1e'] == 2)
-        cond2_par = ~child_out_of_house.index.isin(parent_found1) & (child_out_of_house['mere'] != -1)
+
+        cond2_par = np.logical_and(
+            np.logical_not(child_out_of_house.index.isin(parent_found1)),
+            child_out_of_house['mere'] != -1
+            )
         match2 = Matching(
             enf_look_par.loc[cond2_enf, var_match],
             child_out_of_house.loc[cond2_par, var_match],
             score
             )
-        parent_found2 = match2.evaluate(orderby=None, method='cells')
+        parent_found2 = match2.evaluate(orderby = None, method='cells')
         individus.loc[parent_found2.index, ['mere']] = child_out_of_house.loc[parent_found2, ['mere']]
 
         # étape 3 : seulement père vivant
@@ -741,7 +762,7 @@ class Patrimoine(DataTil):
         parent_found3 = match3.evaluate(orderby=None, method='cells')
         individus.loc[parent_found3.index, ['pere']] = child_out_of_house.loc[parent_found3, ['pere']]
 
-        log.info(" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) + " match enfant-parent hors dom")
+        log.info(u" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) + " match enfant-parent hors dom")
         # on retire les match non valides
         to_check = individus[['id', 'age_en_mois', 'sexe', 'idmen', 'partner', 'pere', 'mere', 'lienpref']]
         tab = to_check.copy()
@@ -771,7 +792,7 @@ class Patrimoine(DataTil):
             })
 
     def match_couple_hdom(self):
-        '''
+        u'''
         Certaines personnes se déclarent en couple avec quelqu'un ne vivant pas au domicile, on les reconstruit ici.
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
         On sélectionne les individus qui se déclarent en couple avec quelqu'un hors du domicile.
@@ -779,6 +800,7 @@ class Patrimoine(DataTil):
         Comme pour les liens parents-enfants, on néglige ici la possibilité que le partner soit hors champ (étrange, prison, casernes, etc).
         Calcul aussi la variable individus['nb_enf']
         '''
+        log.info(u"Début du matching des couples hors du domicile")
         individus = self.entity_by_name['individus']
         couple_hdom = individus['couple'] == 2
         # vu leur nombre, on regroupe pacsés et mariés dans le même sac
@@ -795,7 +817,7 @@ class Patrimoine(DataTil):
         # On assemble le nombre d'enfants pour les peres et meres en enlevant les manquantes ( = -1)
         enf_tot = nb_enf_mere[nb_enf_mere['id'] != -1].append(nb_enf_pere[nb_enf_pere['id'] != -1]).astype(int)
         individus['nb_enf'] = 0
-        individus['nb_enf'][enf_tot['id'].values] = enf_tot['nb_enf']
+        individus.loc[enf_tot['id'].values, 'nb_enf'] = enf_tot['nb_enf']
 
         men_contrat = couple_hdom & (individus['civilstate'].isin([1, 5])) & (individus['sexe'] == 0)
         women_contrat = couple_hdom & (individus['civilstate'].isin([1, 5])) & (individus['sexe'] == 1)
@@ -829,7 +851,7 @@ class Patrimoine(DataTil):
 
 
     def calmar_demography(self):
-        from openfisca_core.calmar import calmar, check_calmar
+        from openfisca_core.calmar import calmar # , check_calmar
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
 
@@ -840,7 +862,7 @@ class Patrimoine(DataTil):
         for sexe in [0, 1]:
             individus_extraction['decade'] = individus_extraction.age.loc[individus_extraction.sexe == sexe] // 10
             decades = individus_extraction.age.loc[individus_extraction.sexe == sexe].unique()
-            # assert ages == range(max(ages) + 1)
+            # assert ages == range(max(ages) + 1)
             for decade in list(decades):
                 individus_extraction['dummy_decade'] = (individus_extraction.decade == decade) * 1
                 dummy = individus_extraction[['dummy_decade', 'idmen']].groupby(by = 'idmen').sum().reset_index()
@@ -871,8 +893,8 @@ class Patrimoine(DataTil):
         pondfin_out, lambdasol, margins_new_dict = calmar(
             data_in, margins_by_decade, parameters = parameters, pondini = 'pond')
 
-        check_calmar(data_in, margins_by_decade, pondini = 'pond', pondfin_out = pondfin_out, lambdasol = lambdasol,
-            margins_new_dict = margins_new_dict)
+#        check_calmar(data_in, margins_by_decade, pondini = 'pond', pondfin_out = pondfin_out, lambdasol = lambdasol,
+#            margins_new_dict = margins_new_dict)
 
         menages['pondini'] = menages.pond.copy()
         menages.pond = pondfin_out
@@ -892,7 +914,7 @@ if __name__ == '__main__':
     data.to_DataTil_format()
     data.champ()
     data.calmar_demography()
-    # data.work_on_past() TODO: à réactiver !
+    # data.work_on_past() TODO: à réactiver !
     # data.create_past_table()
     data.drop_variable()
     # data.corrections()
@@ -909,8 +931,8 @@ if __name__ == '__main__':
     data.store_to_liam()
     individus = data.entity_by_name['individus']
 
-    log.info("Temps de calcul : {} s".format(time.time() - start_t))
-    log.info("Nombre d'individus de la table final : ", len(individus))
+    log.info(u"Temps de calcul : {} s".format(time.time() - start_t))
+    log.info(u"Nombre d'individus de la table final : ", len(individus))
     # des petites verifs finales
     individus['en_couple'] = individus['partner'] > -1
     test = individus['partner'] > -1

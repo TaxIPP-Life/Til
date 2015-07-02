@@ -32,7 +32,10 @@ import pkg_resources
 import tables
 
 
-from liam2.importer import array_to_disk_array
+try:
+    from liam2.importer import array_to_disk_array
+except ImportError:
+    from src.importer import array_to_disk_array
 
 
 def add_mortality_rates(simulation_file_name = None):

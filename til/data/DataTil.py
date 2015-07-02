@@ -68,7 +68,7 @@ class DataTil(object):
         self.name = None
         self.survey_date = None
         self.entity_by_name = {}
-        self.time_data_frame_by_name = {}  # past, futur
+        self.time_data_frame_by_name = {}  # past, futur
         self.longitudinal = {}
         self.child_out_of_house = None
         self.threshold = None
@@ -121,6 +121,14 @@ class DataTil(object):
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
 
+        if individus['pere'].isnull().any():
+            individus['pere'].fillna(-1, inplace = True)
+        if individus['mere'].isnull().any():
+            individus['mere'].fillna(-1, inplace = True)
+
+        assert individus['pere'].notnull().all(), u"Les valeurs manquantes pour pere doivent être notées -1"
+        assert individus['mere'].notnull().all(), u"Les valeurs manquantes pour mere doivent être notées -1"
+
         survey_date = self.survey_date
         log.info(u"Création des déclarations fiscales")
         # 0eme étape: création de la variable 'nb_enf' si elle n'existe pas +  ajout 'lienpref'
@@ -162,6 +170,7 @@ class DataTil(object):
             (individus['age_en_mois'] < 12 * 21)
             ) & \
             (individus['nb_enf'] == 0)
+
         pac = ((individus['pere'] != -1) | (individus['mere'] != -1)) & pac_condition
         log.info('Il y a {} personnes prises en charge'.format(sum(pac)))
         # Identifiants associés
@@ -188,12 +197,13 @@ class DataTil(object):
             (individus['partner'] != -1) & (individus['civilstate'].isin([1, 5])) & (individus['quifoy'] == 0),
             ['partner', 'idfoy']
             ]
-        individus['idfoy'][partner['partner'].values] = partner['idfoy'].values
+        individus.loc[partner['partner'].values, 'idfoy'] = partner['idfoy'].values
 
         # (b) - Rattachements de leurs enfants (en priorité sur la décla du père)
         for parent in ['pere', 'mere']:
             pac_par = individus.loc[
-                (individus['quifoy'] == 2) & (individus[parent] != -1) & (individus['idfoy'] == -1), ['id', parent]
+                (individus['quifoy'] == 2) & (individus[parent] != -1) & (individus['idfoy'] == -1),
+                ['id', parent],
                 ].astype(int)
             individus['idfoy'][pac_par['id'].values] = individus['idfoy'][pac_par[parent].values]
             log.info(
@@ -256,7 +266,7 @@ class DataTil(object):
         raise NotImplementedError()
 
     def match_couple_hdom(self):
-        '''
+        u'''
         Certaines personnes se déclarent en couple avec quelqu'un ne vivant pas au domicile, on les reconstruit ici.
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
         On séléctionne les individus qui se déclare en couple avec quelqu'un hors du domicile.
@@ -269,7 +279,7 @@ class DataTil(object):
 
     def expand_data(self, threshold=150, nb_ligne=None):
         # TODO: add future and past
-        '''
+        u'''
         Note: ne doit pas tourner après lien parent_enfant
         Cependant child_out_of_house doit déjà avoir été créé car on s'en sert pour la réplication
         '''
@@ -287,21 +297,22 @@ class DataTil(object):
 
         if par is None:
             log.info(
-                "Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables "
-                "child_out_of_house plutôt que de les faire à partir des tables déjà étendue"
+                u"Notez qu'il est plus malin d'étendre l'échantillon après avoir fait les tables "
+                u"child_out_of_house plutôt que de les faire à partir des tables déjà étendue"
                 )
 
         if foyers_fiscaux is None:
             log.info(
-                "C'est en principe plus efficace d'étendre après la création de la table foyer"
-                " mais si on veut rattacher les enfants (par exemple de 22 ans) qui ne vivent pas au"
-                " domicile des parents sur leur déclaration, il faut faire l'extension et la "
-                " fermeture de l'échantillon d'abord. Pareil pour les couples. ")
+                u"C'est en principe plus efficace d'étendre après la création de la table foyer"
+                u" mais si on veut rattacher les enfants (par exemple de 22 ans) qui ne vivent pas au"
+                u" domicile des parents sur leur déclaration, il faut faire l'extension et la "
+                u" fermeture de l'échantillon d'abord. Pareil pour les couples. ")
         min_pond = min(menages['pond'])
         target_pond = float(max(min_pond, threshold))
 
         # 1 - Réhaussement des pondérations inférieures à la pondération cible
-        menages['pond'][menages.pond < target_pond] = target_pond
+        menages.loc[menages.pond < target_pond, 'pond'] = target_pond
+
         # 2 - Calcul du nombre de réplications à effectuer
         menages['nb_rep'] = menages['pond'].div(target_pond)
         menages['nb_rep'] = menages['nb_rep'].round()
@@ -315,7 +326,6 @@ class DataTil(object):
 
         # pour conserver les 10 premiers ménages = collectivités
         men_exp['id'] = new_idmen(men_exp, 'id')
-
         if foyers_fiscaux is not None:
             foyers_fiscaux = merge(
                 menages[['id', 'nb_rep']], foyers_fiscaux,
@@ -332,7 +342,6 @@ class DataTil(object):
             par_exp['idmen'] = new_link_with_men(par, men_exp, 'idmen')
         else:
             par_exp = None
-
         individus = merge(
             menages[['id', 'nb_rep']].rename(columns = {'id': 'idmen'}), individus, on='idmen', how='right',
             suffixes = ('_men', '')
@@ -343,10 +352,11 @@ class DataTil(object):
         ind_exp['idmen'] += 10
 
         # liens entre individus
-        tableB = ind_exp[['id_rep', 'id_ini']]
-        tableB['id_index'] = tableB.index
+        tableB = ind_exp[['id_rep', 'id_ini']].copy()
+        tableB.index.name = 'id_index'
+        tableB.reset_index(inplace = True)
 #         ind_exp = ind_exp.drop(['pere', 'mere', 'partner'], axis=1)
-        log.info("debut travail sur identifiant")
+        log.info(u"début travail sur identifiant")
 
         def _align_link(link_name, table_exp):
             tab = table_exp[[link_name, 'id_rep']].reset_index()
@@ -357,7 +367,7 @@ class DataTil(object):
                 how='inner'
                 ).set_index('index')
             tab = tab.drop([link_name], axis=1).rename(columns={'id_index': link_name})
-            table_exp[link_name][tab.index.values] = tab[link_name].values
+            table_exp.loc[tab.index.values, link_name] = tab[link_name].values
 #             table_exp.merge(tab, left_index=True,right_index=True, how='left', copy=False)
             return table_exp
 

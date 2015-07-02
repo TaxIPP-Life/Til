@@ -111,7 +111,7 @@ def new_link_with_men(table, table_exp, link_name):
     group_old_id = group_old_id.repeat(nb_by_table)
     new_id = []
     for el in group_old_id:
-        # log.info(el)
+        # log.info(el)
         new_id += el
     return new_id
 
@@ -163,7 +163,7 @@ def minimal_dtype(table):
                 try:
                     if (col[col.notnull()].astype(int) == col[col.notnull()]).all():
                         try:
-                            col[col.notnull()] = col[col.notnull()].astype(int)
+                            col.loc[col.notnull()] = col[col.notnull()].astype(int).values
                         except:
                             # dans ce cas, col est déjà un int et même plus petit que int32
                             pass

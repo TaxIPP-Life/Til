@@ -18,11 +18,23 @@ import yaml
 
 
 # Monkey patching liam2
-from liam2.exprtools import functions
+try:
+    from liam2.exprtools import functions
+except ImportError:
+    try:
+        from liam2.src.exprtools import functions
+    except ImportError:
+        import sys
+        sys.path.append('C:\Users\m.benjelloul\Documents\GitHub\liam2')
+        from src.exprtools import functions
+
 from til import exprmisc
 functions.update(exprmisc.functions)
 
-from liam2.expr import type_to_idx
+try:
+    from liam2.expr import type_to_idx
+except ImportError:
+    from src.expr import type_to_idx
 type_to_idx.update({
     np.int8: 1,
     np.int16: 1,
@@ -31,14 +43,25 @@ type_to_idx.update({
 
 
 # TilSimulation specific import
-from liam2 import config, console
-from liam2.context import EvaluationContext
-from liam2.data import H5Data, Void
-from liam2.entities import Entity, global_symbols
-from liam2.utils import (
-    field_str_to_type, fields_yaml_to_type, gettime, time2str, timed, validate_dict
-    )
-from liam2.simulation import expand_periodic_fields, handle_imports, show_top_processes, Simulation
+try:
+    from liam2 import config, console
+    from liam2.context import EvaluationContext
+    from liam2.data import H5Data, Void
+    from liam2.entities import Entity, global_symbols
+    from liam2.utils import (
+        field_str_to_type, fields_yaml_to_type, gettime, time2str, timed, validate_dict
+        )
+    from liam2.simulation import expand_periodic_fields, handle_imports, show_top_processes, Simulation
+except ImportError:
+    from src import config, console
+    from src.context import EvaluationContext
+    from src.data import H5Data, Void
+    from src.entities import Entity, global_symbols
+    from src.utils import (
+        field_str_to_type, fields_yaml_to_type, gettime, time2str, timed, validate_dict
+        )
+    from src.simulation import expand_periodic_fields, handle_imports, show_top_processes, Simulation
+
 
 from til.utils import addmonth, time_period
 

@@ -6,9 +6,12 @@ from __future__ import division, print_function
 
 import importlib
 
-
-from liam2.expr import Expr
-from liam2.process import Process
+try:
+    from liam2.expr import Expr
+    from liam2.process import Process
+except ImportError:
+    from src.expr import Expr
+    from src.process import Process
 
 
 class ExtProcess(Process):
