@@ -44,7 +44,6 @@ def add_mortality_rates(simulation_file_name = None):
         pkg_resources.get_distribution('Til-BaseModel').location,
         'til_base_model',
         )
-
     # Data from INSEE projections
     data_path = os.path.join(path_model, 'param', 'demo')
 

@@ -47,6 +47,7 @@ class Destinie(DataTil):
             # TODO: revoir le colnames de BioEmp : le retirer ?
             colnames = list(range(longueur_carriere))
             path = os.path.join(path_data_destinie, 'BioEmp.txt')
+            assert os.path.exists(path), 'Error for BioEmp.txt path. File cannot be found in {}'.format(path)
             BioEmp = read_table(path, sep=';', header=None, names=colnames)
             taille = len(BioEmp) / 3
             BioEmp['id'] = BioEmp.index / 3
@@ -122,7 +123,7 @@ class Destinie(DataTil):
             BioFam['civilstate'].replace([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], inplace=True)
             return BioFam
 
-        log.info("Début de l'importation des données")
+        log.info(u"Début de l'importation des données")
         start_time = time.time()
         self.entity_by_name['individus'], self.emp = _BioEmp_in_2()
 
@@ -135,9 +136,9 @@ class Destinie(DataTil):
 
         self.entity_by_name['individus']['sexe'] = _recode_sexe(self.entity_by_name['individus']['sexe'])
         self.BioFam = _lecture_BioFam()
-        log.info("Temps d'importation des données : " + str(time.time() - start_time) + "s")
+        log.info(u"Temps d'importation des données : " + str(time.time() - start_time) + "s")
 
-        log.info("fin de l'importation des données")
+        log.info(u"fin de l'importation des données")
     def format_initial(self):
         '''
         Aggrégation des données en une seule base
@@ -216,7 +217,7 @@ class Destinie(DataTil):
             past['period'] = 100 * past['period'] + 1
             for varname in ['salaire_imposable', 'workstate']:
                 self.longitudinal[varname] = past.pivot(index='id', columns='period', values=varname)
-            log.info("Nombre de lignes sur le passé : {} (informations de {} à {}".format(
+            log.info(u"Nombre de lignes sur le passé : {} (informations de {} à {}".format(
                 len(past),
                 past['period'].min(),
                 past['period'].max()),
@@ -288,8 +289,8 @@ class Destinie(DataTil):
         self.entity_by_name['individus'] = ind
         self.past = past
         self.futur = futur
-        log.info("Temps de la mise en forme initiale : " + str(time.time() - start_time) + "s")
-        log.info("Fin de la mise en forme initiale")
+        log.info(u"Temps de la mise en forme initiale : " + str(time.time() - start_time) + "s")
+        log.info(u"Fin de la mise en forme initiale")
 
     def enf_to_par(self):
         '''Vérifications des liens de parentés '''
@@ -414,7 +415,7 @@ class Destinie(DataTil):
         ind.loc[(ind['partner'] > ind['id']) & (ind['partner'] != -1) & (ind['quimen'] != -2), 'quimen'] = 0
         ind.loc[(ind['partner'] < ind['id']) & (ind['partner'] != -1) & (ind['quimen'] != -2), 'quimen'] = 1
         log.info(str(len(ind[ind['quimen'] == 0])) + u" ménages ont été constitués ")  # 20815
-        log.info("   dont " + str(len(ind[ind['quimen'] == 1])) + " couples")   # 9410
+        log.info(u"   dont " + str(len(ind[ind['quimen'] == 1])) + " couples")   # 9410
 
         # 2eme étape : attribution du numéro de ménage grâce aux têtes de ménage
         nb_men = len(ind.loc[(ind['quimen'] == 0), :])
@@ -506,7 +507,7 @@ class Destinie(DataTil):
         self.entity_by_name['menages'] = men
 
     def add_futur(self):
-        log.info("Début de l'actualisation des changements jusqu'en 2060")
+        log.info(u"Début de l'actualisation des changements jusqu'en 2060")
         # TODO: déplacer dans DataTil
         ind = self.entity_by_name['individus']
         futur = self.futur
@@ -530,7 +531,7 @@ class Destinie(DataTil):
         self.entity_by_name['individus'] = ind
         self.entity_by_name['menages'] = men
         self.entity_by_name['foyers_fiscaux'] = foy
-        log.info("Fin de l'actualisation des changements jusqu'en 2060")
+        log.info(u"Fin de l'actualisation des changements jusqu'en 2060")
 
 
 if __name__ == '__main__':
