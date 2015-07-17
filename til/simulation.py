@@ -291,10 +291,11 @@ class TilSimulation(Simulation):
         final_stat = simulation_def.get('final_stat', None)
 
         input_def = simulation_def.get('input')
-        if input_def is not None:
+        if input_def is not None or input_dir is not None:
             input_directory = input_dir if input_dir is not None else input_def.get('path', '')
         else:
             input_directory = ''
+
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory)
         config.input_directory = input_directory

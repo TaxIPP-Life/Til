@@ -9,7 +9,6 @@ Alexis Eidelman
 
 import os
 import pdb
-import pkg_resources
 
 
 import logging
@@ -21,10 +20,7 @@ import tables
 from til.data.utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
 
 
-path_model = os.path.join(
-    pkg_resources.get_distribution("Til-BaseModel").location,
-    "til_base_model",
-    )
+from til.CONFIG import path_liam_input_data
 
 
 log = logging.getLogger(__name__)
@@ -187,7 +183,7 @@ class DataTil(object):
         # 3eme étape: attribution des identifiants des foyers fiscaux
         individus['idfoy'] = -1
         nb_foy = sum(individus['quifoy'] == 0)
-        log.info("Le nombre de foyers créés est: ".format(nb_foy))
+        log.info(u"Le nombre de foyers créés est: ".format(nb_foy))
         # Rq: correspond au même décalage que pour les ménages (10premiers: institutions)
         individus.loc[individus['quifoy'] == 0, 'idfoy'] = range(10, nb_foy + 10)
 
@@ -495,9 +491,11 @@ class DataTil(object):
         tab_partner = tab.loc[tab['partner'] > -1].copy()
         tab_partner.replace(-1, np.nan, inplace=True)
         try:
-            assert all((tab_partner['id'] == tab_partner['partner_partner']))  # Les couples sont réciproques
-            assert sum(tab_partner['mere'] == tab_partner['mere_partner']) == 0  # pas de mariage entre frere et soeur
-            assert sum(tab_partner['pere'] == tab_partner['pere_partner']) == 0
+            # Les couples dovent être réciproques
+            assert (tab_partner['id'] == tab_partner['partner_partner']).all()
+            # Il ne doit pas y avoir de mariage entre frere et soeur
+            assert (tab_partner['mere'] != tab_partner['mere_partner']).all()
+            assert (tab_partner['pere'] != tab_partner['pere_partner']).all()
         except:
             test = tab_partner['pere'] == tab_partner['pere_partner']
             pdb.set_trace()
@@ -597,7 +595,7 @@ class DataTil(object):
             name = self.name + extension
         else:
             name = self.name + '_next_metro_' + str(self.threshold) + extension
-        return os.path.join(path_model, name)
+        return os.path.join(path_liam_input_data, name)
 
     def store_to_liam(self):
         '''
@@ -648,7 +646,7 @@ class DataTil(object):
                     data_frame = entity[['age_en_mois', 'period']].copy()
                     data_frame['age'] = (data_frame.age_en_mois // 12)
                     age_max = data_frame['age'].max()
-                    log.info("La personne la plus agée a {} ans".format(age_max))
+                    log.info(u"La personne la plus agée a {} ans".format(age_max))
                     del data_frame
                     assert age_max < 120, "Maximal age is larger than 120"
                     data_frame = DataFrame(dict(
@@ -675,7 +673,9 @@ class DataTil(object):
         from mortality_rates import add_mortality_rates
         add_mortality_rates(path)
         log.info("Added mortality rates in node globals of file {}".format(path))
-
+        from til_base_model.targets.dependance import build_prevalence_all_years
+        build_prevalence_all_years(hdf5_file_path = path)
+        log.info("Added dependance prevalence rates in node globals of file {}".format(path))
 
     def store(self):
         path = self._output_name()

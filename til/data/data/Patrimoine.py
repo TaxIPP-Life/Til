@@ -17,6 +17,8 @@ import numpy as np
 from pandas import concat, DataFrame, merge, read_csv, Series
 
 
+from til_base_model.targets.population import get_data_frame_insee
+
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des
 # données de l'enquête Patrimoine
 from til.CONFIG import path_data_patr
@@ -160,7 +162,9 @@ class Patrimoine(DataTil):
         individus.loc[(individus['idmen'].isin(avpf)) & (individus['workstate'].isin([1, 2])), 'workstate'] = 8
         # cadre, non cadre
         individus.loc[(individus['classif'].isin([6, 7])) & (individus['workstate'] == 5), 'workstate'] = 6
-        individus.loc[(individus['classif'].isin([6, 7])) & (individus['workstate'] == 3), 'workstate'] = 4  # Pas très bon car actif, sedentaire et pas cadre non cadre
+        individus.loc[(individus['classif'].isin([6, 7])) & (individus['workstate'] == 3), 'workstate'] = 4
+        # Pas très bon car actif, sedentaire et pas cadre non cadre
+
         # retraite
         individus.loc[individus['preret'] == 1, 'workstate'] = 9
         individus.loc[(individus['anais'] < self.survey_year - 64) & (individus['workstate'] == 1), 'workstate'] = 10
@@ -332,7 +336,7 @@ class Patrimoine(DataTil):
             diplom = [x for x in all if x[:6] == 'diplom']
             partner_died = [x for x in all if x[:2] == 'cj']
             even_rev = [x for x in all if x[:3] == 'eve']
-            black_list = pr_or_cj + detention + diplom + partner_died +even_rev  # + enfants_hdom
+            black_list = pr_or_cj + detention + diplom + partner_died + even_rev  # + enfants_hdom
             # liste blanche
             var_to_declar = ['zcsgcrds', 'zfoncier', 'zimpot', 'zpenaliv',
                              'zpenalir', 'zpsocm', 'zrevfin']
@@ -350,7 +354,7 @@ class Patrimoine(DataTil):
             parent_prop = [x for x in all if x[:6] == 'jepro_']
             jeunesse_grave = [x for x in all if x[:6] == 'jepro_']
             jeunesse = [x for x in all if x[:7] == 'jegrave']
-            black_list = jeunesse_grave + parent_prop  + diplom
+            black_list = jeunesse_grave + parent_prop + diplom
             # liste blanche
             info_pers = ['anais', 'mnais', 'sexe', 'dip14', 'age_en_mois', 'findet', 'tauxprime']
             famille = ['couple', 'lienpref', 'enf', 'civilstate', 'pacs', 'grandpar', 'per1e', 'mer1e', 'enfant']
@@ -369,40 +373,62 @@ class Patrimoine(DataTil):
         DataTil.drop_variable(self, dict_to_drop, option)
 
     def partner(self):
-        ''' Calcul de l'identifiant du partner et corrige les statuts '''
+        ''' Calcul de l'identifiant du conjoint/partner et corrige les statuts '''
         # ne gère pas les identifiants des couples non cohabitants, on n'a pas l'info.
         log.info(u"Travail sur les partners")
         individus = self.entity_by_name['individus']
-        # pour simplifier on créer une variable ou les personnes qui peuvent être en couple on la même valeur
-        # c'est mieux que lienpref (pref signifie "personne de reference)
+        # pour simplifier on créer une variable lien qui à la même valeur pour les personnes
+        # potentielleùent en couple
+        # Elle est plus pratique que lienpref (lien avec la personne de référence)
         individus['lien'] = individus['lienpref'].replace([1, 31, 32, 50], [0, 2, 3, 10])
-        # Les gens mariés ou pacsés sont considéré en couple par définition (pas d'union factice) :
-        prob_couple = (individus['civilstate'].isin([1, 5])) & (individus['couple'] == 3)
-        individus.groupby(['civilstate', 'couple']).size()
-        if sum(prob_couple):
-            statu_marit = individus.loc[prob_couple, ['idmen', 'couple', 'civilstate', 'lienpref', 'lien', 'id']]
-            # si deux se disent non en couple mais marié, on corrige avec couple=1
-            prob_by_menages = statu_marit['idmen'].value_counts()
+        # Les gens mariés ou pacsés sont considéré en couple par définition (pas d'union factice):
+        # reminder couple:
+        # 1 Oui, avec une personne qui vit dans le logement
+        # 2 Oui, avec une personne qui ne vit pas dans le logement
+        # 3 Non
+        problematic_couple = (individus['civilstate'].isin([1, 5])) & (individus['couple'] == 3)
+        # individus.groupby(['civilstate', 'couple']).size()
+        if sum(problematic_couple):
+            problematic_individuals = individus.loc[
+                problematic_couple, ['idmen', 'couple', 'civilstate', 'lienpref', 'lien', 'id']
+                ]
+            # si deux se disent non en couple mais mariés, on corrige avec couple = 1
+            # sauf s'ils sont tous deux enfants de la même pref on met couple = 2 (cas de idmen = 6622)
+            prob_by_menages = problematic_individuals['idmen'].value_counts()
             many_by_menages = prob_by_menages.loc[prob_by_menages > 1].index.values
-            # il faut tester que les gens n'ont pas les mêmes lienpref...
-            # là on supprime en dur
-            many_by_menages = [value for value in many_by_menages if value != 6622]
-            many_by_menages_ident = statu_marit[statu_marit['idmen'].isin(many_by_menages)]
-            individus.loc[many_by_menages_ident.index, 'couple'] = 1
+            for idmen in many_by_menages:
+                indices = problematic_individuals.loc[problematic_individuals.idmen == idmen].index
+                if (problematic_individuals.loc[indices, 'lienpref'] == 2).all():
+                    individus.loc[indices, 'couple'] = 2
+                else:
+                    individus.loc[indices, 'couple'] = 1
+
             # si une personne est seule mariés ou pacsé dans le ménage, on met aussi couple=1
-            other_married_cond = individus['civilstate'].isin([1, 5]) & individus['idmen'].isin(statu_marit['idmen']) & (individus['couple'] == 1)
-            other_married = individus.loc[other_married_cond, ['idmen', 'lien']]
-            to_correct = statu_marit[['idmen', 'lien', 'id']].merge(other_married, how='inner')
+            potential_partner_cond = individus['civilstate'].isin([1, 5]) & individus['idmen'].isin(
+                problematic_individuals['idmen']) & (individus['couple'] == 1)
+            potential_partner = individus.loc[potential_partner_cond, ['idmen', 'lien']]
+            to_correct = problematic_individuals[['idmen', 'lien', 'id']].merge(potential_partner, how='inner')
             individus.loc[to_correct['id'].values, 'couple'] = 1
             # sinon, on met couple=2
             # on regarde si on a un lienpref =1, 31 ou 32 qui sont bien synonymes de couple
             update = (individus['civilstate'].isin([1, 5])) & (individus['couple'] == 3)
             individus.loc[update, 'couple'] = 2
-        # change les personnes qui se disent en couple en couple hors domicile (on pourrait mettre non en couple aussi)
+
+        # Change les personnes qui se disent en couple en couple hors domicile
+        # (on pourrait mettre non en couple aussi)
         cond_hdom = individus[individus['couple'] == 1].groupby(['idmen', 'lien']).size() == 1
+#        cond_hdom2 = (
+#            individus.groupby(['idmen', 'lien', 'couple'])['couple'].transform('count') == 1
+#            ) & (
+#            individus['couple'] == 1
+#            )
+#        individus['couple2'] = individus['couple'].values
+
         to_change = cond_hdom[cond_hdom].reset_index()
         to_change = merge(individus[individus['couple'] == 1], to_change, how='inner')
+
         individus.loc[to_change['id'].values, 'couple'] = 2
+#        individus.loc[cond_hdom2, 'couple2'] = 2
 
         # On ne cherche que les identifiants des couple vivant ensemble.
         assert sum(~individus[individus['couple'] == 1].groupby(['idmen', 'lien']).size() == 2) == 0
@@ -420,25 +446,32 @@ class Patrimoine(DataTil):
         couple.loc[(couple['civilstate_partner'] == 5) & (couple['civilstate'] != 1), 'civilstate'] = 5
         individus.loc[couple['id'].values, 'civilstate'] = couple['civilstate'].values
 
+        # Absence de polygames (seul -1 est partner de plusieurs individus)
+        assert list(individus.partner.value_counts()[individus.partner.value_counts() > 1].index) == [-1]
+
         log.info(u"Fin du travail sur les partners")
         self.entity_by_name['individus'] = individus
 
     def enfants(self):
         '''
         Calcule l'identifiant des parents
-        Rq : la variable enf précise le lien de parenté entre l'enfant et les personnes de ref du ménage
-        1 : enf de pref et de son partner, 2:enf de pref seulement, 3 : enf de partner seulement, 4 : partner de l'enf de pref/partner
         '''
-        individus = self.entity_by_name['individus']
+        # la variable enf précise le lien de parenté entre l'enfant et les personnes de référence du ménage:
+        # 1: enfant de la pref et de son conjoint/partner,
+        # 2: enfant de pref seulement,
+        # 3: enf de partner seulement,
+        # 4: partner de l'enf de pref/partner
 
+        individus = self.entity_by_name['individus']
         info_par = individus.loc[:, ['idmen', 'lienpref', 'id', 'sexe']]
         var_to_keep = ['id', 'idmen', 'sexe']
 
         # [0] Enfants de la personne de référence
         enf_pref = individus.loc[individus['enf'].isin([1, 2]), var_to_keep]
-        enf_pref = enf_pref.merge(info_par[info_par['lienpref'] == 0],
-                                  on=['idmen'], how='left', suffixes=('_enf', '_par'))
-        # [1] Enfants du partner de la personne de référence
+        enf_pref = enf_pref.merge(
+            info_par[info_par['lienpref'] == 0], on = ['idmen'], how = 'left', suffixes = ('_enf', '_par'))
+
+        # [1] Enfants du conjoint/partner de la personne de référence
         enf_partner = individus.loc[individus['enf'].isin([1, 3]), var_to_keep]
         enf_partner = enf_partner.merge(
             info_par[info_par['lienpref'] == 1], on = ['idmen'], suffixes = ('_enf', '_par'))
@@ -486,14 +519,21 @@ class Patrimoine(DataTil):
 
         # frere soeur
         sibblings = individus.loc[individus['lienpref'] == 10, ['idmen', 'id']]
-        sibblings = sibblings.merge(individus.loc[individus['lienpref'] == 0, ['pere', 'mere', 'idmen']], on='idmen', how='inner')
+        sibblings = sibblings.merge(
+            individus.loc[individus['lienpref'] == 0, ['pere', 'mere', 'idmen']], on='idmen', how='inner')
         individus.loc[sibblings['id'].values, 'pere'] = sibblings['pere'].values
         individus.loc[sibblings['id'].values, 'mere'] = sibblings['mere'].values
         self._check_links(individus)
         # Last call, find the parent when we know he or she is there
-        look_mother = individus.loc[(individus['mer1e'] == 1) & (individus['mere'] == -1), ['idmen', 'lienpref', 'id', 'age_en_mois']]
+        look_mother = individus.loc[
+            (individus['mer1e'] == 1) & (individus['mere'] == -1),
+            ['idmen', 'lienpref', 'id', 'age_en_mois']
+            ]
         look_mother = look_mother[look_mother['lienpref'].isin([1, 2])]
-        potential_mother = individus.loc[(individus['sexe'] == 1) & (~individus['lienpref'].isin([0, 2, 3])), ['id', 'idmen', 'sexe', 'age_en_mois', 'lienpref']]
+        potential_mother = individus.loc[
+            (individus['sexe'] == 1) & (~individus['lienpref'].isin([0, 2, 3])),
+            ['id', 'idmen', 'sexe', 'age_en_mois', 'lienpref']
+            ]
         potential_mother = potential_mother[~potential_mother['id'].isin(look_mother['id'])]
         match_mother = look_mother.merge(potential_mother, on=['idmen'], suffixes=('_enf', '_par'))
         match_mother.sort(
@@ -551,8 +591,7 @@ class Patrimoine(DataTil):
         for k in range(1, 13):
             k = str(k)
             # hodln : lien de parenté
-            var_hod = ['hodln', 'hodsex', 'hodan', 'hodco', 'hodip', 'hodenf',
-                       'hodemp', 'hodcho', 'hodpri', 'hodniv']
+            var_hod = ['hodln', 'hodsex', 'hodan', 'hodco', 'hodip', 'hodenf', 'hodemp', 'hodcho', 'hodpri', 'hodniv']
             var_hod_rename = ['hodln', 'sexe', 'anais', 'couple', 'dip6', 'nb_enf', 'hodemp', 'hodcho', 'hodpri',
                 'hodniv']
             var_hod_k = [var + k for var in var_hod]
@@ -579,10 +618,11 @@ class Patrimoine(DataTil):
             len_ini = len(child_out_of_house)
 
         var_parent = ["id", "idmen", "sexe", "anais", "cs42", "grandpar"]
-        #Si les parents disent qu'ils ont eux-même des parents vivants, c'est que les grands parents de leurs enfants sont vivants !
+        # Si les parents disent qu'ils ont eux-même des parents vivants,
+        # c'est que les grands parents de leurs enfants sont vivants !
         individus['grandpar'] = individus['per1e'].isin([1, 2]) | individus['mer1e'].isin([1, 2])
 
-        #info sur les personnes de référence et leur partner
+        # info sur les personnes de référence et leur partner
         info_pr = individus.loc[(individus['lienpref'] == 0), var_parent]
         info_cj = individus.loc[(individus['lienpref'] == 1), var_parent]
 
@@ -601,7 +641,7 @@ class Patrimoine(DataTil):
             'cs42': 'jepprof',
             'sexe': 'to_delete'
             })
-        #... puis les meres
+        # ... puis les meres
         info_pr_mere = info_pr[info_pr['sexe'] == 1].rename(columns = {
             'id': 'mere',
             'anais': 'jemnais',
@@ -636,14 +676,16 @@ class Patrimoine(DataTil):
         child_out_of_house3 = merge(child_out_of_house3, info_cj_mere, on='idmen', how = 'left')
 
         # len(temp) = len(child_out_of_house) - 4 #deux personnes du même sexe qu'on a écrasé a priori.
-        child_out_of_house = concat([child_out_of_house1, child_out_of_house2, child_out_of_house3], axis = 0, ignore_index = True)
+        child_out_of_house = concat(
+            [child_out_of_house1, child_out_of_house2, child_out_of_house3], axis = 0, ignore_index = True)
 
         assert child_out_of_house.pere.isnull().any(), u"Les pères manquants ne sont pas repérés par des NaN"
         assert child_out_of_house.mere.isnull().any(), u"Les mères manquantes ne sont pas repérés par des NaN"
 
         # TODO: il y a des ménages avec hodln = 1 et qui pourtant n'ont pas deux membres
         # (à moins qu'ils aient le même sexe).
-        # child_out_of_house = child_out_of_house.drop(['hodcho', 'hodemp', 'hodniv', 'hodpri', 'to_delete_x', 'to_delete_y', 'jepprof'],axis=1)
+        # child_out_of_house = child_out_of_house.drop(
+        #    ['hodcho', 'hodemp', 'hodniv', 'hodpri', 'to_delete_x', 'to_delete_y', 'jepprof'],axis=1)
 
         assert child_out_of_house['jemnais'].max() < 2010 - 18
         assert child_out_of_house['jepnais'].max() < 2010 - 18
@@ -661,7 +703,6 @@ class Patrimoine(DataTil):
 
         self.child_out_of_house = child_out_of_house.fillna(-1)
 
-
     def matching_par_enf(self):
         u'''
         Matching des parents et des enfants hors du domicile
@@ -671,7 +712,7 @@ class Patrimoine(DataTil):
         individus = individus.fillna(-1)
         individus.index = individus['id']
         child_out_of_house = self.child_out_of_house
-        ## info sur les parents hors du domicile des enfants
+        # info sur les parents hors du domicile des enfants
         cond_enf_look_par = (individus['per1e'] == 2) | (individus['mer1e'] == 2)
         enf_look_par = individus[cond_enf_look_par].copy()
         # Remarque: avant on mettait à zéro les valeurs quand on ne cherche pas le parent, maintenant
@@ -686,7 +727,7 @@ class Patrimoine(DataTil):
             [[[1, 2, 3], 4], [[4, 5], 2], [[6, 7], 1], [[8, 9], 3], [[10], 0]],
             method='isin'
             )
-        ## nb d'enfant
+        # nb d'enfant
         # -- Au sein du domicile
         nb_enf_mere_dom = individus.groupby('mere').size()
         nb_enf_pere_dom = individus.groupby('pere').size()
@@ -707,15 +748,16 @@ class Patrimoine(DataTil):
         enf_look_par.index = enf_look_par['id']
         enf_look_par['nb_enf'] = 0
         enf_look_par.loc[enf_tot.index.values, 'nb_enf'] = enf_tot
-        # Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots, à la limite une parenthèse
+        # Note: Attention le score ne peut pas avoir n'importe quelle forme, il faut des espaces devant les mots,
+        # à la limite une parenthèse
         var_match = ['jepnais', 'situa', 'nb_enf', 'anais', 'classif', 'couple', 'dip6', 'jemnais', 'jemprof', 'sexe']
         # TODO: gerer les valeurs nulles, pour l'instant c'est très moche
 
-        #TODO: avoir une bonne distance, on met un gros coeff sur l'age sinon, on a des parents,
+        # TODO: avoir une bonne distance, on met un gros coeff sur l'age sinon, on a des parents,
         # plus vieux que leurs enfants
         score = "- 1000 * (other.anais - anais) **2 - 1.0 * (other.situa - situa) **2 " + \
-        "- 0.5 * (other.sexe - sexe) **2 - 1.0 * (other.dip6 - dip6) **2 " + \
-        " - 1.0 * (other.nb_enf - nb_enf) **2"
+            "- 0.5 * (other.sexe - sexe) **2 - 1.0 * (other.dip6 - dip6) **2 " + \
+            " - 1.0 * (other.nb_enf - nb_enf) **2"
 
         # etape1 : deux parents vivants
         cond1_enf = (enf_look_par['per1e'] == 2) & (enf_look_par['mer1e'] == 2)
@@ -752,7 +794,8 @@ class Patrimoine(DataTil):
         individus.loc[parent_found2.index, ['mere']] = child_out_of_house.loc[parent_found2, ['mere']]
 
         # étape 3 : seulement père vivant
-        enf_look_par.loc[parent_found2.index, ['pere', 'mere']] = child_out_of_house.loc[parent_found2, ['pere', 'mere']]
+        enf_look_par.loc[parent_found2.index, ['pere', 'mere']] = child_out_of_house.loc[
+            parent_found2, ['pere', 'mere']]
         cond3_enf = ((enf_look_par['pere'] == -1)) & (enf_look_par['per1e'] == 2)
         cond3_par = ~child_out_of_house.index.isin(parent_found1) & (child_out_of_house['pere'] != -1)
 
@@ -762,7 +805,8 @@ class Patrimoine(DataTil):
         parent_found3 = match3.evaluate(orderby=None, method='cells')
         individus.loc[parent_found3.index, ['pere']] = child_out_of_house.loc[parent_found3, ['pere']]
 
-        log.info(u" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) + " match enfant-parent hors dom")
+        log.info(u" au départ on fait " + str(len(parent_found1) + len(parent_found2) + len(parent_found3)) +
+            " match enfant-parent hors dom")
         # on retire les match non valides
         to_check = individus[['id', 'age_en_mois', 'sexe', 'idmen', 'partner', 'pere', 'mere', 'lienpref']]
         tab = to_check.copy()
@@ -773,7 +817,7 @@ class Patrimoine(DataTil):
         for parent in ['pere', 'mere']:
             diff_age_pere = (tab['age_en_mois_' + parent] - tab['age_en_mois'])
             cond = diff_age_pere <= 12 * 14
-            log.info("on retire " + str(sum(cond)) + " lien enfant " + parent + " car l'âge n'était pas le bon")
+            log.info(u"on retire " + str(sum(cond)) + " lien enfant " + parent + u" car l'âge n'était pas le bon")
             individus.loc[cond, parent] = -1
 
             cond = (tab['partner'] > -1) & (tab[parent] > -1) & \
@@ -796,8 +840,10 @@ class Patrimoine(DataTil):
         Certaines personnes se déclarent en couple avec quelqu'un ne vivant pas au domicile, on les reconstruit ici.
         Cette étape peut s'assimiler à de la fermeture de l'échantillon.
         On sélectionne les individus qui se déclarent en couple avec quelqu'un hors du domicile.
-        On match mariés,pacsé d'un côté et sans contrat de l'autre. Dit autrement, si on ne trouve pas de partenaire à une personne mariée ou pacsé on change son statut de couple.
-        Comme pour les liens parents-enfants, on néglige ici la possibilité que le partner soit hors champ (étrange, prison, casernes, etc).
+        On match mariés,pacsé d'un côté et sans contrat de l'autre. Dit autrement, si on ne trouve pas de partenaire à
+        une personne mariée ou pacsé on change son statut de couple.
+        Comme pour les liens parents-enfants, on néglige ici la possibilité que le partner soit hors champ (étrange,
+        prison, casernes, etc).
         Calcul aussi la variable individus['nb_enf']
         '''
         log.info(u"Début du matching des couples hors du domicile")
@@ -808,7 +854,7 @@ class Patrimoine(DataTil):
         # note que du coup, on cherche un partenaire de pacs parmi le sexe opposé. Il y a une petite par technique là
         # dedans qui fait qu'on ne gère pas les couples homosexuels
 
-        ## nb d'enfant
+        # nb d'enfant
         individus.index = individus['id']
         nb_enf_mere = DataFrame(individus.groupby('mere').size(), columns = ['nb_enf'])
         nb_enf_mere['id'] = nb_enf_mere.index.values
@@ -825,10 +871,10 @@ class Patrimoine(DataTil):
         women_libre = couple_hdom & (~individus['civilstate'].isin([1, 5])) & (individus['sexe'] == 1)
 
         individus['age'] = individus['age_en_mois'] // 12
-        var_match = ['age', 'findet', 'nb_enf'] #,'classif', 'dip6'
+        var_match = ['age', 'findet', 'nb_enf']  # ,'classif', 'dip6'
         score = "- 0.4893 * other.age + 0.0131 * other.age **2 - 0.0001 * other.age **3 "\
-                 " + 0.0467 * (other.age - age)  - 0.0189 * (other.age - age) **2 + 0.0003 * (other.age - age) **3 " \
-                 " + 0.05   * (other.findet - findet) - 0.5 * (other.nb_enf - nb_enf) **2 "
+            " + 0.0467 * (other.age - age)  - 0.0189 * (other.age - age) **2 + 0.0003 * (other.age - age) **3 " \
+            " + 0.05   * (other.findet - findet) - 0.5 * (other.nb_enf - nb_enf) **2 "
         match_contrat = Matching(individus.loc[women_contrat, var_match], individus.loc[men_contrat, var_match], score)
         match_found = match_contrat.evaluate(orderby=None, method='cells')
         individus.loc[match_found.values, 'partner'] = match_found.index
@@ -847,11 +893,13 @@ class Patrimoine(DataTil):
         individus.loc[women_libre & individus['partner'] == -1, ['civilstate', 'couple']] = [2, 3]
 
         individus.drop(['couple', 'age'], axis = 1, inplace = True)
+
+        # Absence de polygames (seul -1 est partner de plusieurs individus)
+        assert list(individus.partner.value_counts()[individus.partner.value_counts() > 1].index) == [-1]
         self.entity_by_name['individus'] = individus
 
-
     def calmar_demography(self):
-        from openfisca_core.calmar import calmar # , check_calmar
+        from openfisca_core.calmar import calmar  # , check_calmar
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
 
@@ -875,7 +923,6 @@ class Patrimoine(DataTil):
         for col in decades_by_sexe[0] + decades_by_sexe[1] + ['id', 'pond']:
             data_in[col] = menages_extraction[col].values
 
-        from til_base_model.tests.base import get_data_frame_insee
         margins_by_decade = dict()
         for sexe in ['male', 'female']:
             insee = get_data_frame_insee(sexe)[2010]
@@ -901,7 +948,6 @@ class Patrimoine(DataTil):
         self.entity_by_name['menages'] = menages
 
 
-
 if __name__ == '__main__':
 
     logging.basicConfig(level = logging.INFO, stream = sys.stdout)
@@ -920,7 +966,7 @@ if __name__ == '__main__':
     # data.corrections()
     data.partner()
     data.enfants()
-    data.expand_data(threshold=200)
+    data.expand_data(threshold = 200)
 
     data.creation_child_out_of_house()
     data.matching_par_enf()
@@ -936,4 +982,6 @@ if __name__ == '__main__':
     # des petites verifs finales
     individus['en_couple'] = individus['partner'] > -1
     test = individus['partner'] > -1
+
+    assert list(individus.partner.value_counts()[individus.partner.value_counts() > 1].index) == [-1]
     log.info(individus.groupby(['civilstate', 'en_couple']).size())
