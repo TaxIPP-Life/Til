@@ -11,7 +11,7 @@ from liam2.simulation import Simulation
 def test_liam2_examples_files():
     liam2_demo_directory = os.path.join(
         pkg_resources.get_distribution('liam2').location,
-        '..',
+        'liam2',
         'tests',
         'examples'
         )
@@ -39,7 +39,7 @@ def test_liam2_examples_files():
 def test_liam2_functionnal_files():
     liam2_functional_directory = os.path.join(
         pkg_resources.get_distribution('liam2').location,
-        '..',
+        'liam2',
         'tests',
         'functional'
         )
