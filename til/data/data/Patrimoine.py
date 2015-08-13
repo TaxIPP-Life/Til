@@ -21,7 +21,8 @@ from til_base_model.targets.population import get_data_frame_insee
 
 # 1- Importation des classes/librairies/tables nécessaires à l'importation des
 # données de l'enquête Patrimoine
-from til.CONFIG import path_data_patr
+from til_base_model.config import Config
+
 from til.data.DataTil import DataTil
 from til.data.utils.matching import Matching
 from til.data.utils.utils import recode, minimal_dtype
@@ -79,9 +80,11 @@ class Patrimoine(DataTil):
 
     def load(self):
         log.info(u"Début de l'importation des données")
-        path_ind = os.path.join(path_data_patr, 'individu.csv')
+        config = Config()
+        patrimoine_data_directory = config.get('raw_data', 'patrimoine_data_directory')
+        path_ind = os.path.join(patrimoine_data_directory, 'individu.csv')
         individus = read_csv(path_ind)
-        path_men = os.path.join(path_data_patr, 'menage.csv')
+        path_men = os.path.join(patrimoine_data_directory, 'menage.csv')
         menages = read_csv(path_men)
 
         individus['identmen'] = individus['identmen'].apply(int)
@@ -251,7 +254,7 @@ class Patrimoine(DataTil):
 
         # travail sur les carrières
         if method == 'from_external_match':
-            path_patr_past = os.path.join(path_data_patr, 'carriere_passee_patrimoine.csv')
+            path_patr_past = os.path.join(patrimoine_data_directory, 'carriere_passee_patrimoine.csv')
             past = read_csv(path_patr_past)
             assert past['identind'].isin(individus['identind']).all()
             # TODO: it's hard-coded

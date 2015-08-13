@@ -19,8 +19,7 @@ import tables
 
 from til.data.utils.utils import replicate, new_link_with_men, of_name_to_til, new_idmen, count_dup
 
-
-from til.CONFIG import path_liam_input_data
+from til_base_model.config import Config
 
 
 log = logging.getLogger(__name__)
@@ -591,6 +590,8 @@ class DataTil(object):
         self._check_links(individus)
 
     def _output_name(self, extension='.h5'):
+        config = Config()
+        path_liam_input_data = config.get('til', 'input_dir')
         if self.threshold is None:
             name = self.name + extension
         else:
