@@ -902,6 +902,8 @@ class Patrimoine(DataTil):
         self.entity_by_name['individus'] = individus
 
     def calmar_demography(self):
+        # TODO: Cette méthode doit être utilisée avec précaution. Elle a été introduite
+        # pour recaler des données ne conetnant pas les individus en institution
         from openfisca_core.calmar import calmar  # , check_calmar
         individus = self.entity_by_name['individus']
         menages = self.entity_by_name['menages']
