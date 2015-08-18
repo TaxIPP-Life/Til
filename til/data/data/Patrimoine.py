@@ -81,7 +81,7 @@ class Patrimoine(DataTil):
     def load(self):
         log.info(u"Début de l'importation des données")
         config = Config()
-        patrimoine_data_directory = config.get('raw_data', 'patrimoine_data_directory')
+        patrimoine_data_directory = config.get('data', 'path_data_patr')
         path_ind = os.path.join(patrimoine_data_directory, 'individu.csv')
         individus = read_csv(path_ind)
         path_men = os.path.join(patrimoine_data_directory, 'menage.csv')
